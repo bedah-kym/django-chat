@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/3deae813-78d5-481f-98c2-ec9c16233127
+
 # Django Chat App
 
 A feature-rich and visually appealing chat application built using Django and Django Channels.
