@@ -26,7 +26,7 @@ A feature-rich and visually appealing chat application built using Django and Dj
 4. Migrate the DB: `python manage.py migrate` 
 5. Start the server: `python manage.py runserver`
 6. Open `http://localhost:8000`
--ps: you might need to create users in the admin `http://localhost:8000/admin`
+- you might need to create users in the admin `http://localhost:8000/admin`
 -create a user then create a member by adding that user as a member lastly and add them
 to a chatroom so you can try it out.
 - Dont mind the api its a feature in development to connect an llm like chatgpt to specific rooms if a
