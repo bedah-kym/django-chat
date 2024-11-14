@@ -25,8 +25,9 @@ SECRET_KEY = 'django-insecure-%d^b+-inenf1oia#mc_^4dhd&^o9nhhtd@lwy02%^&@5fkervl
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok-free.app']
 
+CSRF_TRUSTED_ORIGINS = ['https://8a74-197-232-61-221.ngrok-free.app']
 
 # Application definition
 
@@ -149,7 +150,9 @@ ASGI_APPLICATION = "Backend.asgi.application"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication"
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+    
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly"
