@@ -36,6 +36,6 @@ twisted-iocpsupport==1.0.2
 txaio==23.1.1
 typing_extensions==4.5.0
 tzdata==2022.7
-urllib3==1.26.15
+urllib3==2.6.0
 websockets==10.4
 zope.interface==5.5.2
