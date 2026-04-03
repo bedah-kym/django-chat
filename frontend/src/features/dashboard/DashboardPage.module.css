@@ -1,0 +1,240 @@
+.dashboard {
+  max-width: 1100px;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.statCard {
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.statCard:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(79, 140, 255, 0.1);
+}
+
+.statIcon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto var(--space-sm);
+  border-radius: var(--radius-md);
+  background: rgba(79, 140, 255, 0.1);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-color);
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.sectionHeader h2 {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.createBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: #fff;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--primary-color);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 6px rgba(79, 140, 255, 0.25);
+}
+
+.createBtn:hover {
+  background: var(--primary-hover);
+}
+
+.roomsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.roomCard {
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.roomCard:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+}
+
+.roomCardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.roomAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--secondary-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-semibold);
+  flex-shrink: 0;
+}
+
+.roomCardName {
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.roomCardMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.badge {
+  margin-left: auto;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+.roomCardPreview {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roomCardTime {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Activity */
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.activityItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.activityItem.unread {
+  border-left: 3px solid var(--primary-color);
+}
+
+.activityIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activityContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.activityTitle {
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+}
+
+.activityBody {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activityTime {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .statsRow {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .statCard {
+    padding: var(--space-md);
+  }
+
+  .statIcon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .statValue {
+    font-size: 18px;
+  }
+
+  .roomsGrid {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .sectionHeader h2 {
+    font-size: 15px;
+  }
+}

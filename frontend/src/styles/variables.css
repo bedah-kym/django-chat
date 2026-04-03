@@ -1,0 +1,113 @@
+/* Design tokens extracted from chatbase.css */
+:root {
+  /* Colors - Light theme */
+  --primary-color: #4f8cff;
+  --primary-hover: #3a7ae8;
+  --secondary-color: #6c757d;
+  --bg-light: #f5f5f7;
+  --chat-bg: #ffffff;
+  --text-color: #1d1d1f;
+  --text-muted: #86868b;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --input-bg: #ffffff;
+  --success-color: #34c759;
+  --danger-color: #ff3b30;
+  --warning-color: #ff9500;
+
+  /* Typography — premium font stack (Inter variable + Apple system) */
+  --chat-font-size: 15px;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Layout */
+  --sidebar-width: 300px;
+  --context-panel-width: 320px;
+  --header-height: 56px;
+  --bottom-nav-height: 82px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Radius — iOS style */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows — subtle, layered */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+
+  /* Transitions — iOS spring feel */
+  --transition-fast: 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  --transition-normal: 250ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  --transition-slow: 400ms cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Glass / Blur */
+  --blur-bg: blur(20px) saturate(180%);
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-heavy: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark theme — iOS dark style */
+[data-theme="dark"] {
+  --primary-color: #5e9eff;
+  --primary-hover: #7ab4ff;
+  --secondary-color: #48484a;
+  --bg-light: #000000;
+  --chat-bg: #1c1c1e;
+  --text-color: #f5f5f7;
+  --text-muted: #98989d;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --input-bg: #2c2c2e;
+  --success-color: #30d158;
+  --danger-color: #ff453a;
+  --warning-color: #ff9f0a;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+
+  --glass-bg: rgba(28, 28, 30, 0.72);
+  --glass-bg-heavy: rgba(28, 28, 30, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Message density variants */
+[data-message-density="compact"] {
+  --message-padding: 4px 10px;
+  --message-gap: 1px;
+}
+
+[data-message-density="comfortable"] {
+  --message-padding: 8px 16px;
+  --message-gap: 2px;
+}
+
+[data-message-density="spacious"] {
+  --message-padding: 12px 20px;
+  --message-gap: 4px;
+}
+
+/* Breakpoints reference (used in CSS):
+   mobile:  max-width 768px
+   tablet:  max-width 1024px
+   desktop: min-width 1025px
+*/
