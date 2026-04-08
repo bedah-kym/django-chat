@@ -16,7 +16,7 @@ export function OnboardingTour() {
           allowClose: true,
           overlayColor: 'rgba(0, 0, 0, 0.5)',
           steps: [
-            { element: '[data-tour="sidebar"]', popover: { title: 'Welcome to MATHIA', description: 'Your workspace sidebar — navigate rooms, travel, wallet, and more.' } },
+            { element: '[data-tour="sidebar"]', popover: { title: 'Welcome to Kazi', description: 'Your workspace sidebar — navigate rooms, travel, wallet, and more.' } },
             { element: '[data-tour="room-list"]', popover: { title: 'Chat Rooms', description: 'Each room has team members and Mathia AI assistant.' } },
             { element: '[data-tour="chat-input"]', popover: { title: 'Start a Conversation', description: 'Type messages, use @mathia for AI, attach files, record voice, send emojis.' } },
             { element: '[data-tour="context-toggle"]', popover: { title: 'Context Panel', description: 'Contacts, notes, action history, and AI summaries for this room.' } },

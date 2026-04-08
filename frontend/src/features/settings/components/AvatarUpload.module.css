@@ -1,0 +1,69 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initials {
+  color: #fff;
+  font-size: 24px;
+  font-weight: var(--font-weight-bold);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.fileInput { display: none; }
+
+.btnPrimary {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--primary-color);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast);
+}
+
+.btnPrimary:hover:not(:disabled) { background: var(--primary-hover); }
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btnOutline {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-color);
+  transition: all var(--transition-fast);
+}
+
+.btnOutline:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+  .wrap { flex-direction: column; text-align: center; }
+}

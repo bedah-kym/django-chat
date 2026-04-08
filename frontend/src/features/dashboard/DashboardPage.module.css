@@ -20,7 +20,7 @@
 
 .statCard:hover {
   border-color: var(--primary-color);
-  box-shadow: 0 4px 12px rgba(79, 140, 255, 0.1);
+  box-shadow: 0 4px 12px var(--primary-subtle);
 }
 
 .statIcon {
@@ -28,7 +28,7 @@
   height: 40px;
   margin: 0 auto var(--space-sm);
   border-radius: var(--radius-md);
-  background: rgba(79, 140, 255, 0.1);
+  background: var(--primary-subtle);
   color: var(--primary-color);
   display: flex;
   align-items: center;
@@ -39,6 +39,7 @@
   font-size: 22px;
   font-weight: var(--font-weight-bold);
   color: var(--text-color);
+  font-variant-numeric: tabular-nums;
 }
 
 .statLabel {
@@ -70,7 +71,7 @@
   background: var(--primary-color);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
-  box-shadow: 0 2px 6px rgba(79, 140, 255, 0.25);
+  box-shadow: 0 2px 6px rgba(67, 56, 202, 0.2);
 }
 
 .createBtn:hover {

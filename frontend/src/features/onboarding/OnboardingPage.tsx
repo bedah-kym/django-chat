@@ -2,10 +2,10 @@ import { useState } from 'react'
 import styles from './OnboardingPage.module.css'
 
 const steps = [
-  { title: 'Welcome to MATHIA', description: 'Your AI-powered business operating system. Let\'s get you set up.' },
+  { title: 'Welcome to Kazi', description: 'Your AI-powered business operating system. Let\'s get you set up.' },
   { title: 'Create Your First Room', description: 'Rooms are where conversations happen. Create one for a project, client, or team.' },
   { title: 'Meet Mathia', description: 'Mathia is your AI assistant. It can help with scheduling, invoicing, travel, and more.' },
-  { title: 'Connect Your Tools', description: 'Link your calendar, email, and payment tools to unlock the full MATHIA experience.' },
+  { title: 'Connect Your Tools', description: 'Link your calendar, email, and payment tools to unlock the full Kazi experience.' },
   { title: 'You\'re All Set!', description: 'Head to your dashboard to get started. Mathia will guide you from here.' },
 ]
 

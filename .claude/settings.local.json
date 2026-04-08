@@ -24,7 +24,8 @@
       "Bash(npx vite:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:shadcn-chat.vercel.app)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

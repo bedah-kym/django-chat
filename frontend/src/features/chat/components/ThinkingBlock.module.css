@@ -8,7 +8,7 @@
 
 .active {
   border-color: var(--primary-color);
-  background: rgba(79, 140, 255, 0.04);
+  background: var(--primary-subtle);
 }
 
 .header {

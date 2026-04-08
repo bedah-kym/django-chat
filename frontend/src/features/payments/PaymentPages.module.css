@@ -10,17 +10,44 @@
 
 .sectionHeader h2 { font-size: 16px; font-weight: var(--font-weight-semibold); }
 
-/* Balance Card */
-.balanceCard {
-  background: var(--primary-color); color: #fff;
-  border-radius: var(--radius-xl); padding: var(--space-xl);
-  text-align: center;
+/* Editorial balance header */
+.balanceHeader {
+  margin-bottom: var(--space-xl);
 }
 
-.balanceLabel { font-size: 13px; opacity: 0.8; }
-.balanceAmount { font-size: 36px; font-weight: var(--font-weight-bold); margin: var(--space-sm) 0 var(--space-lg); }
+.balanceLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--space-xs);
+}
 
-.balanceActions { display: flex; justify-content: center; gap: var(--space-md); }
+.balanceAmount {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.currency {
+  font-size: 16px;
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.amount {
+  font-size: 42px;
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-mono);
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.balanceActions {
+  display: flex;
+  gap: var(--space-sm);
+}
 
 .btnPrimary {
   padding: var(--space-sm) var(--space-lg);
@@ -30,16 +57,48 @@
 
 .btnPrimary:hover { background: var(--primary-hover); }
 
-.balanceCard .btnPrimary { background: #fff; color: var(--primary-color); }
-.balanceCard .btnPrimary:hover { background: rgba(255,255,255,0.9); }
-
 .btnOutline {
   padding: var(--space-sm) var(--space-lg);
-  border: 1px solid #fff; border-radius: var(--radius-md);
-  font-size: 13px; font-weight: var(--font-weight-medium); color: #fff;
+  border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  font-size: 13px; font-weight: var(--font-weight-medium); color: var(--text-color);
 }
 
-.btnOutline:hover { background: rgba(255,255,255,0.15); }
+.btnOutline:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+/* Dense list for transactions and invoices */
+.denseList {
+  display: flex;
+  flex-direction: column;
+}
+
+.txRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+  transition: background var(--transition-fast);
+}
+
+.txRow:last-child { border-bottom: none; }
+.txRow:hover { background: var(--primary-subtle); }
+
+.txType {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.txRef {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
 
 /* Transactions */
 .list { display: flex; flex-direction: column; gap: var(--space-xs); }
@@ -58,11 +117,15 @@
 }
 
 .txContent { flex: 1; min-width: 0; }
-.txDesc { font-size: 14px; font-weight: var(--font-weight-medium); }
-.txMeta { font-size: 12px; color: var(--text-muted); }
-.txAmount { font-size: 14px; font-weight: var(--font-weight-semibold); flex-shrink: 0; }
-.positive { color: var(--success-color); }
-.negative { color: var(--danger-color); }
+.txDesc { font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.txMeta { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+.txAmount {
+  font-size: 13px; font-weight: var(--font-weight-semibold);
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  flex-shrink: 0; text-align: right; min-width: 80px;
+}
+.positive { color: var(--text-color); font-weight: var(--font-weight-bold); }
+.negative { color: var(--text-muted); }
 
 .statusBadge {
   font-size: 11px; font-weight: var(--font-weight-semibold);
@@ -73,7 +136,7 @@
 .pending { background: rgba(255, 193, 7, 0.15); color: var(--warning-color); }
 .failed { background: rgba(220, 53, 69, 0.15); color: var(--danger-color); }
 .paid { background: rgba(40, 167, 69, 0.15); color: var(--success-color); }
-.sent { background: rgba(79, 140, 255, 0.15); color: var(--primary-color); }
+.sent { background: var(--primary-subtle); color: var(--primary-color); }
 .overdue { background: rgba(220, 53, 69, 0.15); color: var(--danger-color); }
 .draft { background: var(--bg-light); color: var(--text-muted); }
 .cancelled { background: var(--bg-light); color: var(--text-muted); }

@@ -9,13 +9,13 @@ export const mockCurrentUser: UserProfile = {
   isStaff: false,
   dateJoined: '2025-11-15T10:00:00Z',
   phone: '+254 712 345 678',
-  company: 'TechVentures Ltd',
+  companyName: 'TechVentures Ltd',
   timezone: 'Africa/Nairobi',
+  inviteDepth: 0,
   integrations: [
     { type: 'calendly', connected: true, connectedAt: '2026-01-10T08:00:00Z', accountName: 'alex-mwangi' },
     { type: 'gmail', connected: true, connectedAt: '2026-02-05T12:00:00Z', accountName: 'alex@gmail.com' },
     { type: 'whatsapp', connected: false },
-    { type: 'mailgun', connected: false },
     { type: 'intasend', connected: true, connectedAt: '2026-03-01T09:00:00Z', accountName: 'TechVentures' },
   ],
 }

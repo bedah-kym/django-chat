@@ -1,3 +1,4 @@
+import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
 import styles from './TypingIndicator.module.css'
 
 interface Props {
@@ -7,7 +8,7 @@ interface Props {
 export function TypingIndicator({ username }: Props) {
   return (
     <div className={styles.container}>
-      <div className={styles.avatar}>{username?.[0] ?? '?'}</div>
+      <MathiaAvatar size={28} isActive />
       <div className={styles.bubble}>
         <div className={styles.dots}>
           <span className={styles.dot} />

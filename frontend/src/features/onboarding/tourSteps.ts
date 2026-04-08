@@ -2,7 +2,7 @@ export const tourSteps = [
   {
     element: '[data-tour="sidebar"]',
     popover: {
-      title: 'Welcome to MATHIA',
+      title: 'Welcome to Kazi',
       description: 'This is your workspace sidebar. Navigate between dashboard, travel, wallet, and more.',
       side: 'right' as const,
     },

@@ -1,18 +1,22 @@
 /* Design tokens extracted from chatbase.css */
 :root {
-  /* Colors - Light theme */
-  --primary-color: #4f8cff;
-  --primary-hover: #3a7ae8;
-  --secondary-color: #6c757d;
+  /* Colors - Light theme (deep indigo primary) */
+  --primary-color: #4338ca;
+  --primary-hover: #3730a3;
+  --primary-subtle: rgba(67, 56, 202, 0.08);
+  --secondary-color: #6b7280;
   --bg-light: #f5f5f7;
   --chat-bg: #ffffff;
   --text-color: #1d1d1f;
   --text-muted: #86868b;
   --border-color: rgba(0, 0, 0, 0.08);
   --input-bg: #ffffff;
-  --success-color: #34c759;
-  --danger-color: #ff3b30;
-  --warning-color: #ff9500;
+  --success-color: #059669;
+  --danger-color: #dc2626;
+  --warning-color: #d97706;
+
+  /* Mono font for financial data */
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
 
   /* Typography — premium font stack (Inter variable + Apple system) */
   --chat-font-size: 15px;
@@ -67,8 +71,9 @@
 
 /* Dark theme — iOS dark style */
 [data-theme="dark"] {
-  --primary-color: #5e9eff;
-  --primary-hover: #7ab4ff;
+  --primary-color: #6366f1;
+  --primary-hover: #818cf8;
+  --primary-subtle: rgba(99, 102, 241, 0.1);
   --secondary-color: #48484a;
   --bg-light: #000000;
   --chat-bg: #1c1c1e;
@@ -76,9 +81,9 @@
   --text-muted: #98989d;
   --border-color: rgba(255, 255, 255, 0.08);
   --input-bg: #2c2c2e;
-  --success-color: #30d158;
-  --danger-color: #ff453a;
-  --warning-color: #ff9f0a;
+  --success-color: #34d399;
+  --danger-color: #f87171;
+  --warning-color: #fbbf24;
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
