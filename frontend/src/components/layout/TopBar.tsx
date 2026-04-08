@@ -8,17 +8,14 @@ import {
 import { mockNotifications } from '@/mocks/notifications'
 import { useUiStore } from '@/stores/uiStore'
 import { useChatStore } from '@/stores/chatStore'
+import { getDomainFromPathname } from '@/domains'
+import { DomainSwitcher } from './DomainSwitcher'
 import styles from './TopBar.module.css'
 
 const pageTitles: Record<string, string> = {
-  '/app/dashboard': 'Dashboard',
+  '/app/home': 'Home',
   '/app/settings': 'Settings',
-  '/app/reminders': 'Reminders',
-  '/app/travel/plan': 'Plan a Trip',
-  '/app/travel/itineraries': 'My Trips',
-  '/app/wallet': 'Wallet',
-  '/app/invoices/new': 'Create Invoice',
-  '/app/onboarding': 'Welcome to MATHIA',
+  '/app/onboarding': 'Welcome to Kazi',
 }
 
 const typeIcons = {
@@ -31,6 +28,7 @@ const typeIcons = {
 
 export function TopBar() {
   const location = useLocation()
+  const activeDomainId = getDomainFromPathname(location.pathname)
   const chatUnread = useChatStore(s => s.rooms.reduce((sum, r) => sum + r.unreadCount, 0))
   const unread = chatUnread || mockNotifications.filter(n => !n.isRead).length
   const title = pageTitles[location.pathname] ?? ''
@@ -44,7 +42,10 @@ export function TopBar() {
         <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
           <Menu size={20} />
         </button>
-        <h1 className={styles.title}>{title}</h1>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.title}>{title}</h1>
+          <DomainSwitcher activeDomainId={activeDomainId} />
+        </div>
       </div>
       <div className={styles.actions}>
         <motion.button

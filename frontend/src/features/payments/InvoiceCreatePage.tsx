@@ -4,7 +4,7 @@ import styles from './PaymentPages.module.css'
 export function InvoiceCreatePage() {
   return (
     <div className={styles.payments}>
-      <Link to="/app/wallet" className={styles.backLink}>← Back to wallet</Link>
+      <Link to="/app/ops/wallet" className={styles.backLink}>Back to wallet</Link>
       <h2 className={styles.pageTitle}>Create Invoice</h2>
       <div className={styles.formCard}>
         <div className={styles.formGrid}>

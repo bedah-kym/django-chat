@@ -24,6 +24,12 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.domainContent {
+  flex: 1;
+  overflow: hidden;
+  padding: var(--space-lg);
+}
+
 .chatContent {
   flex: 1;
   overflow: hidden;
@@ -36,6 +42,11 @@
   }
 
   .content {
+    padding: var(--space-md);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--space-md));
+  }
+
+  .domainContent {
     padding: var(--space-md);
     padding-bottom: calc(var(--bottom-nav-height) + var(--space-md));
   }

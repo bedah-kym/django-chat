@@ -1,16 +1,16 @@
-import { useParams, Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { mockInvoices } from '@/mocks/payments'
 import styles from './PaymentPages.module.css'
 
 export function InvoiceDetailPage() {
   const { ref } = useParams<{ ref: string }>()
-  const invoice = mockInvoices.find(i => i.referenceId === ref)
+  const invoice = mockInvoices.find((item) => item.referenceId === ref)
 
   if (!invoice) return <div>Invoice not found</div>
 
   return (
     <div className={styles.payments}>
-      <Link to="/app/wallet" className={styles.backLink}>← Back to wallet</Link>
+      <Link to="/app/ops/wallet" className={styles.backLink}>Back to wallet</Link>
       <div className={styles.invoiceDetail}>
         <div className={styles.invoiceDetailHeader}>
           <div>

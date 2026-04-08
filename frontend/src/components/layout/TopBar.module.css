@@ -17,6 +17,13 @@
   gap: var(--space-sm);
 }
 
+.titleBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
 .menuBtn {
   display: none;
   width: 38px;
@@ -133,7 +140,7 @@
 }
 
 .notifItem.unread {
-  background: rgba(79, 140, 255, 0.04);
+  background: var(--primary-subtle);
 }
 
 .notifIcon {
@@ -191,6 +198,10 @@
 
   .title {
     font-size: 16px;
+  }
+
+  .titleBlock {
+    gap: var(--space-sm);
   }
 
   .notifPanel {

@@ -5,11 +5,12 @@ import styles from './PaymentPages.module.css'
 export function WalletPage() {
   return (
     <div className={styles.payments}>
-      {/* Balance Card */}
-      <div className={styles.balanceCard}>
+      {/* Editorial balance header — no card */}
+      <div className={styles.balanceHeader}>
         <div className={styles.balanceLabel}>Wallet Balance</div>
         <div className={styles.balanceAmount}>
-          KES {mockWallet.balance.toLocaleString()}
+          <span className={styles.currency}>KES</span>
+          <span className={styles.amount}>{mockWallet.balance.toLocaleString()}</span>
         </div>
         <div className={styles.balanceActions}>
           <button className={styles.btnPrimary}>Deposit</button>
@@ -17,23 +18,19 @@ export function WalletPage() {
         </div>
       </div>
 
-      {/* Recent Transactions */}
+      {/* Dense transactions */}
       <div className={styles.sectionHeader}>
         <h2>Recent Transactions</h2>
       </div>
-      <div className={styles.list}>
+      <div className={styles.denseList}>
         {mockTransactions.map(tx => (
-          <div key={tx.id} className={styles.txItem}>
-            <div className={styles.txIcon}>
-              {tx.type === 'deposit' ? '↓' : tx.type === 'withdrawal' ? '↑' : tx.type === 'payment' ? '→' : '↩'}
-            </div>
-            <div className={styles.txContent}>
-              <div className={styles.txDesc}>{tx.description}</div>
-              <div className={styles.txMeta}>{new Date(tx.createdAt).toLocaleDateString()} · {tx.reference}</div>
-            </div>
-            <div className={`${styles.txAmount} ${tx.amount > 0 ? styles.positive : styles.negative}`}>
-              {tx.amount > 0 ? '+' : ''}{tx.currency} {Math.abs(tx.amount).toLocaleString()}
-            </div>
+          <div key={tx.id} className={styles.txRow}>
+            <span className={styles.txType}>{tx.type}</span>
+            <span className={styles.txDesc}>{tx.description}</span>
+            <span className={styles.txRef}>{tx.reference}</span>
+            <span className={`${styles.txAmount} ${tx.amount > 0 ? styles.positive : styles.negative}`}>
+              {tx.amount > 0 ? '+' : ''}{Math.abs(tx.amount).toLocaleString()}
+            </span>
             <span className={`${styles.statusBadge} ${styles[tx.status]}`}>{tx.status}</span>
           </div>
         ))}
@@ -42,16 +39,14 @@ export function WalletPage() {
       {/* Invoices */}
       <div className={styles.sectionHeader}>
         <h2>Invoices</h2>
-        <Link to="/app/invoices/new" className={styles.btnPrimary}>+ New Invoice</Link>
+        <Link to="/app/ops/invoices/new" className={styles.btnPrimary}>+ New Invoice</Link>
       </div>
-      <div className={styles.list}>
+      <div className={styles.denseList}>
         {mockInvoices.map(inv => (
-          <Link key={inv.id} to={`/app/invoices/${inv.referenceId}`} className={styles.invoiceItem}>
-            <div className={styles.invoiceInfo}>
-              <div className={styles.invoiceRef}>{inv.referenceId}</div>
-              <div className={styles.invoiceRecipient}>{inv.recipientName}</div>
-            </div>
-            <div className={styles.invoiceAmount}>{inv.currency} {inv.amount.toLocaleString()}</div>
+          <Link key={inv.id} to={`/app/ops/invoices/${inv.referenceId}`} className={styles.txRow}>
+            <span className={styles.txRef}>{inv.referenceId}</span>
+            <span className={styles.txDesc}>{inv.recipientName}</span>
+            <span className={styles.txAmount}>{inv.amount.toLocaleString()}</span>
             <span className={`${styles.statusBadge} ${styles[inv.status]}`}>{inv.status}</span>
           </Link>
         ))}

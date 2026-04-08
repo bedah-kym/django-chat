@@ -1,7 +1,10 @@
+import type { DomainId } from '@/types/domain'
+
 export interface Room {
   id: number
   name: string
   displayName: string
+  domain: DomainId
   lastMessage: string
   lastMessageTime: string
   unreadCount: number

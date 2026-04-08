@@ -5,6 +5,7 @@ export const mockRooms: Room[] = [
     id: 1,
     name: 'techventures-strategy',
     displayName: 'TechVentures Strategy',
+    domain: 'dev',
     lastMessage: 'I\'ve drafted the Q2 roadmap. Take a look when you can.',
     lastMessageTime: '2026-04-03T10:30:00Z',
     unreadCount: 3,
@@ -19,6 +20,7 @@ export const mockRooms: Room[] = [
     id: 2,
     name: 'client-onboarding',
     displayName: 'Client Onboarding',
+    domain: 'ops',
     lastMessage: 'The invoice has been sent to the client.',
     lastMessageTime: '2026-04-03T09:15:00Z',
     unreadCount: 0,
@@ -31,9 +33,10 @@ export const mockRooms: Room[] = [
   },
   {
     id: 3,
-    name: 'mathia-assistant',
-    displayName: 'Mathia Assistant',
-    lastMessage: 'Here\'s a summary of your tasks for today.',
+    name: 'security-briefing',
+    displayName: 'Security Briefing',
+    domain: 'security',
+    lastMessage: 'Nuclei baseline run completed. Two issues need analyst review.',
     lastMessageTime: '2026-04-03T08:00:00Z',
     unreadCount: 1,
     isAiRoom: true,
@@ -46,6 +49,7 @@ export const mockRooms: Room[] = [
     id: 4,
     name: 'nairobi-trip-planning',
     displayName: 'Nairobi Trip Planning',
+    domain: 'ops',
     lastMessage: 'Found 3 hotels near KICC under your budget.',
     lastMessageTime: '2026-04-02T16:45:00Z',
     unreadCount: 0,
@@ -58,9 +62,10 @@ export const mockRooms: Room[] = [
   },
   {
     id: 5,
-    name: 'payments-reconciliation',
-    displayName: 'Payments & Reconciliation',
-    lastMessage: 'All March invoices have been reconciled.',
+    name: 'security-operations',
+    displayName: 'Security Operations',
+    domain: 'security',
+    lastMessage: 'All March findings have been triaged and assigned.',
     lastMessageTime: '2026-04-01T14:20:00Z',
     unreadCount: 0,
     isAiRoom: false,
@@ -114,7 +119,7 @@ export const mockMessages: Record<number, Message[]> = {
     { id: 204, member: 'mathia', content: 'The invoice has been sent to the client.', timestamp: '2026-04-03T09:15:00Z', parentId: null, isAi: true },
   ],
   3: [
-    { id: 301, member: 'mathia', content: 'Good morning, Alex! Here\'s a summary of your tasks for today:\n\n1. **Strategy meeting prep** — Review Q2 roadmap draft\n2. **Client onboarding** — Mombasa client kickoff pending\n3. **Payments** — 2 invoices awaiting payment\n4. **Travel** — Nairobi trip hotel confirmation needed\n\nYou have 2 meetings today:\n- 10:00 AM — Team standup\n- 2:00 PM — Client call with Sarah\n\nAnything you\'d like to prioritize?', timestamp: '2026-04-03T08:00:00Z', parentId: null, isAi: true },
+    { id: 301, member: 'mathia', content: 'Security check-in for today:\n\n1. **Acme external engagement** — preview admin finding needs validation\n2. **Zenith API review** — password reset rate-limit bypass is ready for report drafting\n3. **Bug bounty queue** — one new medium-severity draft in Kijani Cloud\n4. **Approvals** — one high-risk web enumeration step is waiting on operator approval\n\nWant me to open the active engagement workspace?', timestamp: '2026-04-03T08:00:00Z', parentId: null, isAi: true },
   ],
   4: [
     { id: 401, member: 'alex', content: 'We need to book a hotel near KICC for the conference next month.', timestamp: '2026-04-02T15:00:00Z', parentId: null, isAi: false },
@@ -124,7 +129,7 @@ export const mockMessages: Record<number, Message[]> = {
     { id: 405, member: 'mathia', content: 'Found 3 hotels near KICC under your budget.', timestamp: '2026-04-02T16:45:00Z', parentId: null, isAi: true },
   ],
   5: [
-    { id: 501, member: 'mathia', content: 'Monthly reconciliation complete. Summary:\n\n**March 2026:**\n- Total invoiced: KES 450,000\n- Total received: KES 425,000\n- Outstanding: KES 25,000 (2 invoices)\n\nAll March invoices have been reconciled.', timestamp: '2026-04-01T14:20:00Z', parentId: null, isAi: true },
+    { id: 501, member: 'mathia', content: 'Security operations summary for March 2026:\n\n- 14 findings triaged\n- 3 critical issues escalated\n- 2 bounty reports paid\n- 1 engagement extended into April\n\nAll March findings have been triaged and assigned.', timestamp: '2026-04-01T14:20:00Z', parentId: null, isAi: true },
   ],
 }
 
@@ -149,7 +154,7 @@ export const mockActionReceipts: ActionReceipt[] = [
 
 export const mockLinkedRooms: LinkedRoom[] = [
   { id: 2, name: 'client-onboarding', displayName: 'Client Onboarding' },
-  { id: 5, name: 'payments-reconciliation', displayName: 'Payments & Reconciliation' },
+  { id: 5, name: 'security-operations', displayName: 'Security Operations' },
 ]
 
 // Older messages for pagination (loaded when user scrolls to top)

@@ -1,0 +1,176 @@
+.home {
+  max-width: 1150px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.hero {
+  padding: var(--space-xl);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 14%, var(--chat-bg)), var(--chat-bg));
+  border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
+}
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary-color);
+  font-weight: var(--font-weight-semibold);
+}
+
+.title {
+  margin: var(--space-sm) 0 6px;
+  font-size: 34px;
+  font-weight: var(--font-weight-bold);
+}
+
+.description {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  max-width: 760px;
+}
+
+.domainGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.domainCard {
+  width: 100%;
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 220px;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  text-align: left;
+  cursor: pointer;
+}
+
+.domainCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+.cardHeader,
+.cardFooter,
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.cardIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--primary-subtle);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardLabel {
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.cardDescription,
+.activityDetail,
+.alertCard p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.cardFooter {
+  margin-top: auto;
+  align-items: flex-end;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.shortcutLink {
+  color: var(--primary-color);
+  font-weight: var(--font-weight-medium);
+}
+
+.sections {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--space-lg);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sectionHeader h2 {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.activityList,
+.alertList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.activityItem,
+.alertCard {
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+}
+
+.activityLabel,
+.alertLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary-color);
+  font-weight: var(--font-weight-semibold);
+}
+
+.activityTitle {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.alertCard strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+  .domainGrid,
+  .sections {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero,
+  .domainCard {
+    padding: var(--space-md);
+  }
+
+  .title {
+    font-size: 28px;
+  }
+}

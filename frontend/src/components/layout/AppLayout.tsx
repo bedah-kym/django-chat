@@ -5,11 +5,14 @@ import { TopBar } from './TopBar'
 import { MobileNav } from './MobileNav'
 import { MobileDrawer } from './MobileDrawer'
 import { useUiStore } from '@/stores/uiStore'
+import { getDomainFromPathname } from '@/domains'
 import styles from './AppLayout.module.css'
 
 export function AppLayout() {
   const location = useLocation()
-  const isChat = location.pathname.startsWith('/app/chat')
+  const activeDomainId = getDomainFromPathname(location.pathname)
+  const isDomainRoute = !!activeDomainId
+  const isChat = location.pathname.includes('/chat/')
   const sidebarOpen = useUiStore(s => s.sidebarOpen)
   const setSidebarOpen = useUiStore(s => s.setSidebarOpen)
 
@@ -22,12 +25,12 @@ export function AppLayout() {
 
       {/* Mobile drawer */}
       <MobileDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-        <Sidebar />
+        <Sidebar includeDomainContext collapsible={false} />
       </MobileDrawer>
 
       <div className={styles.main}>
-        {!isChat && <TopBar />}
-        <div className={isChat ? styles.chatContent : styles.content}>
+        {!isDomainRoute && !isChat && <TopBar />}
+        <div className={isChat ? styles.chatContent : isDomainRoute ? styles.domainContent : styles.content}>
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

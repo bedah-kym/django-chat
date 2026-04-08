@@ -1,7 +1,6 @@
 .chatPage {
   display: flex;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
   background: var(--bg-light);
 }
 
@@ -72,7 +71,7 @@
 .headerBtnActive {
   background: var(--primary-color);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(79, 140, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(67, 56, 202, 0.2);
 }
 
 .headerBtnActive:hover { background: var(--primary-hover); color: #fff; }
@@ -204,7 +203,29 @@
   gap: var(--space-xs);
 }
 
-.aiBadge {
+.aiLabel {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--primary-color);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Margin timestamp — positioned left of the message column */
+.marginTime {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 2px;
+}
+
+.messageRow:hover .marginTime {
+  opacity: 1;
+}
+
+.aiBadge_unused {
   background: var(--primary-color);
   color: #fff;
   font-size: 9px;
@@ -385,7 +406,7 @@
 .searchMatch { opacity: 1; }
 .searchActive {
   opacity: 1;
-  background: rgba(79, 140, 255, 0.06);
+  background: var(--primary-subtle);
   border-radius: var(--radius-md);
 }
 

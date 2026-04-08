@@ -1,8 +1,8 @@
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Search, PanelRightOpen, PanelRightClose, Sparkles, ChevronDown } from 'lucide-react'
+import { Search, PanelRightOpen, PanelRightClose, ChevronDown } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 import { mockContacts, mockNotes, mockActionReceipts } from '@/mocks/chat'
 import { ContextPanel } from './components/ContextPanel'
@@ -17,11 +17,16 @@ import { HistoryLoader } from './components/HistoryLoader'
 import { ChatInput } from './components/ChatInput'
 import { MessageSearch } from './components/MessageSearch'
 import { VoiceMessage } from './components/VoiceMessage'
+import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
+import { QuotaBar } from './components/QuotaBar'
+import { getDomainFromPathname } from '@/domains'
 import styles from './ChatPage.module.css'
 
 export function ChatPage() {
   const { roomId: roomIdParam } = useParams<{ roomId: string }>()
+  const location = useLocation()
   const roomId = Number(roomIdParam)
+  const activeDomainId = getDomainFromPathname(location.pathname)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [hoveredMsg, setHoveredMsg] = useState<number | null>(null)
@@ -76,6 +81,10 @@ export function ChatPage() {
 
   if (!room) {
     return <div className={styles.empty}>Room not found</div>
+  }
+
+  if (activeDomainId && room.domain !== activeDomainId) {
+    return <div className={styles.empty}>This room belongs to a different workspace</div>
   }
 
   const onlineCount = room.participants.filter(p => p.isOnline).length
@@ -144,6 +153,9 @@ export function ChatPage() {
           {searchOpen && <MessageSearch onClose={() => setSearchOpen(false)} />}
         </AnimatePresence>
 
+        {/* Quota monitor */}
+        <QuotaBar remaining={3} total={5} />
+
         {/* Messages */}
         <div
           ref={messageAreaRef}
@@ -190,7 +202,7 @@ export function ChatPage() {
                       {firstInGroup ? (
                         <div className={styles.avatarWrapper}>
                           <div className={`${styles.avatar} ${msg.isAi ? styles.aiAvatarSmall : ''}`}>
-                            {msg.isAi ? <Sparkles size={14} /> : (room.participants.find(p => p.username === msg.member)?.displayName?.[0] ?? '?')}
+                            {msg.isAi ? <MathiaAvatar size={30} isActive={!!msg.isStreaming} /> : (room.participants.find(p => p.username === msg.member)?.displayName?.[0] ?? '?')}
                           </div>
                           {(() => {
                             const participant = room.participants.find(p => p.username === msg.member)
@@ -212,13 +224,17 @@ export function ChatPage() {
                     {firstInGroup && !isOwn && (
                       <div className={styles.senderRow}>
                         <span className={styles.messageSender}>
-                          {msg.isAi && <span className={styles.aiBadge}><Sparkles size={9} /> AI</span>}
                           {msg.isAi ? 'Mathia' : room.participants.find(p => p.username === msg.member)?.displayName ?? msg.member}
-                        </span>
-                        <span className={styles.messageTime}>
-                          {new Date(msg.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          {msg.isAi && <span className={styles.aiLabel}>AI</span>}
                         </span>
                       </div>
+                    )}
+
+                    {/* Timestamp in margin — shown on first in group */}
+                    {firstInGroup && !isOwn && (
+                      <span className={styles.marginTime}>
+                        {new Date(msg.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     )}
 
                     {/* Reply reference */}

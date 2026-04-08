@@ -1,47 +1,76 @@
-import { NavLink } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { NavLink, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import {
-  LayoutDashboard, Plane, Wallet, Clock, Settings,
-  Plus, Search, Sparkles,
-} from 'lucide-react'
-import { useChatStore } from '@/stores/chatStore'
-import { PresenceDot } from '@/features/chat/components/PresenceDot'
+import { Calendar, ChevronLeft, ChevronRight, CreditCard, Mail, Settings } from 'lucide-react'
+import { mockCurrentUser } from '@/mocks/users'
+import { globalNavItems, getDomainFromPathname, domainConfigs } from '@/domains'
+import { DomainSwitcher } from './DomainSwitcher'
 import { MiniSettings } from '@/features/chat/components/MiniSettings'
+import { useUiStore } from '@/stores/uiStore'
 import styles from './Sidebar.module.css'
 
-const navItems = [
-  { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/app/travel/itineraries', label: 'Travel', icon: Plane },
-  { path: '/app/wallet', label: 'Wallet', icon: Wallet },
-  { path: '/app/reminders', label: 'Reminders', icon: Clock },
-  { path: '/app/settings', label: 'Settings', icon: Settings },
-]
+const connectorIcons: Record<string, typeof Calendar> = {
+  calendly: Calendar,
+  gmail: Mail,
+  intasend: CreditCard,
+}
 
-export function Sidebar() {
-  const rooms = useChatStore(s => s.rooms)
-  const totalUnread = useChatStore(s => s.rooms.reduce((sum, r) => sum + r.unreadCount, 0))
+interface Props {
+  includeDomainContext?: boolean
+  collapsible?: boolean
+}
+
+export function Sidebar({ includeDomainContext = false, collapsible = true }: Props) {
+  const location = useLocation()
+  const activeDomainId = getDomainFromPathname(location.pathname)
+  const collapsed = useUiStore((s) => s.sidebarCollapsed)
+  const toggleSidebarCollapsed = useUiStore((s) => s.toggleSidebarCollapsed)
+  const isCollapsed = collapsible ? collapsed : false
 
   return (
-    <aside className={styles.sidebar} data-tour="sidebar">
-      <div className={styles.logo}>
-        <motion.div className={styles.logoIcon} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          M
-        </motion.div>
-      </div>
+    <Tooltip.Provider delayDuration={200}>
+      <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`} data-tour="sidebar">
+        <div className={styles.topSection}>
+          <div className={styles.logoRow}>
+            <motion.div className={styles.logoIcon} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              K
+            </motion.div>
+            {!isCollapsed && (
+              <div className={styles.logoCopy}>
+                <div className={styles.logoText}>Kazi</div>
+                <div className={styles.logoSub}>Domain Workspaces</div>
+              </div>
+            )}
+            {collapsible && (
+              <button
+                type="button"
+                className={styles.collapseBtn}
+                onClick={toggleSidebarCollapsed}
+                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+              </button>
+            )}
+          </div>
 
-      <Tooltip.Provider delayDuration={200}>
+          {!isCollapsed && <div className={styles.sectionEyebrow}>Global Navigation</div>}
+        </div>
+
         <nav className={styles.nav}>
-          {navItems.map(item => {
+          {globalNavItems.map((item) => {
             const Icon = item.icon
+            const exact = !item.domain && item.path === '/app/home'
             return (
               <Tooltip.Root key={item.path}>
                 <Tooltip.Trigger asChild>
                   <NavLink
                     to={item.path}
+                    end={exact}
                     className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
                   >
                     <Icon size={18} strokeWidth={1.8} />
+                    {!isCollapsed && <span>{item.label}</span>}
                   </NavLink>
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
@@ -53,83 +82,50 @@ export function Sidebar() {
             )
           })}
         </nav>
-      </Tooltip.Provider>
 
-      <div className={styles.divider} />
+        {includeDomainContext && activeDomainId && (
+          <>
+            <div className={styles.divider} />
+            <div className={styles.domainContext}>
+              {!isCollapsed && (
+                <div className={styles.contextHeader}>
+                  <span className={styles.contextLabel}>Current Domain</span>
+                  <span className={styles.contextValue}>{domainConfigs[activeDomainId].label}</span>
+                </div>
+              )}
+              <div className={styles.domainWrap}>
+                <DomainSwitcher activeDomainId={activeDomainId} />
+              </div>
+            </div>
+          </>
+        )}
 
-      <div className={styles.roomsHeader}>
-        <span className={styles.roomsTitle}>Rooms</span>
-        <div className={styles.roomsActions}>
-          {totalUnread > 0 && (
-            <motion.span className={styles.badge} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 25 }}>
-              {totalUnread}
-            </motion.span>
-          )}
-          <motion.button className={styles.addRoomBtn} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} title="New room">
-            <Plus size={15} />
-          </motion.button>
-        </div>
-      </div>
+        <div className={styles.divider} />
 
-      <div className={styles.searchBox}>
-        <Search size={14} className={styles.searchIcon} />
-        <input className={styles.searchInput} placeholder="Search rooms..." />
-      </div>
-
-      <div className={styles.roomList} data-tour="room-list">
-        <AnimatePresence>
-          {rooms.map((room, i) => {
-            const onlineParticipant = room.participants.find(p => p.isOnline && p.username !== 'mathia' && p.username !== 'alex')
-            return (
-              <motion.div
-                key={room.id}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.04, duration: 0.25 }}
-              >
-                <NavLink
-                  to={`/app/chat/${room.id}`}
-                  className={({ isActive }) => `${styles.roomItem} ${isActive ? styles.activeRoom : ''}`}
-                >
-                  <div className={styles.roomAvatarWrapper}>
-                    <div className={`${styles.roomAvatar} ${room.isAiRoom ? styles.aiAvatar : ''}`}>
-                      {room.isAiRoom ? <Sparkles size={16} /> : room.displayName[0]}
+        <div className={styles.bottomSection}>
+          <div className={styles.connectors}>
+            {mockCurrentUser.integrations.filter((integration) => integration.connected).map((integration) => {
+              const Icon = connectorIcons[integration.type] ?? Settings
+              return (
+                <Tooltip.Root key={integration.type}>
+                  <Tooltip.Trigger asChild>
+                    <div className={styles.connectorDot}>
+                      <Icon size={12} />
                     </div>
-                    <div className={styles.presencePos}>
-                      <PresenceDot
-                        isOnline={!!onlineParticipant || room.isAiRoom}
-                        lastSeen={onlineParticipant?.lastSeen}
-                        size={7}
-                      />
-                    </div>
-                  </div>
-                  <div className={styles.roomInfo}>
-                    <div className={`${styles.roomName} ${room.unreadCount > 0 ? styles.unreadName : ''}`}>
-                      {room.displayName}
-                    </div>
-                    <div className={styles.roomPreview}>{room.lastMessage}</div>
-                  </div>
-                  {room.unreadCount > 0 && (
-                    <span className={styles.badge}>{room.unreadCount}</span>
-                  )}
-                </NavLink>
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
-      </div>
-
-      <div className={styles.userSection}>
-        <div className={styles.userAvatar}>AM</div>
-        <div className={styles.userInfo}>
-          <div className={styles.userName}>Alex Mwangi</div>
-          <div className={styles.userStatus}>
-            <span className={styles.onlineDotSmall} />
-            Online
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content className={styles.tooltip} side="top" sideOffset={6}>
+                      {integration.type.charAt(0).toUpperCase() + integration.type.slice(1)} - {integration.accountName}
+                      <Tooltip.Arrow className={styles.tooltipArrow} />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              )
+            })}
           </div>
+          {!isCollapsed && <MiniSettings />}
         </div>
-        <MiniSettings />
-      </div>
-    </aside>
+      </aside>
+    </Tooltip.Provider>
   )
 }

@@ -8,6 +8,7 @@ import { useChatStore } from '@/stores/chatStore'
 import { mockNotifications } from '@/mocks/notifications'
 import { mockWallet } from '@/mocks/payments'
 import { mockItineraries } from '@/mocks/travel'
+import { getRoomPath } from '@/domains'
 import styles from './DashboardPage.module.css'
 
 const typeIcons = {
@@ -68,7 +69,7 @@ export function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 + i * 0.05, duration: 0.3 }}
           >
-            <Link to={`/app/chat/${room.id}`} className={styles.roomCard}>
+            <Link to={getRoomPath(room)} className={styles.roomCard}>
               <div className={styles.roomCardHeader}>
                 <div className={styles.roomAvatar}>
                   {room.isAiRoom ? '✦' : room.displayName[0]}
