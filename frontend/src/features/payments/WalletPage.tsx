@@ -1,55 +1,74 @@
 import { Link } from 'react-router-dom'
+import { ArrowDownLeft, ArrowUpRight, ReceiptText, WalletCards } from 'lucide-react'
 import { mockWallet, mockTransactions, mockInvoices } from '@/mocks/payments'
+import { formatCurrency } from '@/utils/format'
 import styles from './PaymentPages.module.css'
 
 export function WalletPage() {
   return (
-    <div className={styles.payments}>
-      {/* Editorial balance header — no card */}
-      <div className={styles.balanceHeader}>
-        <div className={styles.balanceLabel}>Wallet Balance</div>
-        <div className={styles.balanceAmount}>
-          <span className={styles.currency}>KES</span>
-          <span className={styles.amount}>{mockWallet.balance.toLocaleString()}</span>
+    <div className={styles.workspacePage}>
+      <section className={styles.workspaceHero}>
+        <div className={styles.heroBlock}>
+          <div className={styles.balanceLabel}>Available balance</div>
+          <div className={styles.balanceAmount}>{formatCurrency(mockWallet.balance)}</div>
+          <div className={styles.balanceMeta}>Operational funds available for invoices, payouts, and travel this cycle.</div>
         </div>
         <div className={styles.balanceActions}>
-          <button className={styles.btnPrimary}>Deposit</button>
-          <button className={styles.btnOutline}>Withdraw</button>
+          <button className={styles.btnPrimary}><ArrowDownLeft size={15} />Deposit</button>
+          <button className={styles.btnOutline}><ArrowUpRight size={15} />Withdraw</button>
         </div>
-      </div>
+      </section>
 
-      {/* Dense transactions */}
-      <div className={styles.sectionHeader}>
-        <h2>Recent Transactions</h2>
-      </div>
-      <div className={styles.denseList}>
-        {mockTransactions.map(tx => (
-          <div key={tx.id} className={styles.txRow}>
-            <span className={styles.txType}>{tx.type}</span>
-            <span className={styles.txDesc}>{tx.description}</span>
-            <span className={styles.txRef}>{tx.reference}</span>
-            <span className={`${styles.txAmount} ${tx.amount > 0 ? styles.positive : styles.negative}`}>
-              {tx.amount > 0 ? '+' : ''}{Math.abs(tx.amount).toLocaleString()}
-            </span>
-            <span className={`${styles.statusBadge} ${styles[tx.status]}`}>{tx.status}</span>
+      <div className={styles.workspaceGrid}>
+        <section className={styles.workspacePanel}>
+          <div className={styles.panelHeader}>
+            <div>
+              <h2>Recent transactions</h2>
+              <p>Live money movement across the workspace.</p>
+            </div>
+            <span className={styles.panelIcon}><WalletCards size={16} /></span>
           </div>
-        ))}
-      </div>
+          <div className={styles.workspaceList}>
+            {mockTransactions.map((tx) => (
+              <div key={tx.id} className={styles.txRow}>
+                <div className={styles.txLead}>
+                  <span className={styles.txType}>{tx.type}</span>
+                  <span className={styles.txDesc}>{tx.description}</span>
+                </div>
+                <span className={styles.txRef}>{tx.reference}</span>
+                <span className={`${styles.txAmount} ${tx.amount > 0 ? styles.positive : styles.negative}`}>
+                  {tx.amount > 0 ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
+                </span>
+                <span className={`${styles.statusBadge} ${styles[tx.status]}`}>{tx.status}</span>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      {/* Invoices */}
-      <div className={styles.sectionHeader}>
-        <h2>Invoices</h2>
-        <Link to="/app/ops/invoices/new" className={styles.btnPrimary}>+ New Invoice</Link>
-      </div>
-      <div className={styles.denseList}>
-        {mockInvoices.map(inv => (
-          <Link key={inv.id} to={`/app/ops/invoices/${inv.referenceId}`} className={styles.txRow}>
-            <span className={styles.txRef}>{inv.referenceId}</span>
-            <span className={styles.txDesc}>{inv.recipientName}</span>
-            <span className={styles.txAmount}>{inv.amount.toLocaleString()}</span>
-            <span className={`${styles.statusBadge} ${styles[inv.status]}`}>{inv.status}</span>
-          </Link>
-        ))}
+        <section className={styles.workspacePanel}>
+          <div className={styles.panelHeader}>
+            <div>
+              <h2>Invoices</h2>
+              <p>Outbound billing in the current workspace.</p>
+            </div>
+            <Link to="/app/ops/invoices/new" className={styles.btnPrimary}>
+              <ReceiptText size={15} />
+              New Invoice
+            </Link>
+          </div>
+          <div className={styles.workspaceList}>
+            {mockInvoices.map((inv) => (
+              <Link key={inv.id} to={`/app/ops/invoices/${inv.referenceId}`} className={styles.txRow}>
+                <div className={styles.txLead}>
+                  <span className={styles.txRef}>{inv.referenceId}</span>
+                  <span className={styles.txDesc}>{inv.recipientName}</span>
+                </div>
+                <span className={styles.txAmount}>{formatCurrency(inv.amount, inv.currency)}</span>
+                <span className={`${styles.statusBadge} ${styles[inv.status]}`}>{inv.status}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   )

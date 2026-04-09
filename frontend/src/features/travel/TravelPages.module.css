@@ -1,9 +1,17 @@
-.travel { max-width: 800px; }
+.travel {
+  block-size: 100%;
+  min-block-size: 0;
+  overflow: auto;
+  max-inline-size: 1040px;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
 .pageTitle { font-size: 18px; font-weight: var(--font-weight-semibold); }
 
 .header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: var(--space-lg);
 }
 
 .btnPrimary {
@@ -127,6 +135,7 @@
 
 /* Mobile */
 @media (max-width: 768px) {
+  .travel { padding: var(--space-md); }
   .grid { grid-template-columns: 1fr; }
   .dateRow { grid-template-columns: 1fr; }
   .wizardCard { padding: var(--space-lg); }

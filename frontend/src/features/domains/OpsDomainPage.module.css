@@ -1,5 +1,9 @@
 .page {
-  max-width: 1120px;
+  block-size: 100%;
+  min-block-size: 0;
+  overflow: auto;
+  max-inline-size: 1120px;
+  padding: var(--space-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
@@ -80,6 +84,10 @@
 }
 
 @media (max-width: 1024px) {
+  .page {
+    padding: var(--space-md);
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { mockReportDraft, mockReports } from '@/mocks/bugBounty'
+import { formatCurrency } from '@/utils/format'
 import { ReportDraftModal } from './components/ReportDraftModal'
 import styles from './BugBountyPage.module.css'
 import reportStyles from './ReportsPage.module.css'
@@ -22,7 +23,7 @@ export function ReportsPage() {
           <div key={report.id} className={styles.reportRow}>
             <span className={styles.reportTitle}>{report.title}</span>
             <span className={styles.reportTarget}>{report.target}</span>
-            <span className={styles.reportAmount}>KES {report.bountyKes.toLocaleString()}</span>
+            <span className={styles.reportAmount}>{formatCurrency(report.bountyKes)}</span>
             <span className={`${styles.platformBadge} ${styles[report.platform]}`}>{report.platform}</span>
             <span className={`${styles.statusBadge} ${styles[report.status]}`}>{report.status}</span>
           </div>

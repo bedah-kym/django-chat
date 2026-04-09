@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { mockItineraries } from '@/mocks/travel'
+import { formatCurrency } from '@/utils/format'
 import styles from './TravelPages.module.css'
 
 export function ItineraryListPage() {
@@ -10,19 +11,19 @@ export function ItineraryListPage() {
         <Link to="/app/ops/travel/plan" className={styles.btnPrimary}>+ Plan New Trip</Link>
       </div>
       <div className={styles.grid}>
-        {mockItineraries.map(it => (
-          <Link key={it.id} to={`/app/ops/travel/${it.id}`} className={styles.card}>
+        {mockItineraries.map((itinerary) => (
+          <Link key={itinerary.id} to={`/app/ops/travel/${itinerary.id}`} className={styles.card}>
             <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>{it.name}</h3>
-              <span className={`${styles.statusBadge} ${styles[it.status]}`}>{it.status}</span>
+              <h3 className={styles.cardTitle}>{itinerary.name}</h3>
+              <span className={`${styles.statusBadge} ${styles[itinerary.status]}`}>{itinerary.status}</span>
             </div>
             <div className={styles.cardMeta}>
-              <span>📍 {it.destination}</span>
-              <span>📅 {it.startDate} — {it.endDate}</span>
+              <span>Destination: {itinerary.destination}</span>
+              <span>Dates: {itinerary.startDate} to {itinerary.endDate}</span>
             </div>
             <div className={styles.cardFooter}>
-              <span>{it.items.length} items</span>
-              {it.totalCost > 0 && <span>KES {it.totalCost.toLocaleString()}</span>}
+              <span>{itinerary.items.length} items</span>
+              {itinerary.totalCost > 0 ? <span>{formatCurrency(itinerary.totalCost)}</span> : null}
             </div>
           </Link>
         ))}

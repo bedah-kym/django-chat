@@ -9,8 +9,8 @@
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
-  /* iOS: prevent overscroll bounce on body */
   overscroll-behavior: none;
+  background: var(--app-bg);
 }
 
 body {
@@ -18,15 +18,13 @@ body {
   font-size: var(--chat-font-size);
   font-optical-sizing: auto;
   color: var(--text-color);
-  background-color: var(--bg-light);
+  background-color: var(--app-bg);
   line-height: 1.5;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* iOS: safe area padding */
-  padding-top: var(--safe-area-top);
-  padding-bottom: var(--safe-area-bottom);
-  /* Prevent pull-to-refresh */
+  padding-block-start: var(--safe-area-top);
+  padding-block-end: var(--safe-area-bottom);
   overscroll-behavior-y: none;
 }
 
@@ -57,7 +55,11 @@ ul, ol {
   list-style: none;
 }
 
-/* Scrollbar — thin on desktop, hidden on mobile (iOS style) */
+:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
 }
@@ -83,18 +85,7 @@ ul, ol {
   }
 }
 
-/* Selection */
 ::selection {
   background: var(--primary-color);
   color: #fff;
-}
-
-/* iOS: disable callout on long press */
-* {
-  -webkit-touch-callout: none;
-}
-
-/* But allow it on text */
-p, span, h1, h2, h3, h4, h5, h6, a, li, td, th {
-  -webkit-touch-callout: default;
 }

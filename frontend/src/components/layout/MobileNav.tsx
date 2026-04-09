@@ -25,7 +25,7 @@ export function MobileNav() {
   ]
 
   return (
-    <nav className={styles.nav}>
+    <nav className={styles.nav} aria-label="Mobile navigation">
       {items.map((item) => {
         const Icon = item.icon
         return (
@@ -35,14 +35,14 @@ export function MobileNav() {
             end={item.end}
             className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}
           >
-            <Icon size={22} strokeWidth={1.8} />
+            <Icon size={20} strokeWidth={1.9} />
             <span className={styles.label}>{item.label}</span>
           </NavLink>
         )
       })}
       <button className={styles.item} onClick={() => setSidebarOpen(true)}>
-        <Menu size={22} strokeWidth={1.8} />
-        <span className={styles.label}>More</span>
+        <Menu size={20} strokeWidth={1.9} />
+        <span className={styles.label}>Menu</span>
       </button>
     </nav>
   )

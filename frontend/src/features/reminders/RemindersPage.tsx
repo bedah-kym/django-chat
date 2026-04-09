@@ -1,3 +1,5 @@
+import { CalendarClock, CheckCircle2 } from 'lucide-react'
+import { formatDate } from '@/utils/format'
 import styles from './RemindersPage.module.css'
 
 const mockReminders = [
@@ -9,36 +11,61 @@ const mockReminders = [
 ]
 
 export function RemindersPage() {
-  const pending = mockReminders.filter(r => r.status === 'pending')
-  const completed = mockReminders.filter(r => r.status === 'completed')
+  const pending = mockReminders.filter((reminder) => reminder.status === 'pending')
+  const completed = mockReminders.filter((reminder) => reminder.status === 'completed')
 
   return (
-    <div className={styles.reminders}>
-      <div className={styles.header}>
-        <h2>Upcoming</h2>
-        <button className={styles.addBtn}>+ New Reminder</button>
-      </div>
-      <div className={styles.list}>
-        {pending.map(r => (
-          <div key={r.id} className={styles.item}>
-            <button className={styles.checkbox} />
-            <div className={styles.itemContent}>
-              <div className={styles.itemTitle}>{r.title}</div>
-              <div className={styles.itemDate}>Due {new Date(r.dueDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+    <div className={styles.workspacePage}>
+      <section className={styles.hero}>
+        <div>
+          <div className={styles.eyebrow}>Schedule</div>
+          <h1 className={styles.title}>Reminders</h1>
+          <p className={styles.description}>Keep upcoming obligations visible without leaving the workspace.</p>
+        </div>
+        <button className={styles.addBtn}>New Reminder</button>
+      </section>
+
+      <div className={styles.columns}>
+        <section className={styles.column}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <h2>Upcoming</h2>
+              <p>{pending.length} active reminders</p>
             </div>
+            <CalendarClock size={16} />
           </div>
-        ))}
-      </div>
-      <h3 className={styles.subHeader}>Completed</h3>
-      <div className={styles.list}>
-        {completed.map(r => (
-          <div key={r.id} className={`${styles.item} ${styles.done}`}>
-            <button className={`${styles.checkbox} ${styles.checked}`}>✓</button>
-            <div className={styles.itemContent}>
-              <div className={styles.itemTitle}>{r.title}</div>
+          <div className={styles.list}>
+            {pending.map((reminder) => (
+              <div key={reminder.id} className={styles.item}>
+                <button className={styles.checkbox} aria-label={`Mark ${reminder.title} complete`} />
+                <div className={styles.itemContent}>
+                  <div className={styles.itemTitle}>{reminder.title}</div>
+                  <div className={styles.itemDate}>{formatDate(reminder.dueDate, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.column}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <h2>Completed</h2>
+              <p>{completed.length} cleared items</p>
             </div>
+            <CheckCircle2 size={16} />
           </div>
-        ))}
+          <div className={styles.list}>
+            {completed.map((reminder) => (
+              <div key={reminder.id} className={`${styles.item} ${styles.done}`}>
+                <button className={`${styles.checkbox} ${styles.checked}`} aria-label={`${reminder.title} completed`}>✓</button>
+                <div className={styles.itemContent}>
+                  <div className={styles.itemTitle}>{reminder.title}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 import { mockReports } from '@/mocks/bugBounty'
+import { formatCurrency } from '@/utils/format'
 import styles from './BountyTracker.module.css'
 
 export function BountyTracker() {
@@ -9,11 +10,11 @@ export function BountyTracker() {
     <div className={styles.tracker}>
       <div>
         <div className={styles.label}>Bounty Tracker</div>
-        <div className={styles.value}>KES {paid.toLocaleString()}</div>
+        <div className={styles.value}>{formatCurrency(paid)}</div>
       </div>
       <div className={styles.meta}>
         <span>Paid out</span>
-        <span>Pipeline KES {pending.toLocaleString()}</span>
+        <span>Pipeline {formatCurrency(pending)}</span>
       </div>
     </div>
   )

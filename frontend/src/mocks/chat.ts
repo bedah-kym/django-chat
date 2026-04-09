@@ -74,6 +74,64 @@ export const mockRooms: Room[] = [
       { username: 'mathia', displayName: 'Mathia AI', isOnline: true },
     ],
   },
+  {
+    id: 6,
+    name: 'campaign-standup',
+    displayName: 'Campaign Standup',
+    domain: 'social',
+    lastMessage: 'Two creator cuts are ready for afternoon approval.',
+    lastMessageTime: '2026-04-08T09:10:00Z',
+    unreadCount: 2,
+    isAiRoom: false,
+    participants: [
+      { username: 'miriam', displayName: 'Miriam Njeri', isOnline: true },
+      { username: 'aisha', displayName: 'Aisha Bello', isOnline: true },
+      { username: 'mathia', displayName: 'Mathia AI', isOnline: true },
+    ],
+  },
+  {
+    id: 7,
+    name: 'content-calendar',
+    displayName: 'Content Calendar',
+    domain: 'social',
+    lastMessage: 'The April schedule now includes the launch sequence and paid variants.',
+    lastMessageTime: '2026-04-08T07:40:00Z',
+    unreadCount: 0,
+    isAiRoom: true,
+    participants: [
+      { username: 'miriam', displayName: 'Miriam Njeri', isOnline: true },
+      { username: 'mathia', displayName: 'Mathia AI', isOnline: true },
+    ],
+  },
+  {
+    id: 8,
+    name: 'release-train',
+    displayName: 'Release Train',
+    domain: 'dev',
+    lastMessage: 'RC v2.4.0 is staged. One Safari spec still needs a fix.',
+    lastMessageTime: '2026-04-08T09:30:00Z',
+    unreadCount: 1,
+    isAiRoom: false,
+    participants: [
+      { username: 'grace', displayName: 'Grace Wanjiku', isOnline: true },
+      { username: 'james', displayName: 'James Ochieng', isOnline: true },
+      { username: 'mathia', displayName: 'Mathia AI', isOnline: true },
+    ],
+  },
+  {
+    id: 9,
+    name: 'api-reliability',
+    displayName: 'API Reliability',
+    domain: 'dev',
+    lastMessage: 'Retry logic is holding, but p95 auth latency rose after the last deploy.',
+    lastMessageTime: '2026-04-07T18:10:00Z',
+    unreadCount: 0,
+    isAiRoom: true,
+    participants: [
+      { username: 'grace', displayName: 'Grace Wanjiku', isOnline: true },
+      { username: 'mathia', displayName: 'Mathia AI', isOnline: true },
+    ],
+  },
 ]
 
 export const mockMessages: Record<number, Message[]> = {
@@ -131,6 +189,24 @@ export const mockMessages: Record<number, Message[]> = {
   5: [
     { id: 501, member: 'mathia', content: 'Security operations summary for March 2026:\n\n- 14 findings triaged\n- 3 critical issues escalated\n- 2 bounty reports paid\n- 1 engagement extended into April\n\nAll March findings have been triaged and assigned.', timestamp: '2026-04-01T14:20:00Z', parentId: null, isAi: true },
   ],
+  6: [
+    { id: 601, member: 'miriam', content: 'We have the product teaser cut and the founder clip ready. Which one should lead tomorrow?', timestamp: '2026-04-08T08:45:00Z', parentId: null, isAi: false },
+    { id: 602, member: 'mathia', content: 'Lead with the product teaser in the morning slot. The founder clip performs better as a follow-up when the audience is already warm.', timestamp: '2026-04-08T08:48:00Z', parentId: null, isAi: true },
+    { id: 603, member: 'aisha', content: 'I also need two captions localized for West Africa before noon.', timestamp: '2026-04-08T08:55:00Z', parentId: null, isAi: false },
+    { id: 604, member: 'mathia', content: 'Two creator cuts are ready for afternoon approval.', timestamp: '2026-04-08T09:10:00Z', parentId: null, isAi: true },
+  ],
+  7: [
+    { id: 701, member: 'mathia', content: 'April content calendar refreshed.\n\n- Launch sequence locked for Tuesday through Thursday\n- Paid retargeting copy added for LinkedIn and Instagram\n- One legal review slot reserved for creator usage rights', timestamp: '2026-04-08T07:40:00Z', parentId: null, isAi: true },
+  ],
+  8: [
+    { id: 801, member: 'grace', content: 'Staging is green except for one flaky Safari checkout spec.', timestamp: '2026-04-08T09:02:00Z', parentId: null, isAi: false },
+    { id: 802, member: 'mathia', content: 'I traced the failure to a delayed auth cookie assertion in WebKit. I can patch the wait strategy and rerun the suite.', timestamp: '2026-04-08T09:08:00Z', parentId: null, isAi: true },
+    { id: 803, member: 'james', content: 'Do that, then I will tag the release candidate for the 16:00 window.', timestamp: '2026-04-08T09:20:00Z', parentId: null, isAi: false },
+    { id: 804, member: 'mathia', content: 'RC v2.4.0 is staged. One Safari spec still needs a fix.', timestamp: '2026-04-08T09:30:00Z', parentId: null, isAi: true },
+  ],
+  9: [
+    { id: 901, member: 'mathia', content: 'Auth API reliability snapshot:\n\n- p95 latency: 410ms, up 12%\n- Error rate: 0.08%\n- Retry layer caught 94 transient failures without user impact', timestamp: '2026-04-07T18:10:00Z', parentId: null, isAi: true },
+  ],
 }
 
 export const mockContacts: Contact[] = [
@@ -184,5 +260,21 @@ export const mockOlderMessages: Record<number, Message[]> = {
   ],
   5: [
     { id: 450, member: 'mathia', content: 'February reconciliation complete.\n\n**February 2026:**\n- Total invoiced: KES 380,000\n- Total received: KES 380,000\n- Outstanding: KES 0\n\nAll invoices paid on time.', timestamp: '2026-03-01T14:00:00Z', parentId: null, isAi: true },
+  ],
+  6: [
+    { id: 550, member: 'miriam', content: 'Let’s lock the launch week channel order before the creative review.', timestamp: '2026-04-07T14:00:00Z', parentId: null, isAi: false },
+    { id: 551, member: 'mathia', content: 'Recommended sequence:\n1. LinkedIn product proof\n2. Instagram teaser cut\n3. Founder thread on X\n4. Retargeting email for site visitors', timestamp: '2026-04-07T14:05:00Z', parentId: null, isAi: true },
+  ],
+  7: [
+    { id: 650, member: 'aisha', content: 'Can you mark the legal-review slots directly in the calendar?', timestamp: '2026-04-07T11:20:00Z', parentId: null, isAi: false },
+    { id: 651, member: 'mathia', content: 'Done. The legal review windows are now blocked on Monday and Wednesday.', timestamp: '2026-04-07T11:25:00Z', parentId: null, isAi: true },
+  ],
+  8: [
+    { id: 750, member: 'james', content: 'We need a release checklist pass before lunch.', timestamp: '2026-04-07T10:00:00Z', parentId: null, isAi: false },
+    { id: 751, member: 'mathia', content: 'Checklist drafted. Remaining blockers are Safari E2E, migration note review, and rollback verification.', timestamp: '2026-04-07T10:06:00Z', parentId: null, isAi: true },
+  ],
+  9: [
+    { id: 850, member: 'grace', content: 'Did the auth latency increase after the connection pool tweak?', timestamp: '2026-04-06T16:40:00Z', parentId: null, isAi: false },
+    { id: 851, member: 'mathia', content: 'Yes. The increase correlates with the pool change in staging. I suggest restoring the previous threshold before the next deploy window.', timestamp: '2026-04-06T16:44:00Z', parentId: null, isAi: true },
   ],
 }

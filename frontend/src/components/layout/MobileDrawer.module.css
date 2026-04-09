@@ -20,9 +20,8 @@
   .drawer {
     display: block;
     position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
+    inset-block: 0;
+    inset-inline-start: 0;
     width: 85vw;
     max-width: 340px;
     z-index: 91;

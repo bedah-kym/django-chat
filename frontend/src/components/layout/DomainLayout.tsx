@@ -1,14 +1,13 @@
 import { Outlet, useLocation, NavLink } from 'react-router-dom'
 import { Menu, Plus, Search } from 'lucide-react'
 import { useEffect } from 'react'
-import { domainConfigs, getDomainPageTitle, getRoomPath } from '@/domains'
+import { domainConfigs, getRoomPath } from '@/domains'
 import { useChatStore } from '@/stores/chatStore'
 import { useUiStore } from '@/stores/uiStore'
 import { PresenceDot } from '@/features/chat/components/PresenceDot'
 import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
-import { DomainSwitcher } from './DomainSwitcher'
-import styles from './DomainLayout.module.css'
 import type { DomainId } from '@/types/domain'
+import styles from './DomainLayout.module.css'
 
 interface Props {
   domainId: DomainId
@@ -19,14 +18,11 @@ export function DomainLayout({ domainId }: Props) {
   const lastDomain = useUiStore((s) => s.lastDomain)
   const setLastDomain = useUiStore((s) => s.setLastDomain)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
   const rooms = useChatStore((s) => s.rooms)
 
   const domain = domainConfigs[domainId]
   const domainRooms = rooms.filter((room) => room.domain === domainId)
-  const activeRoom = location.pathname.includes('/chat/')
-    ? domainRooms.find((room) => location.pathname.endsWith(`/${room.id}`)) ?? null
-    : null
-  const pageTitle = getDomainPageTitle(domainId, location.pathname, activeRoom)
 
   useEffect(() => {
     if (lastDomain !== domainId) {
@@ -36,21 +32,17 @@ export function DomainLayout({ domainId }: Props) {
 
   return (
     <div className={styles.domainLayout}>
-      <div className={styles.header}>
-        <div className={styles.headerMain}>
-          <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
-            <Menu size={18} />
-          </button>
-          <div>
-            <div className={styles.eyebrow}>{domain.label} Workspace</div>
-            <h1 className={styles.title}>{pageTitle}</h1>
-            <p className={styles.description}>{domain.description}</p>
-          </div>
+      <div className={styles.mobileBar}>
+        <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+          <Menu size={18} />
+        </button>
+        <div>
+          <div className={styles.mobileLabel}>{domain.label}</div>
+          <div className={styles.mobileDescription}>{domain.description}</div>
         </div>
-        <DomainSwitcher activeDomainId={domainId} />
       </div>
 
-      <div className={styles.body}>
+      <div className={`${styles.body} ${!sidebarCollapsed ? styles.globalRailOpen : ''}`}>
         <aside className={styles.sidebar}>
           <div className={styles.section}>
             <div className={styles.sectionLabel}>Workspace</div>
@@ -85,7 +77,10 @@ export function DomainLayout({ domainId }: Props) {
             </div>
             <div className={styles.roomList}>
               {domainRooms.map((room) => {
-                const onlineParticipant = room.participants.find((p) => p.isOnline && p.username !== 'mathia' && p.username !== 'alex')
+                const onlineParticipant = room.participants.find(
+                  (participant) => participant.isOnline && participant.username !== 'mathia' && participant.username !== 'alex',
+                )
+
                 return (
                   <NavLink
                     key={room.id}
@@ -94,34 +89,27 @@ export function DomainLayout({ domainId }: Props) {
                   >
                     <div className={styles.roomAvatarWrap}>
                       <div className={`${styles.roomAvatar} ${room.isAiRoom ? styles.aiAvatar : ''}`}>
-                        {room.isAiRoom ? <MathiaAvatar size={34} /> : room.displayName[0]}
+                        {room.isAiRoom ? <MathiaAvatar size={32} /> : room.displayName[0]}
                       </div>
                       <div className={styles.presencePos}>
-                        <PresenceDot
-                          isOnline={!!onlineParticipant || room.isAiRoom}
-                          lastSeen={onlineParticipant?.lastSeen}
-                          size={7}
-                        />
+                        <PresenceDot isOnline={!!onlineParticipant || room.isAiRoom} lastSeen={onlineParticipant?.lastSeen} size={7} />
                       </div>
                     </div>
                     <div className={styles.roomInfo}>
                       <div className={styles.roomName}>{room.displayName}</div>
                       <div className={styles.roomPreview}>{room.lastMessage}</div>
                     </div>
-                    {room.unreadCount > 0 && <span className={styles.badge}>{room.unreadCount}</span>}
+                    {room.unreadCount > 0 ? <span className={styles.badge}>{room.unreadCount}</span> : null}
                   </NavLink>
                 )
               })}
-              {domainRooms.length === 0 && (
-                <div className={styles.emptyRooms}>No rooms in this domain yet.</div>
-              )}
             </div>
           </div>
         </aside>
 
-        <div className={location.pathname.includes('/chat/') ? styles.chatArea : styles.contentArea}>
+        <section className={location.pathname.includes('/chat/') ? styles.chatArea : styles.contentArea}>
           <Outlet />
-        </div>
+        </section>
       </div>
     </div>
   )

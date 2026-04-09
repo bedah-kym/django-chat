@@ -1,130 +1,183 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { domainConfigs, domainOrder, getRoomPath, domainStatusCopy } from '@/domains'
+import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
+import { domainConfigs, domainOrder, getRoomPath } from '@/domains'
 import { mockEngagements, mockFindings } from '@/mocks/pentest'
-import { mockPrograms, mockReports } from '@/mocks/bugBounty'
+import { mockReports } from '@/mocks/bugBounty'
 import { mockWallet } from '@/mocks/payments'
 import { useChatStore } from '@/stores/chatStore'
+import { uiCopy } from '@/content/uiCopy'
+import { formatCompactNumber, formatCurrency } from '@/utils/format'
+import { PageScaffold } from '@/components/ui/PageScaffold'
+import { SectionHeader } from '@/components/ui/SectionHeader'
+import { MetricStrip } from '@/components/ui/MetricStrip'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import styles from './HomePage.module.css'
 
 export function HomePage() {
-  const navigate = useNavigate()
-  const rooms = useChatStore((s) => s.rooms)
-  const recentWork = [
+  const rooms = useChatStore((state) => state.rooms)
+  const totalUnread = rooms.reduce((sum, room) => sum + room.unreadCount, 0)
+  const criticalFindings = mockFindings.filter((finding) => finding.severity === 'critical').length
+  const activeEngagement = mockEngagements.find((engagement) => engagement.status === 'running') ?? mockEngagements[0]
+  const primaryRoom = rooms.find((room) => room.domain === 'security')
+
+  const metrics = [
     {
-      label: 'Security',
-      title: `${mockFindings.length} findings queued`,
-      detail: 'Active pentest workspaces and bug bounty drafts need review.',
-      href: '/app/security',
+      label: 'Unread items',
+      value: formatCompactNumber(totalUnread + mockReports.filter((report) => report.status === 'draft').length),
+      detail: 'Messages, drafts, and operator actions waiting.',
+      tone: 'warning' as const,
     },
     {
-      label: 'Business/Ops',
-      title: `KES ${mockWallet.balance.toLocaleString()} wallet balance`,
-      detail: 'Invoices, travel, and reminders are grouped under ops.',
-      href: '/app/ops',
+      label: 'Critical findings',
+      value: formatCompactNumber(criticalFindings),
+      detail: 'Open issues requiring validation or escalation.',
+      tone: 'critical' as const,
     },
     {
-      label: 'Dev',
-      title: `${rooms.filter((room) => room.domain === 'dev').length} dev rooms`,
-      detail: 'Engineering spaces stay separate from security and ops.',
-      href: '/app/dev',
+      label: 'Active engagements',
+      value: formatCompactNumber(mockEngagements.filter((engagement) => engagement.status === 'running').length),
+      detail: 'Authorized jobs currently in progress.',
+      tone: 'info' as const,
+    },
+    {
+      label: 'Available cash',
+      value: formatCurrency(mockWallet.balance),
+      detail: 'Operational balance available for work this week.',
+      tone: 'success' as const,
     },
   ]
 
   return (
-    <div className={styles.home}>
-      <div className={styles.hero}>
-        <div>
-          <div className={styles.eyebrow}>Global Home</div>
-          <h1 className={styles.title}>Work by domain, not by clutter.</h1>
-          <p className={styles.description}>
-            Enter a workspace to focus. Security, Social, Dev, and Business/Ops each keep their own rooms, navigation, and recent work.
-          </p>
+    <PageScaffold
+      eyebrow={uiCopy.shell.globalEyebrow}
+      title={uiCopy.shell.homeTitle}
+      description="Operational overview across workspaces, rooms, and pending actions."
+      mode="overview"
+    >
+      <div className={styles.stack}>
+        <MetricStrip items={metrics} />
+
+        <div className={styles.mainGrid}>
+          <section className={styles.panel}>
+            <SectionHeader
+              eyebrow="Priority queue"
+              title="What needs action next"
+              description="Highest-value operator moves across the product."
+            />
+            <div className={styles.signalList}>
+              <Link to="/app/security/pentest" className={styles.signalItem}>
+                <strong>Review active engagement</strong>
+                <span>{activeEngagement?.target} is running and still has a critical issue ready for validation.</span>
+              </Link>
+              {primaryRoom ? (
+                <Link to={getRoomPath(primaryRoom)} className={styles.signalItem}>
+                  <strong>Open security room</strong>
+                  <span>Security Briefing contains the latest AI check-in and operator coordination thread.</span>
+                </Link>
+              ) : null}
+              <Link to="/app/settings" className={styles.signalItem}>
+                <strong>Confirm workspace defaults</strong>
+                <span>Locale, currency, direction, and density are now configurable at the shell level.</span>
+              </Link>
+            </div>
+          </section>
+
+          <section className={styles.panel}>
+            <SectionHeader
+              eyebrow="Live status"
+              title="Current system state"
+              description="Fast read before you enter a workspace."
+            />
+            <div className={styles.systemSummary}>
+              <div className={styles.summaryRow}>
+                <span>Security</span>
+                <StatusBadge label={`${criticalFindings} critical`} tone="critical" />
+              </div>
+              <div className={styles.summaryRow}>
+                <span>Unread rooms</span>
+                <StatusBadge label={`${totalUnread} unread`} tone={totalUnread > 0 ? 'warning' : 'muted'} />
+              </div>
+              <div className={styles.summaryRow}>
+                <span>Wallet</span>
+                <span className={styles.summaryValue}>{formatCurrency(mockWallet.balance)}</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section className={styles.domainSection}>
+          <SectionHeader
+            eyebrow="Workspaces"
+            title="Jump into a workspace"
+            description="Use the shell to choose the correct context, not to read a presentation."
+          />
+
+          <div className={styles.domainList}>
+            {domainOrder.map((domainId) => {
+              const domain = domainConfigs[domainId]
+              const room = rooms.find((item) => item.domain === domainId)
+              const href = room ? getRoomPath(room) : domain.defaultRoute
+              const queueCount = rooms.filter((item) => item.domain === domainId).reduce((sum, item) => sum + item.unreadCount, 0)
+
+              return (
+                <Link key={domainId} to={href} className={styles.domainRow}>
+                  <div className={styles.domainPrimary}>
+                    <div className={styles.domainTitleRow}>
+                      <span className={styles.domainName}>{domain.label}</span>
+                      <StatusBadge
+                        label={queueCount > 0 ? `${queueCount} unread` : 'Stable'}
+                        tone={queueCount > 0 ? 'warning' : 'muted'}
+                      />
+                    </div>
+                    <p className={styles.domainDescription}>{domain.description}</p>
+                  </div>
+                  <span className={styles.domainLink}>
+                    Open
+                    <ArrowRight size={14} />
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+
+        <div className={styles.lowerGrid}>
+          <section className={styles.panel}>
+            <SectionHeader
+              eyebrow="Signals"
+              title="What changed most recently"
+              description="Read this first if you only have two minutes."
+            />
+            <div className={styles.signalList}>
+              <div className={styles.signalItemStatic}>
+                <strong>Approval waiting</strong>
+                <span>High-risk enumeration step for {activeEngagement?.target} still needs confirmation.</span>
+              </div>
+              <div className={styles.signalItemStatic}>
+                <strong>Draft bounty report</strong>
+                <span>{mockReports.filter((report) => report.status === 'draft').length} report draft is ready for refinement and submission.</span>
+              </div>
+              <div className={styles.signalItemStatic}>
+                <strong>Unread coordination</strong>
+                <span>{totalUnread} unread room messages still need triage across the product.</span>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.panel}>
+            <SectionHeader
+              eyebrow="Next actions"
+              title="Suggested moves"
+              description="Fast entry points for the most likely operator path."
+            />
+            <div className={styles.actionList}>
+              <Link to="/app/security" className={styles.actionItem}>Open security overview</Link>
+              <Link to="/app/security/pentest/new" className={styles.actionItem}>Start a new engagement</Link>
+              <Link to="/app/settings" className={styles.actionItem}>Set locale, direction, and workspace defaults</Link>
+            </div>
+          </section>
         </div>
       </div>
-
-      <div className={styles.domainGrid}>
-        {domainOrder.map((domainId, index) => {
-          const domain = domainConfigs[domainId]
-          const Icon = domain.icon
-          const room = rooms.find((item) => item.domain === domainId)
-          const shortcut = room ? getRoomPath(room) : domain.defaultRoute
-
-          return (
-            <motion.div
-              key={domainId}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <div
-                className={styles.domainCard}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(domain.defaultRoute)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    navigate(domain.defaultRoute)
-                  }
-                }}
-              >
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardIcon}><Icon size={18} /></div>
-                  <span className={styles.cardLabel}>{domain.label}</span>
-                </div>
-                <p className={styles.cardDescription}>{domain.description}</p>
-                <div className={styles.cardFooter}>
-                  <span>{domainStatusCopy[domainId]}</span>
-                  <Link to={shortcut} className={styles.shortcutLink} onClick={(event) => event.stopPropagation()}>
-                    Open latest
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      <div className={styles.sections}>
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2>Recent Work</h2>
-          </div>
-          <div className={styles.activityList}>
-            {recentWork.map((item) => (
-              <Link key={item.label} to={item.href} className={styles.activityItem}>
-                <div className={styles.activityLabel}>{item.label}</div>
-                <div className={styles.activityTitle}>{item.title}</div>
-                <div className={styles.activityDetail}>{item.detail}</div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2>Key Alerts</h2>
-          </div>
-          <div className={styles.alertList}>
-            <div className={styles.alertCard}>
-              <span className={styles.alertLabel}>Security</span>
-              <strong>{mockEngagements.filter((item) => item.status === 'running').length} active engagement</strong>
-              <p>{mockFindings.filter((item) => item.severity === 'critical').length} critical findings currently open.</p>
-            </div>
-            <div className={styles.alertCard}>
-              <span className={styles.alertLabel}>Bug Bounty</span>
-              <strong>{mockPrograms.length} enrolled programs</strong>
-              <p>{mockReports.filter((item) => item.status === 'draft').length} draft reports waiting for refinement.</p>
-            </div>
-            <div className={styles.alertCard}>
-              <span className={styles.alertLabel}>Ops</span>
-              <strong>KES {mockWallet.balance.toLocaleString()} available</strong>
-              <p>Wallet and invoice workflows remain available inside Business/Ops.</p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
+    </PageScaffold>
   )
 }

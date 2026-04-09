@@ -1,151 +1,108 @@
 .sidebar {
-  width: 272px;
-  height: 100vh;
-  height: 100dvh;
-  padding: 14px 12px 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.82));
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-right: 1px solid var(--glass-border);
+  inline-size: 272px;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  padding: 18px 14px 14px;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  transition: width var(--transition-normal), padding var(--transition-normal);
-}
-
-[data-theme="dark"] .sidebar {
-  background:
-    linear-gradient(180deg, rgba(20, 20, 24, 0.94), rgba(16, 16, 19, 0.9));
+  gap: var(--space-lg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 92%, transparent), var(--surface));
+  border-inline-end: 1px solid var(--border-color);
 }
 
 .collapsed {
-  width: 88px;
-  padding-inline: 10px;
+  inline-size: 90px;
 }
 
 .topSection {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin-bottom: 10px;
 }
 
 .logoRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
 }
 
-.logoCopy {
-  min-width: 0;
-}
-
-.logoText {
-  font-size: 24px;
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
-.logoSub {
-  margin-top: 4px;
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-}
-
-.logoIcon {
-  width: 42px;
-  height: 42px;
+.logoMark {
+  inline-size: 40px;
+  block-size: 40px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  background: linear-gradient(135deg, var(--primary-color), #818cf8);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: var(--font-weight-bold);
-  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.25);
-  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+}
+
+.logoCopy {
+  min-inline-size: 0;
+}
+
+.logoText {
+  font-size: 26px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.04em;
+}
+
+.logoSub,
+.sectionLabel {
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .collapseBtn {
-  margin-left: auto;
-  width: 32px;
-  height: 32px;
+  margin-inline-start: auto;
+  inline-size: 32px;
+  block-size: 32px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
-  background: var(--bg-light);
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.collapseBtn:hover {
-  color: var(--text-color);
-  border-color: color-mix(in srgb, var(--primary-color) 24%, transparent);
-}
-
-.sectionEyebrow,
-.contextLabel {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text-muted);
-  font-weight: var(--font-weight-semibold);
+  color: var(--text-subtle);
+  background: var(--surface-muted);
 }
 
 .nav {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 0 0;
 }
 
 .navItem {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
-  padding: 0 14px;
+  min-block-size: 46px;
+  padding: 0 12px;
   border-radius: 14px;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-weight: var(--font-weight-medium);
-  transition: all var(--transition-fast);
-}
-
-.navItem::before {
-  content: '';
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  width: 4px;
-  height: 0;
-  border-radius: var(--radius-full);
-  background: var(--primary-color);
-  transform: translateY(-50%);
-  transition: height var(--transition-fast);
+  color: var(--text-subtle);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .navItem:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--surface-muted);
   color: var(--text-color);
 }
 
-.navItem.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(99, 102, 241, 0.04));
+.active {
+  background: color-mix(in srgb, var(--primary-color) 11%, transparent);
   color: var(--text-color);
 }
 
-.navItem.active::before {
-  height: 22px;
+.iconWrap {
+  inline-size: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .collapsed .navItem {
@@ -153,48 +110,34 @@
   padding-inline: 0;
 }
 
-.collapsed .navItem::before {
-  left: 6px;
+.contextCard {
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
 }
 
-.divider {
-  height: 1px;
-  margin: 14px 2px;
-  background: linear-gradient(90deg, transparent, var(--border-color), transparent);
-}
-
-.domainContext {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.contextHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
-
-.contextValue {
-  font-size: 12px;
+.contextTitle {
+  margin-block-start: 8px;
+  font-size: 15px;
   font-weight: var(--font-weight-semibold);
 }
 
-.domainWrap {
-  overflow: hidden;
+.contextBody {
+  margin-block-start: 6px;
+  color: var(--text-subtle);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .bottomSection {
-  margin-top: auto;
+  margin-block-start: auto;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 4px 4px;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
-.connectors {
+.integrationRow {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -202,25 +145,19 @@
 }
 
 .connectorDot {
-  width: 30px;
-  height: 30px;
+  inline-size: 30px;
+  block-size: 30px;
   border-radius: 10px;
-  background: rgba(99, 102, 241, 0.08);
-  color: var(--primary-color);
+  background: var(--surface-muted);
+  color: var(--accent-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.connectorDot:hover {
-  background: var(--primary-color);
-  color: #fff;
 }
 
 .tooltip {
   background: var(--text-color);
-  color: var(--bg-light);
+  color: var(--surface-elevated);
   font-size: 12px;
   font-weight: var(--font-weight-medium);
   padding: 6px 10px;
@@ -235,12 +172,13 @@
 @media (max-width: 768px) {
   .sidebar,
   .collapsed {
-    width: min(88vw, 320px);
-    padding: 14px 12px 12px;
+    inline-size: min(88vw, 340px);
+    min-block-size: 100%;
+    padding: 18px 14px 14px;
   }
 
   .navItem {
     justify-content: flex-start;
-    padding-inline: 14px;
+    padding-inline: 12px;
   }
 }

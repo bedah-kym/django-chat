@@ -1,9 +1,9 @@
 import { Outlet, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { MobileNav } from './MobileNav'
 import { MobileDrawer } from './MobileDrawer'
+import { AppShell } from '@/components/ui/AppShell'
 import { useUiStore } from '@/stores/uiStore'
 import { getDomainFromPathname } from '@/domains'
 import styles from './AppLayout.module.css'
@@ -13,41 +13,30 @@ export function AppLayout() {
   const activeDomainId = getDomainFromPathname(location.pathname)
   const isDomainRoute = !!activeDomainId
   const isChat = location.pathname.includes('/chat/')
-  const sidebarOpen = useUiStore(s => s.sidebarOpen)
-  const setSidebarOpen = useUiStore(s => s.setSidebarOpen)
+  const sidebarOpen = useUiStore((s) => s.sidebarOpen)
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
 
   return (
-    <div className={styles.layout}>
-      {/* Desktop sidebar */}
-      <div className={styles.desktopSidebar}>
-        <Sidebar />
-      </div>
-
-      {/* Mobile drawer */}
-      <MobileDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-        <Sidebar includeDomainContext collapsible={false} />
-      </MobileDrawer>
-
-      <div className={styles.main}>
-        {!isDomainRoute && !isChat && <TopBar />}
-        <div className={isChat ? styles.chatContent : isDomainRoute ? styles.domainContent : styles.content}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              style={{ height: '100%' }}
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+    <AppShell
+      sidebar={
+        <div className={styles.desktopSidebar}>
+          <Sidebar />
         </div>
-
-        {/* Mobile bottom nav — hidden in chat */}
-        {!isChat && <MobileNav />}
+      }
+      drawer={
+        <MobileDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+          <Sidebar includeDomainContext collapsible={false} />
+        </MobileDrawer>
+      }
+      header={!isDomainRoute && !isChat ? <TopBar /> : undefined}
+      footer={!isChat ? <MobileNav /> : undefined}
+      contentClassName={styles.mainColumn}
+    >
+      <div className={isChat ? styles.chatContent : isDomainRoute ? styles.domainContent : styles.content}>
+        <div key={location.pathname} className={styles.pageMotion}>
+          <Outlet />
+        </div>
       </div>
-    </div>
+    </AppShell>
   )
 }

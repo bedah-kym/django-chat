@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { WorkspaceInfo } from '@/types/user'
+import { formatDate } from '@/utils/format'
 import { updateWorkspace } from '../settingsApi'
 import { SectionCard } from '../components/SectionCard'
 import styles from '../SettingsPage.module.css'
@@ -36,7 +37,7 @@ export function WorkspaceSection() {
     setSaving(true)
     try {
       await updateWorkspace({ name })
-      setWorkspace(prev => ({ ...prev, name }))
+      setWorkspace((prev) => ({ ...prev, name }))
       toast.success('Workspace updated')
     } catch {
       toast.error('Failed to save')
@@ -53,7 +54,7 @@ export function WorkspaceSection() {
           <input
             className={styles.input}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(event) => setName(event.target.value)}
           />
         </label>
         <div className={styles.workspaceMeta}>
@@ -69,21 +70,21 @@ export function WorkspaceSection() {
               {workspace.accountType.charAt(0).toUpperCase() + workspace.accountType.slice(1)}
             </span>
           </div>
-          {workspace.trialActive && workspace.trialEndsAt && (
+          {workspace.trialActive && workspace.trialEndsAt ? (
             <div className={styles.metaRow}>
               <span className={styles.metaLabel}>Trial ends</span>
               <span className={styles.metaValue}>
-                {new Date(workspace.trialEndsAt).toLocaleDateString('en-KE', {
+                {formatDate(workspace.trialEndsAt, {
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
                 })}
               </span>
             </div>
-          )}
+          ) : null}
         </div>
         <button className={styles.btnPrimary} onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </SectionCard>
     </div>

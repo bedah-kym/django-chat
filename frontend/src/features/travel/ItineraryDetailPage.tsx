@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { mockItineraries } from '@/mocks/travel'
+import { formatCurrency } from '@/utils/format'
 import styles from './TravelPages.module.css'
 
 export function ItineraryDetailPage() {
@@ -15,7 +16,7 @@ export function ItineraryDetailPage() {
         <h2 className={styles.pageTitle}>{itinerary.name}</h2>
         <span className={`${styles.statusBadge} ${styles[itinerary.status]}`}>{itinerary.status}</span>
       </div>
-      <p className={styles.detailMeta}>Destination {itinerary.destination} · Dates {itinerary.startDate} - {itinerary.endDate}</p>
+      <p className={styles.detailMeta}>Destination {itinerary.destination} · Dates {itinerary.startDate} to {itinerary.endDate}</p>
 
       <div className={styles.timeline}>
         {itinerary.items.map((item) => (
@@ -24,28 +25,28 @@ export function ItineraryDetailPage() {
             <div className={styles.timelineCard}>
               <div className={styles.timelineHeader}>
                 <span className={styles.timelineType}>{item.type}</span>
-                <span className={styles.timelineDate}>{item.date} {item.time && `at ${item.time}`}</span>
+                <span className={styles.timelineDate}>{item.date} {item.time ? `at ${item.time}` : ''}</span>
               </div>
               <h4 className={styles.timelineName}>{item.name}</h4>
               <p className={styles.timelineLocation}>Location {item.location}</p>
               <div className={styles.timelineFooter}>
                 <span className={`${styles.statusBadge} ${styles[item.status]}`}>{item.status}</span>
-                <span>KES {item.cost.toLocaleString()}</span>
+                <span>{formatCurrency(item.cost)}</span>
               </div>
             </div>
           </div>
         ))}
-        {itinerary.items.length === 0 && (
+        {itinerary.items.length === 0 ? (
           <p className={styles.emptyText}>No items yet. Start planning your trip!</p>
-        )}
+        ) : null}
       </div>
 
-      {itinerary.totalCost > 0 && (
+      {itinerary.totalCost > 0 ? (
         <div className={styles.totalRow}>
           <span>Total Cost</span>
-          <strong>KES {itinerary.totalCost.toLocaleString()}</strong>
+          <strong>{formatCurrency(itinerary.totalCost)}</strong>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

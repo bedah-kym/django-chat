@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { mockInvoices } from '@/mocks/payments'
+import { formatCurrency, formatDate } from '@/utils/format'
 import styles from './PaymentPages.module.css'
 
 export function InvoiceDetailPage() {
@@ -15,7 +16,7 @@ export function InvoiceDetailPage() {
         <div className={styles.invoiceDetailHeader}>
           <div>
             <h2 className={styles.pageTitle}>{invoice.referenceId}</h2>
-            <p className={styles.detailMeta}>Created {new Date(invoice.createdAt).toLocaleDateString()}</p>
+            <p className={styles.detailMeta}>Created {formatDate(invoice.createdAt, { dateStyle: 'medium' })}</p>
           </div>
           <span className={`${styles.statusBadge} ${styles[invoice.status]}`}>{invoice.status}</span>
         </div>
@@ -30,11 +31,11 @@ export function InvoiceDetailPage() {
           </div>
           <div className={styles.detailItem}>
             <span className={styles.detailLabel}>Amount</span>
-            <span className={styles.detailAmount}>{invoice.currency} {invoice.amount.toLocaleString()}</span>
+            <span className={styles.detailAmount}>{formatCurrency(invoice.amount, invoice.currency)}</span>
           </div>
           <div className={styles.detailItem}>
             <span className={styles.detailLabel}>Due Date</span>
-            <span>{new Date(invoice.dueDate).toLocaleDateString()}</span>
+            <span>{formatDate(invoice.dueDate, { dateStyle: 'medium' })}</span>
           </div>
         </div>
         <div className={styles.detailItem}>

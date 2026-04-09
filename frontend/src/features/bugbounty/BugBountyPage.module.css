@@ -1,8 +1,11 @@
 .page {
-  max-width: 1120px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: var(--space-lg);
+  block-size: 100%;
+  min-block-size: 0;
+  padding: var(--space-lg);
+  overflow: hidden;
 }
 
 .statsRow {
@@ -12,10 +15,10 @@
 }
 
 .statCard {
-  background: var(--chat-bg);
+  background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  padding: var(--space-md);
 }
 
 .statIcon {
@@ -66,13 +69,14 @@
 }
 
 .syncBtn {
-  background: var(--primary-color);
-  color: #fff;
+  background: var(--text-color);
+  color: var(--surface-elevated);
 }
 
 .linkBtn {
   border: 1px solid var(--border-color);
   color: var(--text-color);
+  background: var(--surface-elevated);
 }
 
 .filters {
@@ -102,21 +106,33 @@
   gap: var(--space-md);
 }
 
+.reportShell {
+  min-block-size: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
 .reportActions {
   display: flex;
   gap: var(--space-sm);
 }
 
 .reportList {
+  min-block-size: 0;
+  overflow: auto;
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .reportRow {
   display: grid;
   grid-template-columns: minmax(240px, 1.5fr) 1fr 120px 110px 90px;
   gap: var(--space-md);
-  padding: var(--space-md) 0;
+  padding: 14px var(--space-md);
   border-bottom: 1px solid var(--border-color);
   align-items: center;
   font-size: 13px;
@@ -156,3 +172,11 @@
 .duplicate { background: rgba(217, 119, 6, 0.14); color: var(--warning-color); }
 .resolved { background: var(--primary-subtle); color: var(--primary-color); }
 .paid { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+
+@media (max-width: 1024px) {
+  .page {
+    grid-template-rows: auto auto auto auto;
+    block-size: auto;
+    overflow: visible;
+  }
+}

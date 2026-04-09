@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Radar, TimerReset } from 'lucide-react'
 import type { BugBountyProgram } from '@/types/bugBounty'
+import { formatDateTime } from '@/utils/format'
 import styles from './ProgramCard.module.css'
 
 interface Props {
@@ -18,7 +19,7 @@ export function ProgramCard({ program }: Props) {
       <div className={styles.range}>{program.bountyRange}</div>
       <div className={styles.metaRow}>
         <span>{program.assetCount} assets</span>
-        <span>{new Date(program.lastScannedAt).toLocaleString()}</span>
+        <span>{formatDateTime(program.lastScannedAt)}</span>
       </div>
       <div className={styles.footer}>
         <span className={styles.inline}><Radar size={14} />Last sweep ready</span>

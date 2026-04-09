@@ -1,24 +1,30 @@
-/* Design tokens extracted from chatbase.css */
 :root {
-  /* Colors - Light theme (deep indigo primary) */
+  color-scheme: light;
   --primary-color: #4338ca;
   --primary-hover: #3730a3;
   --primary-subtle: rgba(67, 56, 202, 0.08);
+  --accent-strong: #4338ca;
   --secondary-color: #6b7280;
-  --bg-light: #f5f5f7;
+  --app-bg: #f4f5f8;
+  --bg-light: #eef1f5;
   --chat-bg: #ffffff;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-muted: #f6f7fb;
+  --surface-elevated: #ffffff;
   --text-color: #1d1d1f;
   --text-muted: #86868b;
-  --border-color: rgba(0, 0, 0, 0.08);
+  --text-subtle: #667085;
+  --border-color: rgba(15, 23, 42, 0.09);
+  --border-strong: rgba(15, 23, 42, 0.16);
   --input-bg: #ffffff;
+  --focus-color: rgba(67, 56, 202, 0.3);
+  --info-color: #2563eb;
   --success-color: #059669;
+  --critical-color: #dc2626;
   --danger-color: #dc2626;
   --warning-color: #d97706;
 
-  /* Mono font for financial data */
   --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
-
-  /* Typography — premium font stack (Inter variable + Apple system) */
   --chat-font-size: 15px;
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
     'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
@@ -28,7 +34,6 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  /* Spacing */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -36,66 +41,74 @@
   --space-xl: 32px;
   --space-2xl: 48px;
 
-  /* Layout */
   --sidebar-width: 300px;
   --context-panel-width: 320px;
   --header-height: 56px;
-  --bottom-nav-height: 82px;
+  --bottom-nav-height: 74px;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* Radius — iOS style */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 9999px;
 
-  /* Shadows — subtle, layered */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.1);
 
-  /* Transitions — iOS spring feel */
   --transition-fast: 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
   --transition-normal: 250ms cubic-bezier(0.25, 0.1, 0.25, 1);
   --transition-slow: 400ms cubic-bezier(0.25, 0.1, 0.25, 1);
 
-  /* Glass / Blur */
-  --blur-bg: blur(20px) saturate(180%);
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-bg-heavy: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.3);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --blur-bg: blur(16px) saturate(140%);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg-heavy: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
 }
 
-/* Dark theme — iOS dark style */
 [data-theme="dark"] {
+  color-scheme: dark;
   --primary-color: #6366f1;
   --primary-hover: #818cf8;
   --primary-subtle: rgba(99, 102, 241, 0.1);
+  --accent-strong: #a5b4fc;
   --secondary-color: #48484a;
-  --bg-light: #000000;
+  --app-bg: #0a0b0f;
+  --bg-light: #11131a;
   --chat-bg: #1c1c1e;
+  --surface: rgba(22, 25, 34, 0.88);
+  --surface-muted: #11131a;
+  --surface-elevated: #1d2230;
   --text-color: #f5f5f7;
   --text-muted: #98989d;
+  --text-subtle: #a0a7b8;
   --border-color: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
   --input-bg: #2c2c2e;
+  --focus-color: rgba(129, 140, 248, 0.36);
+  --info-color: #60a5fa;
   --success-color: #34d399;
+  --critical-color: #f87171;
   --danger-color: #f87171;
   --warning-color: #fbbf24;
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
 
-  --glass-bg: rgba(28, 28, 30, 0.72);
-  --glass-bg-heavy: rgba(28, 28, 30, 0.85);
+  --glass-bg: rgba(15, 17, 24, 0.82);
+  --glass-bg-heavy: rgba(19, 21, 31, 0.92);
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-/* Message density variants */
+[data-ui-density="compact"] {
+  --header-height: 52px;
+}
+
 [data-message-density="compact"] {
   --message-padding: 4px 10px;
   --message-gap: 1px;
@@ -110,9 +123,3 @@
   --message-padding: 12px 20px;
   --message-gap: 4px;
 }
-
-/* Breakpoints reference (used in CSS):
-   mobile:  max-width 768px
-   tablet:  max-width 1024px
-   desktop: min-width 1025px
-*/

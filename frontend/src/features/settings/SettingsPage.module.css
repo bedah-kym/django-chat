@@ -1,5 +1,9 @@
 .settings {
-  max-width: 700px;
+  block-size: 100%;
+  min-block-size: 0;
+  overflow: auto;
+  max-inline-size: 760px;
+  padding: var(--space-lg);
 }
 
 /* ─── Tabs ─────────────────────────────────────────────────────────────────── */
@@ -341,6 +345,7 @@
 
 /* ─── Mobile ────────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .settings { padding: var(--space-md); }
   .formGrid { grid-template-columns: 1fr; }
   .integrationGrid { grid-template-columns: 1fr; }
   .modeGrid { grid-template-columns: repeat(2, 1fr); }

@@ -3,6 +3,7 @@ import { mockWallet, mockInvoices } from '@/mocks/payments'
 import { mockItineraries } from '@/mocks/travel'
 import { useChatStore } from '@/stores/chatStore'
 import { getRoomPath } from '@/domains'
+import { formatCurrency } from '@/utils/format'
 import styles from './OpsDomainPage.module.css'
 
 export function OpsDomainPage() {
@@ -14,7 +15,7 @@ export function OpsDomainPage() {
       <div className={styles.hero}>
         <div>
           <div className={styles.label}>Business/Ops</div>
-          <div className={styles.value}>KES {mockWallet.balance.toLocaleString()}</div>
+          <div className={styles.value}>{formatCurrency(mockWallet.balance)}</div>
           <p className={styles.description}>Wallet, invoices, reminders, and travel stay grouped together in one operational workspace.</p>
         </div>
       </div>
@@ -25,7 +26,7 @@ export function OpsDomainPage() {
             <h2>Wallet</h2>
             <Link to="/app/ops/wallet" className={styles.linkBtn}>Open</Link>
           </div>
-          <div className={styles.metric}>KES {mockWallet.balance.toLocaleString()}</div>
+          <div className={styles.metric}>{formatCurrency(mockWallet.balance)}</div>
         </section>
 
         <section className={styles.card}>

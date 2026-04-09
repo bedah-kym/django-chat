@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { PlatformInvite } from '@/types/user'
+import { formatDate } from '@/utils/format'
 import { sendInvite } from '../settingsApi'
 import { SectionCard } from '../components/SectionCard'
 import styles from '../SettingsPage.module.css'
@@ -23,15 +24,15 @@ export function InvitesSection() {
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
 
-  const remaining = MAX_INVITES - invites.filter(i => i.status !== 'expired').length
+  const remaining = MAX_INVITES - invites.filter((invite) => invite.status !== 'expired').length
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSend(event: React.FormEvent) {
+    event.preventDefault()
     if (!email) return
     setSending(true)
     try {
       await sendInvite(email)
-      setInvites(prev => [
+      setInvites((prev) => [
         ...prev,
         { email, status: 'pending', sentAt: new Date().toISOString() },
       ])
@@ -56,7 +57,7 @@ export function InvitesSection() {
             type="email"
             placeholder="colleague@company.com"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             disabled={remaining === 0}
             required
           />
@@ -65,33 +66,30 @@ export function InvitesSection() {
             type="submit"
             disabled={sending || remaining === 0}
           >
-            {sending ? 'Sending…' : 'Send Invite'}
+            {sending ? 'Sending...' : 'Send Invite'}
           </button>
         </form>
 
-        {invites.length > 0 && (
+        {invites.length > 0 ? (
           <div className={styles.inviteTable}>
             <div className={styles.inviteTableHeader}>
               <span>Email</span>
               <span>Status</span>
               <span>Sent</span>
             </div>
-            {invites.map((inv, i) => (
-              <div key={i} className={styles.inviteTableRow}>
-                <span className={styles.inviteEmail}>{inv.email}</span>
-                <span className={`${styles.statusChip} ${STATUS_CLASS[inv.status]}`}>
-                  {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+            {invites.map((invite, index) => (
+              <div key={index} className={styles.inviteTableRow}>
+                <span className={styles.inviteEmail}>{invite.email}</span>
+                <span className={`${styles.statusChip} ${STATUS_CLASS[invite.status]}`}>
+                  {invite.status.charAt(0).toUpperCase() + invite.status.slice(1)}
                 </span>
                 <span className={styles.inviteDate}>
-                  {new Date(inv.sentAt).toLocaleDateString('en-KE', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
+                  {formatDate(invite.sentAt, { day: 'numeric', month: 'short' })}
                 </span>
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </SectionCard>
     </div>
   )

@@ -6,6 +6,7 @@ import { mockPrograms, mockReportDraft, mockReports } from '@/mocks/bugBounty'
 import { ProgramCard } from './components/ProgramCard'
 import { BountyTracker } from './components/BountyTracker'
 import { ReportDraftModal } from './components/ReportDraftModal'
+import { formatCurrency, formatNumber } from '@/utils/format'
 import styles from './BugBountyPage.module.css'
 
 const FILTERS = ['All', 'HackerOne', 'Bugcrowd', 'Intigriti'] as const
@@ -22,7 +23,7 @@ export function BugBountyPage() {
   const openReports = mockReports.filter(report => ['draft', 'triaged'].includes(report.status)).length
 
   const stats = [
-    { label: 'Total Earned KES', value: totalEarned.toLocaleString(), icon: BanknoteArrowDown },
+    { label: 'Total Earned', value: formatCurrency(totalEarned), icon: BanknoteArrowDown },
     { label: 'Open Reports', value: openReports, icon: FileText },
     { label: 'Programs Enrolled', value: mockPrograms.length, icon: ShieldCheck },
   ]
@@ -75,24 +76,26 @@ export function BugBountyPage() {
         {filteredPrograms.map(program => <ProgramCard key={program.id} program={program} />)}
       </div>
 
-      <div className={styles.sectionHeader}>
-        <h2>My Reports</h2>
-        <div className={styles.reportActions}>
-          <Link to="/app/security/bugbounty/reports" className={styles.linkBtn}>All Reports</Link>
-          <button type="button" className={styles.syncBtn} onClick={() => setShowDraft(true)}>Review Draft</button>
-        </div>
-      </div>
-
-      <div className={styles.reportList}>
-        {mockReports.map(report => (
-          <div key={report.id} className={styles.reportRow}>
-            <span className={styles.reportTitle}>{report.title}</span>
-            <span className={styles.reportTarget}>{report.target}</span>
-            <span className={styles.reportAmount}>KES {report.bountyKes.toLocaleString()}</span>
-            <span className={`${styles.platformBadge} ${styles[report.platform]}`}>{report.platform}</span>
-            <span className={`${styles.statusBadge} ${styles[report.status]}`}>{report.status}</span>
+      <div className={styles.reportShell}>
+        <div className={styles.sectionHeader}>
+          <h2>My Reports</h2>
+          <div className={styles.reportActions}>
+            <Link to="/app/security/bugbounty/reports" className={styles.linkBtn}>All Reports</Link>
+            <button type="button" className={styles.syncBtn} onClick={() => setShowDraft(true)}>Review Draft</button>
           </div>
-        ))}
+        </div>
+
+        <div className={styles.reportList}>
+          {mockReports.map(report => (
+            <div key={report.id} className={styles.reportRow}>
+              <span className={styles.reportTitle}>{report.title}</span>
+              <span className={styles.reportTarget}>{report.target}</span>
+              <span className={styles.reportAmount}>{report.bountyKes > 0 ? formatCurrency(report.bountyKes) : formatNumber(report.bountyKes)}</span>
+              <span className={`${styles.platformBadge} ${styles[report.platform]}`}>{report.platform}</span>
+              <span className={`${styles.statusBadge} ${styles[report.status]}`}>{report.status}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {showDraft && <ReportDraftModal draft={mockReportDraft} onClose={() => setShowDraft(false)} />}

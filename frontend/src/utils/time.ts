@@ -1,3 +1,5 @@
+import { formatDate, formatTime } from './format'
+
 export function humanizeLastSeen(isoDate: string): string {
   const now = Date.now()
   const then = new Date(isoDate).getTime()
@@ -11,10 +13,10 @@ export function humanizeLastSeen(isoDate: string): string {
   if (diffHr < 24) return `${diffHr}h ago`
   const diffDay = Math.floor(diffHr / 24)
   if (diffDay === 1) {
-    return `Yesterday at ${new Date(isoDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+    return `Yesterday at ${formatTime(isoDate)}`
   }
   if (diffDay < 7) return `${diffDay}d ago`
-  return new Date(isoDate).toLocaleDateString()
+  return formatDate(isoDate)
 }
 
 export function formatDuration(seconds: number): string {

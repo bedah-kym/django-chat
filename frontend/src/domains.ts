@@ -130,7 +130,7 @@ export function getDomainIcon(domainId: DomainId): LucideIcon {
 
 export const domainStatusCopy: Record<DomainId, string> = {
   security: 'Findings and approvals need attention.',
-  social: 'No social connectors yet. This domain is ready for future APIs.',
-  dev: 'Engineering workflows will land here once repo connectors are added.',
+  social: 'Campaign drafts, publishing slots, and approvals are active.',
+  dev: 'Release work, repo coordination, and staging health are active.',
   ops: 'Finance, reminders, and travel stay grouped here for now.',
 }

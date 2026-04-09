@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { mockPrograms, mockReportDraft, mockReports } from '@/mocks/bugBounty'
+import { formatCurrency, formatDateTime } from '@/utils/format'
 import { ReportDraftModal } from './components/ReportDraftModal'
 import styles from './BugBountyPage.module.css'
 import detailStyles from './ProgramDetailPage.module.css'
@@ -25,7 +26,7 @@ export function ProgramDetailPage() {
         <div className={detailStyles.heroMeta}>
           <div><span>Range</span><strong>{program.bountyRange}</strong></div>
           <div><span>Assets</span><strong>{program.assetCount}</strong></div>
-          <div><span>Last Scan</span><strong>{new Date(program.lastScannedAt).toLocaleString()}</strong></div>
+          <div><span>Last Scan</span><strong>{formatDateTime(program.lastScannedAt)}</strong></div>
         </div>
       </div>
 
@@ -49,7 +50,7 @@ export function ProgramDetailPage() {
           <div key={report.id} className={styles.reportRow}>
             <span className={styles.reportTitle}>{report.title}</span>
             <span className={styles.reportTarget}>{report.target}</span>
-            <span className={styles.reportAmount}>KES {report.bountyKes.toLocaleString()}</span>
+            <span className={styles.reportAmount}>{formatCurrency(report.bountyKes)}</span>
             <span className={`${styles.platformBadge} ${styles[report.platform]}`}>{report.platform}</span>
             <span className={`${styles.statusBadge} ${styles[report.status]}`}>{report.status}</span>
           </div>
