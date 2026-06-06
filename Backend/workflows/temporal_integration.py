@@ -259,4 +259,3 @@ async def create_schedule_for_trigger(trigger_obj) -> None:
         trigger_obj.save(update_fields=['temporal_schedule_id'])
 
     await sync_to_async(_save_schedule)()
-

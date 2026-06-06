@@ -153,4 +153,3 @@ def _requires_withdraw_policy(workflow_def: Dict) -> bool:
         if step.get("service") == "payments" and step.get("action") == "withdraw":
             return True
     return False
-

@@ -10,7 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 from decimal import Decimal
-import os    
+import os
 from pathlib import Path
 import dj_database_url
 from celery.schedules import crontab
@@ -145,11 +145,11 @@ MIDDLEWARE = [
     'chatbot.middleware.EnsureMemberMiddleware',  # Auto-create Member objects
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
+
     # Security Middleware
     'axes.middleware.AxesMiddleware',  # Brute force protection
     'csp.middleware.CSPMiddleware',   # Content Security Policy
-    
+
     # Allauth Account Middleware
     'allauth.account.middleware.AccountMiddleware',
 ]
@@ -419,7 +419,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.TokenAuthentication",
-    
+
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly"
@@ -436,7 +436,6 @@ REST_FRAMEWORK = {
         "ai_request": "10/day"      # Default fallback
     }
 }
-
 
 
 # Chat rate limit (messages per minute)
@@ -503,12 +502,12 @@ SOCIALACCOUNT_PROVIDERS = {
 # --- AXES (Brute Force Protection) - Enhanced Security ---
 from datetime import timedelta
 
-AXES_FAILURE_LIMIT = 5  
+AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = timedelta(hours=2)
 AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
-AXES_RESET_ON_SUCCESS = True 
-AXES_VERBOSE = True 
-AXES_ENABLE_ADMIN = True 
+AXES_RESET_ON_SUCCESS = True
+AXES_VERBOSE = True
+AXES_ENABLE_ADMIN = True
 
 
 # --- CSP (Content Security Policy) ---
