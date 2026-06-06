@@ -454,6 +454,46 @@ for item in ACTION_CATALOG:
         _ALIAS_INDEX[str(alias).strip().lower()] = canonical
 
 
+def register_actions(entries: List[Dict[str, Any]]) -> None:
+    """
+    Dynamically register action catalog entries (from connector plugins).
+
+    Ported from public/main (kazi-core) as part of the v0.4 OSS foundation
+    port. This is what connector_registry calls when a new-style
+    BaseConnector subclass exposes get_action_catalog_entries() — its
+    entries get merged into ACTION_CATALOG so the rest of the runtime
+    (planner, executor, capability gates) sees them.
+
+    Existing actions with the same name are overwritten. Indexes are
+    kept in sync.
+    """
+    for raw_entry in entries:
+        entry = deepcopy(raw_entry)
+        action_name = entry.get("action")
+        if not action_name:
+            continue
+        existing_entry: Optional[Dict[str, Any]] = None
+        # Remove any existing entry with the same action name
+        for i, existing in enumerate(ACTION_CATALOG):
+            if existing["action"] == action_name:
+                existing_entry = existing
+                ACTION_CATALOG[i] = entry
+                break
+        else:
+            ACTION_CATALOG.append(entry)
+        if "router_required" not in entry:
+            if existing_entry is not None:
+                entry["router_required"] = existing_entry.get("router_required", True)
+            else:
+                # Dynamic/plugin-only actions should not be required in MCPRouter.
+                entry["router_required"] = False
+        # Update indexes
+        _ACTION_INDEX[action_name] = entry
+        _ALIAS_INDEX[action_name] = action_name
+        for alias in entry.get("aliases") or []:
+            _ALIAS_INDEX[str(alias).strip().lower()] = action_name
+
+
 def resolve_action_alias(action: Optional[str]) -> str:
     if not action:
         return ""
