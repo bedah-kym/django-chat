@@ -221,4 +221,3 @@ class WorkflowTriggerAdmin(admin.ModelAdmin):
             status
         )
     is_active_badge.short_description = 'Active'
-

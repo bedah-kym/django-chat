@@ -581,4 +581,3 @@ def validate_router_mappings(
     missing = sorted(required - mapped)
     extra = sorted(mapped - required)
     return missing, extra
-
