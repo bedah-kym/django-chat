@@ -1,6 +1,27 @@
 """
-MCP (Multi-Control Protocol) Router for Mathia Orchestration
-Routes parsed intents to appropriate connectors/tools
+Tool Router (legacy filename: mcp_router.py).
+
+Routes parsed intents to appropriate connectors/tools.
+
+DEPRECATION NOTE — v0.4 M2-3 Phase 1
+====================================
+The "MCP" name predates Anthropic's now-standard Model Context Protocol
+and is a source of confusion for OSS readers. The runtime responsibility
+is unchanged, but this module is being prepared for two follow-up moves
+in v0.5:
+
+1. **File rename** to `tool_router.py`. `mcp_router.py` will become a
+   one-line re-export shim for one cycle, then be removed.
+2. **Inline connector split** — the six connectors defined below
+   (CalendarConnector, SearchConnector, WeatherConnector,
+   GiphyConnector, CurrencyConnector, ReminderConnector) move into
+   per-file modules under `Backend/orchestration/connectors/` to match
+   the connector layout of every other connector in the project.
+
+If you are writing new code: import the connector classes from their
+eventual home (`from orchestration.connectors.<name>_connector import ...`)
+once that lands; for now they live here and are re-exported by the
+connector_registry path documented in `docs/contracts/tool-schema.md`.
 """
 import json
 import logging
@@ -25,12 +46,6 @@ from orchestration.action_catalog import (
 )
 from orchestration.contracts import build_orchestration_result
 from .base_connector import BaseConnector
-from .connectors.whatsapp_connector import WhatsAppConnector
-from .connectors.intersend_connector import IntersendPayConnector
-from .connectors.gmail_connector import GmailConnector
-from .connectors.quota_connector import QuotaConnector
-from .connectors.payment_connector import ReadOnlyPaymentConnector
-from .connectors.invoice_connector import InvoiceConnector
 from .security_policy import sanitize_parameters, should_block_action, user_has_room_access
 
 logger = logging.getLogger(__name__)
@@ -66,47 +81,12 @@ class MCPRouter:
     }
 
     def __init__(self):
-        # Import travel connectors
-        from .connectors.travel_buses_connector import TravelBusesConnector
-        from .connectors.travel_hotels_connector import TravelHotelsConnector
-        from .connectors.travel_flights_connector import TravelFlightsConnector
-        from .connectors.travel_transfers_connector import TravelTransfersConnector
-        from .connectors.travel_events_connector import TravelEventsConnector
-        from .connectors.itinerary_connector import ItineraryConnector
+        # Single source of truth for action -> connector resolution lives in
+        # `connector_registry`. It composes built-in connectors, directory-scanned
+        # new-style BaseConnector subclasses, and pip-installed entry points.
+        from .connector_registry import discover_connectors
 
-        self.connectors = {
-            # Core connectors
-            "schedule_meeting": CalendarConnector(),
-            "check_availability": CalendarConnector(),
-            "check_payments": ReadOnlyPaymentConnector(),
-            "search_info": SearchConnector(),
-            "get_weather": WeatherConnector(),
-            "search_gif": GiphyConnector(),
-            "convert_currency": CurrencyConnector(),
-            "send_message": WhatsAppConnector(),
-            "send_whatsapp": WhatsAppConnector(),
-            "send_email": GmailConnector(),
-            "set_reminder": ReminderConnector(),
-            "check_quotas": QuotaConnector(),
-            "check_balance": ReadOnlyPaymentConnector(),
-            "list_transactions": ReadOnlyPaymentConnector(),
-            "check_invoice_status": ReadOnlyPaymentConnector(),
-            "create_invoice": InvoiceConnector(),
-            "create_payment_link": IntersendPayConnector(),
-            "withdraw": IntersendPayConnector(),
-            "check_status": IntersendPayConnector(),
-
-            # Travel planner connectors
-            "search_buses": TravelBusesConnector(),
-            "search_hotels": TravelHotelsConnector(),
-            "search_flights": TravelFlightsConnector(),
-            "search_transfers": TravelTransfersConnector(),
-            "search_events": TravelEventsConnector(),
-            "create_itinerary": ItineraryConnector(),
-            "view_itinerary": ItineraryConnector(),
-            "add_to_itinerary": ItineraryConnector(),
-            "book_travel_item": ItineraryConnector(),
-        }
+        self.connectors = dict(discover_connectors())
         self._validate_action_connector_integrity()
 
     def _validate_action_connector_integrity(self) -> None:

@@ -782,7 +782,7 @@ def process_document_task(self, document_id):
             doc = DocumentUpload.objects.get(id=document_id)
             doc.status = 'failed'
             doc.save()
-        except:
+        except Exception:
             pass
 
         raise self.retry(exc=e)

@@ -83,13 +83,6 @@ class WorkflowDefinitionValidationTests(TestCase):
 
 
 class AdhocWorkflowFallbackTests(TestCase):
-    # The high-risk-deferred path uses internal helpers from public/main's
-    # workflow_planner refactor (`_enqueue_deferred_execution`,
-    # `_run_inline`, `_create_adhoc_workflow`) that haven't been ported
-    # to master yet. Phase 3 of the OSS port brings them; until then
-    # this test would fail because master's workflow_planner has a
-    # different fallback shape.
-    @unittest.skip("Awaiting Phase 3 workflow_planner port from kazi-core")
     @override_settings(TEMPORAL_DISABLED=True)
     @patch("orchestration.workflow_planner._create_adhoc_workflow", new_callable=AsyncMock)
     @patch("orchestration.workflow_planner._enqueue_deferred_execution", new_callable=AsyncMock)

@@ -458,14 +458,8 @@ def register_actions(entries: List[Dict[str, Any]]) -> None:
     """
     Dynamically register action catalog entries (from connector plugins).
 
-    Ported from public/main (kazi-core) as part of the v0.4 OSS foundation
-    port. This is what connector_registry calls when a new-style
-    BaseConnector subclass exposes get_action_catalog_entries() — its
-    entries get merged into ACTION_CATALOG so the rest of the runtime
-    (planner, executor, capability gates) sees them.
-
-    Existing actions with the same name are overwritten. Indexes are
-    kept in sync.
+    This merges new entries into the catalog, updating indexes.
+    Existing actions with the same name are overwritten.
     """
     for raw_entry in entries:
         entry = deepcopy(raw_entry)
@@ -617,7 +611,11 @@ def validate_router_mappings(
 ) -> Tuple[List[str], List[str]]:
     allowed_unmapped = set(resolve_action_alias(action) for action in (allow_unmapped or []))
     mapped = {resolve_action_alias(action) for action in mapped_actions if action}
-    required = set(get_supported_actions()) - allowed_unmapped
+    required = {
+        item["action"]
+        for item in ACTION_CATALOG
+        if item.get("router_required", True)
+    } - allowed_unmapped
     missing = sorted(required - mapped)
     extra = sorted(mapped - required)
     return missing, extra
