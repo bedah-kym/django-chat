@@ -41,8 +41,8 @@ export function IntegrationsSection({ integrations }: Props) {
     if (type === 'calendly') {
       setLoading('calendly')
       try {
-        const { auth_url } = await connectCalendly()
-        window.location.href = auth_url
+        const { authorization_url } = await connectCalendly()
+        window.location.href = authorization_url
       } catch {
         toast.error('Failed to start Calendly connection')
         setLoading(null)

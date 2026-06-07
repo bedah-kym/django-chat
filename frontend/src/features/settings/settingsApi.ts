@@ -1,5 +1,17 @@
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
+// CSRF helper — Django's CsrfViewMiddleware requires X-CSRFToken on
+// unsafe-method requests when the user is authenticated via session
+// cookie. Read the csrftoken cookie set by Django and echo it back.
+function getCsrfToken(): string {
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
+
+function csrfHeaders(): Record<string, string> {
+  return { 'X-CSRFToken': getCsrfToken() }
+}
+
 // ─── REAL: Avatar Upload ──────────────────────────────────────────────────────
 export async function uploadAvatar(file: File): Promise<{ url: string }> {
   const form = new FormData()
@@ -8,6 +20,7 @@ export async function uploadAvatar(file: File): Promise<{ url: string }> {
     method: 'POST',
     body: form,
     credentials: 'include',
+    headers: csrfHeaders(),
   })
   if (!res.ok) throw new Error('Avatar upload failed')
   return res.json() as Promise<{ url: string }>
@@ -20,19 +33,21 @@ export async function getCalendlyStatus(): Promise<{ connected: boolean; usernam
   return res.json() as Promise<{ connected: boolean; username?: string }>
 }
 
-export async function connectCalendly(): Promise<{ auth_url: string }> {
+export async function connectCalendly(): Promise<{ authorization_url: string }> {
   const res = await fetch(`${BASE}/api/calendly/connect/`, {
     method: 'POST',
     credentials: 'include',
+    headers: csrfHeaders(),
   })
   if (!res.ok) throw new Error('Failed to initiate Calendly connect')
-  return res.json() as Promise<{ auth_url: string }>
+  return res.json() as Promise<{ authorization_url: string }>
 }
 
 export async function disconnectCalendly(): Promise<void> {
   const res = await fetch(`${BASE}/api/calendly/disconnect/`, {
     method: 'POST',
     credentials: 'include',
+    headers: csrfHeaders(),
   })
   if (!res.ok) throw new Error('Failed to disconnect Calendly')
 }
