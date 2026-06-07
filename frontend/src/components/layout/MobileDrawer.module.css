@@ -1,0 +1,30 @@
+.backdrop {
+  display: none;
+}
+
+.drawer {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: var(--blur-bg);
+    -webkit-backdrop-filter: var(--blur-bg);
+    z-index: 90;
+  }
+
+  .drawer {
+    display: block;
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 85vw;
+    max-width: 340px;
+    z-index: 91;
+    overflow: hidden;
+  }
+}

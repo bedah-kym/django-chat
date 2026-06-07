@@ -1,0 +1,19 @@
+.content {
+  z-index: 100;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.loading {
+  padding: var(--space-xl);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .content {
+    max-width: calc(100vw - var(--space-lg));
+  }
+}

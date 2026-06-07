@@ -1,0 +1,44 @@
+.container {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--primary-subtle);
+}
+
+.active {
+  background: var(--primary-subtle);
+}
+
+.svg {
+  width: 80%;
+  height: 80%;
+}
+
+.head {
+  fill: var(--primary-color);
+}
+
+.antenna {
+  stroke: var(--primary-color);
+}
+
+.antennaDot {
+  fill: var(--primary-color);
+}
+
+.eye {
+  fill: #fff;
+  transform-origin: center;
+}
+
+.mouth {
+  stroke: #fff;
+}
+
+.ear {
+  fill: var(--primary-color);
+  opacity: 0.7;
+}

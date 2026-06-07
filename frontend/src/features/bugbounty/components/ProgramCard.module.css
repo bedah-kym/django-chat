@@ -1,0 +1,77 @@
+.card {
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.header,
+.metaRow,
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.platform,
+.status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-bold);
+}
+
+.HackerOne { background: rgba(37, 99, 235, 0.14); color: #2563eb; }
+.Bugcrowd { background: rgba(234, 88, 12, 0.14); color: #ea580c; }
+.Intigriti { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+
+.ready { background: var(--bg-light); color: var(--text-muted); }
+.queued { background: var(--primary-subtle); color: var(--primary-color); }
+.running { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+
+.name {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.range {
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.metaRow {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.scanBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+}

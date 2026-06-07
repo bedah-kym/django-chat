@@ -1,0 +1,111 @@
+.page {
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.backLink {
+  font-size: 13px;
+  color: var(--primary-color);
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  background: var(--chat-bg);
+}
+
+.title {
+  margin: var(--space-sm) 0 6px;
+  font-size: 28px;
+  font-weight: var(--font-weight-bold);
+}
+
+.description {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.heroMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+  min-width: 360px;
+}
+
+.heroMeta div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heroMeta span {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.heroMeta strong {
+  font-size: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.card {
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.scopeRow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.scopeRow:last-child {
+  border-bottom: none;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.sectionHeader h2 {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.primaryBtn {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+}

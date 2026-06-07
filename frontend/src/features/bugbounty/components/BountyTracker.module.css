@@ -1,0 +1,33 @@
+.tracker {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 14%, var(--chat-bg)), var(--chat-bg));
+  border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.value {
+  margin-top: 6px;
+  font-size: 28px;
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-bold);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  font-size: 12px;
+  color: var(--text-muted);
+}
