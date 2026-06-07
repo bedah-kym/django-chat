@@ -107,7 +107,7 @@ def safe_eval_condition(expr: str, context: Dict[str, Any]) -> bool:
     eval_context = {k: to_dotdict(v) for k, v in context.items()}
 
     try:
-        return bool(eval(compile(tree, '<condition>', 'eval'), {"__builtins__": {}}, eval_context))
+        return bool(eval(compile(tree, '<condition>', 'eval'), {"__builtins__": {}}, eval_context))  # nosec B307 - AST pre-validated against _ALLOWED_NODES whitelist (line 104); no __builtins__; sandboxed condition evaluator
     except Exception:
         return False
 
