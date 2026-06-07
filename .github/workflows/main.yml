@@ -48,6 +48,11 @@ jobs:
         DATABASE_URL: sqlite:///db.sqlite3
         DJANGO_SECRET_KEY: test-key-not-for-prod
         REDIS_URL: redis://localhost:6379/0
+        # DEBUG=True for tests bypasses the production-only env guards
+        # in settings.py (e.g. the DJANGO_CSRF_TRUSTED_ORIGINS check)
+        # without affecting test behavior — Django still uses an isolated
+        # test database and ignores DEBUG for security-sensitive paths.
+        DJANGO_DEBUG: 'True'
       run: |
         cd Backend
         python manage.py test
