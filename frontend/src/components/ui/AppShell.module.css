@@ -1,0 +1,40 @@
+.shell {
+  display: flex;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #f2efe8 46%, transparent), transparent 180px),
+    var(--app-bg);
+}
+
+.skipLink {
+  position: fixed;
+  inset-block-start: var(--space-md);
+  inset-inline-start: var(--space-md);
+  z-index: 200;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-color);
+  transform: translateY(calc(-100% - var(--space-md)));
+  transition: transform var(--transition-fast);
+}
+
+.skipLink:focus-visible {
+  transform: translateY(0);
+}
+
+.mainColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.mainContent {
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 0;
+}

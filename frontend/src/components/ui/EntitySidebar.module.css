@@ -1,0 +1,34 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-block-end: 1px solid var(--border-color);
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--text-subtle);
+  font-size: 12px;
+}
+
+.body {
+  flex: 1;
+  min-block-size: 0;
+  padding: var(--space-md);
+}

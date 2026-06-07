@@ -1,0 +1,68 @@
+.recorder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--chat-bg);
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-lg);
+}
+
+.indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.redDot {
+  width: 8px; height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--danger-color);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.timer {
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+}
+
+.waveform {
+  flex: 1;
+  height: 40px;
+  border-radius: var(--radius-sm);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.cancelBtn {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.cancelBtn:hover { background: var(--bg-light); }
+
+.stopBtn {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--danger-color);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.stopBtn:hover { opacity: 0.9; }

@@ -139,7 +139,7 @@ class AdhocWorkflowFallbackTests(TestCase):
 class WorkflowApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(username="qa-user", email="qa@example.com", password="secret")
+        self.user = User.objects.create_user(username="qa-user", email="qa@example.com", password="secret")  # nosec B106 - test fixture password
         self.client.force_authenticate(self.user)
         self.workflow = UserWorkflow.objects.create(
             user=self.user,
@@ -322,7 +322,7 @@ class WorkflowApiTests(TestCase):
 
 class DeferredReplayTaskTests(TestCase):
     def test_replay_task_marks_dead_letter_and_recovery_hint(self):
-        user = User.objects.create_user(username="replay-user", password="secret")
+        user = User.objects.create_user(username="replay-user", password="secret")  # nosec B106 - test fixture password
         workflow = UserWorkflow.objects.create(
             user=user,
             name="Replay me",
@@ -394,7 +394,7 @@ class RerunEndpointReplaySafetyTests(TestCase):
     """v0.4.1 Bug #2B — rerun HTTP view honors documented from_step + force."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username="rerun-user", password="x")
+        self.user = User.objects.create_user(username="rerun-user", password="x")  # nosec B106 - test fixture password
         self.workflow = UserWorkflow.objects.create(
             user=self.user,
             name="Two-step",

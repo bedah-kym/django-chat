@@ -1,0 +1,245 @@
+.domainLayout {
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.mobileBar {
+  display: none;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.globalRailOpen {
+  grid-template-columns: minmax(236px, 272px) minmax(0, 1fr);
+}
+
+.sidebar {
+  border-inline-end: 1px solid var(--border-color);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), transparent);
+  padding: var(--space-xl) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-block-size: 0;
+}
+
+.globalRailOpen .sidebar {
+  padding-inline: 10px;
+}
+
+.globalRailOpen .navItem,
+.globalRailOpen .roomItem {
+  padding-inline: 10px;
+}
+
+.globalRailOpen .searchBox {
+  padding-inline: 10px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-block-size: 0;
+}
+
+.sectionLabel {
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.navList,
+.roomList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navItem,
+.roomItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: var(--text-subtle);
+}
+
+.navItem:hover,
+.roomItem:hover {
+  background: var(--surface-muted);
+  color: var(--text-color);
+}
+
+.navItemActive,
+.roomActive {
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  color: var(--text-color);
+}
+
+.roomsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.addRoomBtn {
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: 8px;
+  color: var(--text-subtle);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-muted);
+  border: 1px solid transparent;
+}
+
+.searchBox:focus-within {
+  border-color: var(--border-strong);
+}
+
+.searchIcon {
+  color: var(--text-subtle);
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+}
+
+.roomList {
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+.roomAvatarWrap {
+  position: relative;
+}
+
+.roomAvatar {
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 12px;
+  background: var(--secondary-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-semibold);
+}
+
+.aiAvatar {
+  background: var(--primary-color);
+}
+
+.presencePos {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-end: 0;
+}
+
+.roomInfo {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.roomName {
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+}
+
+.roomPreview {
+  color: var(--text-subtle);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  min-inline-size: 20px;
+  block-size: 20px;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+}
+
+.contentArea,
+.chatArea {
+  min-inline-size: 0;
+  min-block-size: 0;
+  block-size: 100%;
+}
+
+.contentArea {
+  overflow: hidden;
+}
+
+.chatArea {
+  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .mobileBar {
+    display: flex;
+    align-items: start;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-block-end: 1px solid var(--border-color);
+  }
+
+  .menuBtn {
+    inline-size: 38px;
+    block-size: 38px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+  }
+
+  .mobileLabel {
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+  }
+
+  .mobileDescription {
+    margin-block-start: 4px;
+    color: var(--text-subtle);
+    font-size: 13px;
+  }
+}

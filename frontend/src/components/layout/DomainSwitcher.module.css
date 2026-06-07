@@ -1,0 +1,31 @@
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--chat-bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-fast);
+}
+
+.item:hover {
+  border-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+.active {
+  background: var(--primary-subtle);
+  border-color: color-mix(in srgb, var(--primary-color) 24%, transparent);
+  color: var(--primary-color);
+}

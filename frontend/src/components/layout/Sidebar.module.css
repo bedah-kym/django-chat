@@ -1,0 +1,184 @@
+.sidebar {
+  inline-size: 272px;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  padding: 18px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 92%, transparent), var(--surface));
+  border-inline-end: 1px solid var(--border-color);
+}
+
+.collapsed {
+  inline-size: 90px;
+}
+
+.topSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logoMark {
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary-color), #818cf8);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-md);
+}
+
+.logoCopy {
+  min-inline-size: 0;
+}
+
+.logoText {
+  font-size: 26px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.04em;
+}
+
+.logoSub,
+.sectionLabel {
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.collapseBtn {
+  margin-inline-start: auto;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  background: var(--surface-muted);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-block-size: 46px;
+  padding: 0 12px;
+  border-radius: 14px;
+  color: var(--text-subtle);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.navItem:hover {
+  background: var(--surface-muted);
+  color: var(--text-color);
+}
+
+.active {
+  background: color-mix(in srgb, var(--primary-color) 11%, transparent);
+  color: var(--text-color);
+}
+
+.iconWrap {
+  inline-size: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.collapsed .navItem {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.contextCard {
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+}
+
+.contextTitle {
+  margin-block-start: 8px;
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.contextBody {
+  margin-block-start: 6px;
+  color: var(--text-subtle);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.bottomSection {
+  margin-block-start: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.integrationRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.connectorDot {
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--accent-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip {
+  background: var(--text-color);
+  color: var(--surface-elevated);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  padding: 6px 10px;
+  border-radius: 10px;
+  z-index: 100;
+}
+
+.tooltipArrow {
+  fill: var(--text-color);
+}
+
+@media (max-width: 768px) {
+  .sidebar,
+  .collapsed {
+    inline-size: min(88vw, 340px);
+    min-block-size: 100%;
+    padding: 18px 14px 14px;
+  }
+
+  .navItem {
+    justify-content: flex-start;
+    padding-inline: 12px;
+  }
+}

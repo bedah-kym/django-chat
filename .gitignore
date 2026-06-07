@@ -155,3 +155,17 @@ e2e/
 Security-docs/
 TEMP_ANALYSIS/
 chat-room-4.2.md
+.ai-collab/
+Microsoft/Windows/PowerShell/ModuleAnalysisCache
+Microsoft/Windows/PowerShell/ModuleAnalysisCache
+# Frontend (React/Vite) #
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+*.tsbuildinfo
+
+# Vite build output in Django staticfiles
+Backend/staticfiles/spa/

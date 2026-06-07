@@ -1,0 +1,340 @@
+.chatPage {
+  display: flex;
+  block-size: 100%;
+  min-block-size: 0;
+  background: var(--app-bg);
+}
+
+.chatMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), transparent 260px);
+}
+
+.contextWrap {
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 100%;
+  color: var(--text-subtle);
+  font-size: 16px;
+}
+
+.chatHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-xl) var(--space-md);
+  border-block-end: 1px solid var(--border-color);
+}
+
+.headerEyebrow {
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.roomName {
+  margin: 6px 0 0;
+  font-size: 30px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.04em;
+}
+
+.participants {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-block-start: 8px;
+  color: var(--text-subtle);
+  font-size: 13px;
+}
+
+.onlineDot {
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: var(--radius-full);
+  background: var(--success-color);
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.headerBtn {
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-subtle);
+}
+
+.headerBtnActive {
+  border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+  color: var(--accent-strong);
+}
+
+.tooltip {
+  background: var(--text-color);
+  color: var(--surface-elevated);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.tooltipArrow {
+  fill: var(--text-color);
+}
+
+.messageArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md) var(--space-xl) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dateSeparator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md) 0 var(--space-sm);
+}
+
+.dateSeparator span {
+  font-size: 11px;
+  color: var(--text-subtle);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+}
+
+.messageRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  position: relative;
+}
+
+.ownRow {
+  justify-content: flex-end;
+}
+
+.avatarCol {
+  inline-size: 30px;
+  flex-shrink: 0;
+}
+
+.avatar,
+.avatarSpacer {
+  inline-size: 30px;
+}
+
+.avatar {
+  block-size: 30px;
+  border-radius: var(--radius-full);
+  background: var(--secondary-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.aiAvatarSmall {
+  background: var(--primary-color);
+}
+
+.avatarWrapper {
+  position: relative;
+}
+
+.presencePos {
+  position: absolute;
+  inset-block-end: -1px;
+  inset-inline-end: -1px;
+}
+
+.avatarSpacer {
+  block-size: 1px;
+}
+
+.messageCol {
+  max-inline-size: min(760px, 74%);
+  min-inline-size: 0;
+}
+
+.ownRow .messageCol {
+  max-inline-size: min(760px, 70%);
+}
+
+.senderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-block-end: 2px;
+}
+
+.messageSender {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.aiLabel {
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.marginTime,
+.ownTime {
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.marginTime {
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.messageRow:hover .marginTime {
+  opacity: 1;
+}
+
+.message {
+  padding: var(--message-padding, 8px 16px);
+  border-radius: 20px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.ownMessage {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: transparent;
+  border-radius: 20px 20px 10px 20px;
+}
+
+.aiMessage {
+  border-inline-start: 3px solid var(--primary-color);
+  border-radius: 10px 20px 20px 20px;
+}
+
+.messageText {
+  font-size: var(--chat-font-size);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.actionsRow {
+  margin-block-start: 2px;
+}
+
+.typingRow {
+  margin-block-start: var(--space-md);
+}
+
+.streamingCursor {
+  display: inline-block;
+  inline-size: 2px;
+  block-size: 1em;
+  background: var(--primary-color);
+  margin-inline-start: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+}
+
+.scrollBtn {
+  position: sticky;
+  inset-block-end: var(--space-md);
+  align-self: center;
+  inline-size: 38px;
+  block-size: 38px;
+  border-radius: var(--radius-full);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+}
+
+.searchDim {
+  opacity: 0.35;
+}
+
+.searchMatch {
+  opacity: 1;
+}
+
+.searchActive {
+  opacity: 1;
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  border-radius: var(--radius-md);
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .contextWrap {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .chatHeader {
+    padding: var(--space-md);
+  }
+
+  .roomName {
+    font-size: 24px;
+  }
+
+  .messageArea {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .messageCol,
+  .ownRow .messageCol {
+    max-inline-size: 88%;
+  }
+}
