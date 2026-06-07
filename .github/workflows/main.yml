@@ -53,6 +53,11 @@ jobs:
         # without affecting test behavior — Django still uses an isolated
         # test database and ignores DEBUG for security-sensitive paths.
         DJANGO_DEBUG: 'True'
+        # Fernet key consumed by users/encryption.py for Chatroom
+        # encryption_key generation (triggered transitively by every
+        # User.create_user via the create_user_profile post_save signal).
+        # Test-only key; not a secret.
+        ENCRYPTION_KEY: vOKs0QoK_MI8RWj1vmW-nXWrvZiK8C_PspNOglndRjY=
       run: |
         cd Backend
         python manage.py test
