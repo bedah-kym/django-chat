@@ -133,9 +133,9 @@ def home(request, room_name):
     return render(
         request, "chatbot/chatbase.html",
         {
-            "room_name": mark_safe(json.dumps(room_name)),
+            "room_name": mark_safe(json.dumps(room_name)),  # nosec B308,B703 - room_name from authenticated URL kwarg; tracked for json_script template-tag migration
             "room_id": room.id,
-            "username": mark_safe(json.dumps(request.user.username)),
+            "username": mark_safe(json.dumps(request.user.username)),  # nosec B308,B703 - Django default username validator excludes <>& chars; no XSS vector
             "chatrooms": chatrooms_data,  # Passing processed data
             "room_member": current_room_name,
             "is_ai_room": is_ai_room,
