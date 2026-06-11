@@ -1,0 +1,202 @@
+/* SIGNET — Graph view: control rail, canvas, grid texture, hover tooltip. */
+
+.view {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-inline-size: 0;
+}
+
+/* ---------------- control rail ---------------- */
+.rail {
+  inline-size: 175px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-block: 16px;
+  padding-inline: 12px;
+  overflow-y: auto;
+  background: var(--sg-panel-inset);
+  border-inline-end: 1px solid var(--sg-line);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sg-line-strong) transparent;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionHead {
+  margin-block-end: 10px;
+}
+
+/* ---- node filter toggles ---- */
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 6px;
+  padding-inline: 8px;
+  margin-block-end: 4px;
+  cursor: pointer;
+  border: 1px solid var(--sg-line);
+  background: transparent;
+  opacity: 0.35;
+  transition: opacity var(--transition-fast, 150ms ease),
+    border-color var(--transition-fast, 150ms ease),
+    background var(--transition-fast, 150ms ease);
+}
+.filterActive {
+  opacity: 1;
+}
+
+.filterDot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.filterLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  color: var(--sg-text-mid);
+  text-transform: uppercase;
+}
+
+/* ---- edge legend ---- */
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 4px;
+  padding-inline: 6px;
+  margin-block-end: 2px;
+}
+
+.legendSwatch {
+  inline-size: 16px;
+  block-size: 2px;
+  flex-shrink: 0;
+}
+.legendSwatchDash {
+  block-size: 0;
+  border-block-start: 1.5px dashed;
+}
+
+.legendLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-faint);
+  text-transform: uppercase;
+}
+
+/* ---- threat distribution ---- */
+.distRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 4px;
+  padding-inline: 6px;
+}
+.distLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.distSwatch {
+  inline-size: 6px;
+  block-size: 6px;
+  flex-shrink: 0;
+}
+.distLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  color: var(--sg-text-low);
+}
+.distCount {
+  font-family: var(--sg-display);
+  font-size: var(--sg-fs-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- platforms ---- */
+.platformRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 4px;
+  padding-inline: 6px;
+}
+.platformRowInactive {
+  opacity: 0.3;
+}
+.platformDot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--sg-text-faint);
+}
+.platformDotActive {
+  background: var(--sg-live);
+}
+.platformLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-faint);
+  text-transform: uppercase;
+}
+.platformLabelActive {
+  color: var(--sg-text-low);
+}
+
+/* ---------------- canvas ---------------- */
+.canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-inline-size: 0;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(30, 38, 48, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 38, 48, 0.55) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 20%, #000 100%);
+}
+
+.svg {
+  inline-size: 100%;
+  block-size: 100%;
+  background: transparent;
+}
+
+/* ---------------- hover tooltip ---------------- */
+.tooltip {
+  position: absolute;
+  inset-block-start: 14px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  padding-block: 6px;
+  padding-inline: 14px;
+  background: var(--sg-panel-raised);
+  border: 1px solid var(--sg-line);
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-mid);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}

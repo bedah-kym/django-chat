@@ -36,6 +36,8 @@ class Chatroom(models.Model):
     participants = models.ManyToManyField(Member)
     chats = models.ManyToManyField(Message, blank=True)
     encryption_key = models.TextField(blank=True)
+    name = models.CharField(max_length=120, blank=True, default='')
+    domain = models.CharField(max_length=32, blank=True, default='ops')
 
     def save(self, *args, **kwargs):
         # Generate a key for the room when it's first created

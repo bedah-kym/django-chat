@@ -5,7 +5,7 @@ const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 // cookie. Read the csrftoken cookie set by Django and echo it back.
 function getCsrfToken(): string {
   const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)
-  return match ? decodeURIComponent(match[1]) : ''
+  return match?.[1] ? decodeURIComponent(match[1]) : ''
 }
 
 function csrfHeaders(): Record<string, string> {

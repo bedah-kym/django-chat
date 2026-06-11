@@ -1,16 +1,18 @@
 import { Link } from 'react-router-dom'
 import { ArrowDownLeft, ArrowUpRight, ReceiptText, WalletCards } from 'lucide-react'
-import { mockWallet, mockTransactions, mockInvoices } from '@/mocks/payments'
+import { usePaymentStore } from '@/stores/paymentStore'
 import { formatCurrency } from '@/utils/format'
 import styles from './PaymentPages.module.css'
 
 export function WalletPage() {
+  const { wallet, transactions } = usePaymentStore()
+
   return (
     <div className={styles.workspacePage}>
       <section className={styles.workspaceHero}>
         <div className={styles.heroBlock}>
           <div className={styles.balanceLabel}>Available balance</div>
-          <div className={styles.balanceAmount}>{formatCurrency(mockWallet.balance)}</div>
+          <div className={styles.balanceAmount}>{formatCurrency(wallet?.balance ?? 0)}</div>
           <div className={styles.balanceMeta}>Operational funds available for invoices, payouts, and travel this cycle.</div>
         </div>
         <div className={styles.balanceActions}>
@@ -29,7 +31,7 @@ export function WalletPage() {
             <span className={styles.panelIcon}><WalletCards size={16} /></span>
           </div>
           <div className={styles.workspaceList}>
-            {mockTransactions.map((tx) => (
+            {transactions.map((tx) => (
               <div key={tx.id} className={styles.txRow}>
                 <div className={styles.txLead}>
                   <span className={styles.txType}>{tx.type}</span>
@@ -57,7 +59,7 @@ export function WalletPage() {
             </Link>
           </div>
           <div className={styles.workspaceList}>
-            {mockInvoices.map((inv) => (
+            {([] as import('@/types/payments').Invoice[]).map((inv) => (
               <Link key={inv.id} to={`/app/ops/invoices/${inv.referenceId}`} className={styles.txRow}>
                 <div className={styles.txLead}>
                   <span className={styles.txRef}>{inv.referenceId}</span>

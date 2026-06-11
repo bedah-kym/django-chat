@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { mockReportDraft, mockReports } from '@/mocks/bugBounty'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { formatCurrency } from '@/utils/format'
 import { ReportDraftModal } from './components/ReportDraftModal'
 import styles from './BugBountyPage.module.css'
@@ -7,6 +7,8 @@ import reportStyles from './ReportsPage.module.css'
 
 export function ReportsPage() {
   const [showDraft, setShowDraft] = useState(false)
+  const reports = useBugBountyStore((s) => s.reports)
+  const drafts = useBugBountyStore((s) => s.drafts)
 
   return (
     <div className={reportStyles.page}>
@@ -19,7 +21,7 @@ export function ReportsPage() {
       </div>
 
       <div className={styles.reportList}>
-        {mockReports.map(report => (
+        {reports.map(report => (
           <div key={report.id} className={styles.reportRow}>
             <span className={styles.reportTitle}>{report.title}</span>
             <span className={styles.reportTarget}>{report.target}</span>
@@ -30,7 +32,7 @@ export function ReportsPage() {
         ))}
       </div>
 
-      {showDraft && <ReportDraftModal draft={mockReportDraft} onClose={() => setShowDraft(false)} />}
+      {showDraft && drafts[0] && <ReportDraftModal draft={drafts[0]} onClose={() => setShowDraft(false)} />}
     </div>
   )
 }

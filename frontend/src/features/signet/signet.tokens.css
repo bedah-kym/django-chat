@@ -1,0 +1,174 @@
+/*
+ * SIGNET — Signals Intelligence Console design tokens.
+ *
+ * A self-contained, always-dark instrument sub-theme scoped to `.console`.
+ * It deliberately does NOT inherit the global light/dark theme: an operations
+ * deck reads best as a fixed dark instrument. Everything SIGNET-specific is
+ * namespaced `--sg-*` so it never leaks into the rest of the app.
+ *
+ * JS/d3 colors live in `tokens.ts` and MUST be kept in sync with this file.
+ */
+
+.console {
+  /* ---- canvas & surfaces ---- */
+  --sg-canvas: #0a0e14;
+  --sg-panel: #0f141b;
+  --sg-panel-raised: #161d27;
+  --sg-panel-inset: #0b0f15;
+  --sg-overlay: #1a2330;
+
+  /* ---- hairlines ---- */
+  --sg-line: #1e2630;
+  --sg-line-strong: #2a3340;
+  --sg-line-faint: #161c25;
+
+  /* ---- text ---- */
+  --sg-text-hi: #e6edf3;
+  --sg-text: #aab6c4;
+  --sg-text-mid: #8b98a9;
+  --sg-text-low: #5a6675;
+  --sg-text-faint: #3a4453;
+
+  /* ---- signal / brand ---- */
+  --sg-signal: #f5a623; /* SIGNET amber */
+  --sg-signal-soft: rgba(245, 166, 35, 0.12);
+  --sg-signal-line: rgba(245, 166, 35, 0.4);
+
+  /* ---- threat scale ---- */
+  --sg-low: #3ba4f0; /* cool — low threat */
+  --sg-med: #f5a623; /* amber — medium */
+  --sg-high: #ff5c49; /* hot coral — high */
+  --sg-low-soft: rgba(59, 164, 240, 0.13);
+  --sg-med-soft: rgba(245, 166, 35, 0.13);
+  --sg-high-soft: rgba(255, 92, 73, 0.13);
+
+  /* ---- semantic signals ---- */
+  --sg-live: #3dd68c; /* phosphor green — collecting / online */
+  --sg-coord: #9b7df0; /* violet — coordination / network */
+  --sg-amplify: #3ba4f0;
+  --sg-seed: #f5a623;
+
+  /* ---- type scale (fixes the 8–10px legibility problem) ---- */
+  --sg-fs-2xs: 11px;
+  --sg-fs-xs: 12px;
+  --sg-fs-sm: 13px;
+  --sg-fs-base: 14px;
+  --sg-fs-md: 16px;
+  --sg-fs-lg: 20px;
+  --sg-fs-xl: 28px;
+  --sg-fs-2xl: 40px;
+
+  --sg-track-tight: 0.02em;
+  --sg-track: 0.08em;
+  --sg-track-wide: 0.18em;
+  --sg-track-ultra: 0.32em;
+
+  --sg-mono: 'IBM Plex Mono', 'SFMono-Regular', ui-monospace, 'Courier New', monospace;
+  --sg-display: 'Archivo', 'Inter', system-ui, sans-serif;
+  --sg-body: 'Inter', system-ui, sans-serif;
+
+  /* ---- structure ---- */
+  --sg-radius: 3px;
+  --sg-radius-lg: 5px;
+  --sg-gap: 12px;
+  --sg-bezel: 14px; /* corner-bracket reticle size */
+
+  --sg-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+  --sg-glow-signal: 0 0 12px rgba(245, 166, 35, 0.45);
+  --sg-glow-live: 0 0 10px rgba(61, 214, 140, 0.55);
+
+  /* base canvas */
+  color: var(--sg-text);
+  background: var(--sg-canvas);
+  font-family: var(--sg-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- canvas atmosphere: dot-grid + scanlines + vignette ---- */
+.consoleTexture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at center, rgba(120, 140, 170, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 90% 90% at 50% 45%, #000 30%, transparent 100%);
+  z-index: 0;
+}
+
+.consoleScanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.014) 0px,
+    rgba(255, 255, 255, 0.014) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 0;
+}
+
+/* ---- keyframes ---- */
+@keyframes sg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.72);
+  }
+}
+
+@keyframes sg-sweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes sg-ring-draw {
+  from {
+    stroke-dashoffset: var(--sg-ring-circ, 100);
+  }
+}
+
+@keyframes sg-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sg-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console *,
+  .console *::before,
+  .console *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

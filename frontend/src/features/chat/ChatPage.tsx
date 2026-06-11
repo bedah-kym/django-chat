@@ -1,10 +1,12 @@
-import { useLocation, useParams } from 'react-router-dom'
-import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
+import { useParams } from 'react-router-dom'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Search, PanelRightOpen, PanelRightClose, ChevronDown } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
-import { mockContacts, mockNotes, mockActionReceipts } from '@/mocks/chat'
+import { useChatSocket } from '@/hooks/useChatSocket'
+import { fetchContacts, fetchActionReceipts, fetchRoomContext, fetchLinkedRooms } from '@/api/chat'
+import type { Contact, ActionReceipt, Note } from '@/types/chat'
 import { ContextPanel } from './components/ContextPanel'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { ThinkingBlock } from './components/ThinkingBlock'
@@ -18,164 +20,185 @@ import { ChatInput } from './components/ChatInput'
 import { MessageSearch } from './components/MessageSearch'
 import { VoiceMessage } from './components/VoiceMessage'
 import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
-import { QuotaBar } from './components/QuotaBar'
-import { domainConfigs, getDomainFromPathname } from '@/domains'
 import { formatDate, formatTime } from '@/utils/format'
 import styles from './ChatPage.module.css'
 
 export function ChatPage() {
   const { roomId: roomIdParam } = useParams<{ roomId: string }>()
-  const location = useLocation()
   const roomId = Number(roomIdParam)
-  const activeDomainId = getDomainFromPathname(location.pathname)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [hoveredMsg, setHoveredMsg] = useState<number | null>(null)
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [actionReceipts, setActionReceipts] = useState<ActionReceipt[]>([])
+  const [notes, setNotes] = useState<Note[]>([])
+  const [summary, setSummary] = useState('')
+  const [linkedRooms, setLinkedRooms] = useState<{ id: number; name: string }[]>([])
+  const [isThinking, setIsThinking] = useState(false)
+  const prevMsgCountRef = useRef(0)
   const messageAreaRef = useRef<HTMLDivElement>(null)
-  const prevScrollHeightRef = useRef(0)
 
   const rooms = useChatStore((s) => s.rooms)
-  const messages = useChatStore((s) => s.messagesByRoom[roomId] ?? [])
   const setActiveRoom = useChatStore((s) => s.setActiveRoom)
-  const historyState = useChatStore((s) => s.historyState[roomId])
   const searchOpen = useChatStore((s) => s.searchOpen)
   const setSearchOpen = useChatStore((s) => s.setSearchOpen)
   const searchResults = useChatStore((s) => s.searchResults)
   const searchActiveIndex = useChatStore((s) => s.searchActiveIndex)
-  const loadOlderMessages = useChatStore((s) => s.loadOlderMessages)
+  const activeResultId = searchResults[searchActiveIndex] ?? null
+  const resultSet = new Set(searchResults)
 
   const room = rooms.find((candidate) => candidate.id === roomId)
+  const allMessages = useChatSocket(roomId)
 
   useEffect(() => {
     if (roomId) setActiveRoom(roomId)
+    setContacts([])
+    setActionReceipts([])
+    setNotes([])
+    setSummary('')
+    setLinkedRooms([])
   }, [roomId, setActiveRoom])
 
   useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-        event.preventDefault()
-        setSearchOpen(!searchOpen)
-      }
+    if (roomId && isPanelOpen) {
+      fetchContacts().then(setContacts).catch(() => {})
+      fetchActionReceipts(roomId).then(setActionReceipts).catch(() => {})
+      fetchRoomContext(roomId)
+        .then(ctx => { setNotes(ctx.notes); setSummary(ctx.summary) })
+        .catch(() => {})
+      fetchLinkedRooms(roomId).then(res => setLinkedRooms(res.linked ?? [])).catch(() => {})
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [searchOpen, setSearchOpen])
+  }, [roomId, isPanelOpen])
 
   useLayoutEffect(() => {
     const element = messageAreaRef.current
     if (!element) return
-    if (prevScrollHeightRef.current > 0 && element.scrollHeight > prevScrollHeightRef.current) {
-      element.scrollTop += element.scrollHeight - prevScrollHeightRef.current
+    element.scrollTop = element.scrollHeight
+  }, [allMessages.length])
+
+  // Scroll the active search match into view as the user steps through results
+  useEffect(() => {
+    if (activeResultId == null) return
+    document.getElementById(`msg-${activeResultId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [activeResultId])
+
+  // Reset the thinking indicator when switching rooms
+  useEffect(() => {
+    setIsThinking(false)
+    prevMsgCountRef.current = 0
+  }, [roomId])
+
+  // Show "Mathia is thinking…" only when the user sends a message that targets
+  // the AI, and clear it the instant an AI message/chunk arrives. Driven off
+  // incremental message growth so it never triggers on initial load/refresh.
+  useEffect(() => {
+    const prev = prevMsgCountRef.current
+    const curr = allMessages.length
+    prevMsgCountRef.current = curr
+    if (curr === 0 || prev === 0 || curr <= prev) return
+    const last = allMessages[curr - 1]
+    if (!last) return
+    if (last.isAi) {
+      setIsThinking(false)
+    } else if (room?.isAiRoom || last.content.trim().toLowerCase().startsWith('@mathia')) {
+      setIsThinking(true)
     }
-    prevScrollHeightRef.current = element.scrollHeight
-  }, [messages.length])
+  }, [allMessages, room])
 
-  const handleLoadMore = useCallback(() => {
-    if (messageAreaRef.current) {
-      prevScrollHeightRef.current = messageAreaRef.current.scrollHeight
-    }
-    loadOlderMessages(roomId)
-  }, [roomId, loadOlderMessages])
-
-  if (!room) {
-    return <div className={styles.empty}>Room not found</div>
-  }
-
-  if (activeDomainId && room.domain !== activeDomainId) {
-    return <div className={styles.empty}>This room belongs to a different workspace</div>
-  }
-
-  const onlineCount = room.participants.filter((participant) => participant.isOnline).length
-  const allMessages = messages
-  const workspaceLabel = domainConfigs[room.domain].label
+  // Safety net: never let the thinking indicator hang forever
+  useEffect(() => {
+    if (!isThinking) return
+    const timer = setTimeout(() => setIsThinking(false), 45000)
+    return () => clearTimeout(timer)
+  }, [isThinking])
 
   const isFirstInGroup = (index: number) =>
     index === 0 || allMessages[index - 1]!.member !== allMessages[index]!.member
 
-  const isLastInGroup = (index: number) =>
-    index === allMessages.length - 1 || allMessages[index + 1]!.member !== allMessages[index]!.member
-
   const getParentMessage = (parentId: number | null) =>
     parentId ? allMessages.find((message) => message.id === parentId) : undefined
 
+  if (!room) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 14 }}>
+        Room not found
+      </div>
+    )
+  }
+
+  const onlineCount = room.participants.filter((participant) => participant.isOnline).length
+
   return (
     <section className={styles.chatPage} aria-label={`${room.displayName} chat workspace`}>
-      <div className={styles.chatMain}>
-        <header className={styles.chatHeader}>
+      {searchOpen && <MessageSearch onClose={() => setSearchOpen(false)} />}
+
+      <header className={styles.chatHeader}>
+        <div className={styles.headerLeft}>
+          <div className={styles.roomAvatar}>
+            {room.isAiRoom ? <MathiaAvatar size={40} /> : room.participants[0]?.displayName?.[0] || '?'}
+          </div>
           <div className={styles.headerInfo}>
-            <div className={styles.headerEyebrow}>{workspaceLabel} room</div>
             <h1 className={styles.roomName}>{room.displayName}</h1>
-            <span className={styles.participants}>
-              <span className={styles.onlineDot} />
-              {onlineCount} online | {room.participants.length} members
-            </span>
+            <div className={styles.headerSub}>
+              <PresenceDot isOnline={room.isAiRoom || onlineCount > 0} size={7} />
+              <span className={styles.subText}>
+                {onlineCount} online | {room.participants.length} members
+              </span>
+            </div>
           </div>
-          <div className={styles.headerActions}>
-            <Tooltip.Provider delayDuration={250}>
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <button
-                    className={`${styles.headerBtn} ${searchOpen ? styles.headerBtnActive : ''}`}
-                    onClick={() => setSearchOpen(!searchOpen)}
-                    aria-label="Search messages"
-                  >
-                    <Search size={16} />
-                  </button>
-                </Tooltip.Trigger>
-                <Tooltip.Portal>
-                  <Tooltip.Content className={styles.tooltip} sideOffset={6}>
-                    Search (Ctrl+F)
-                    <Tooltip.Arrow className={styles.tooltipArrow} />
-                  </Tooltip.Content>
-                </Tooltip.Portal>
-              </Tooltip.Root>
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <button
-                    className={`${styles.headerBtn} ${isPanelOpen ? styles.headerBtnActive : ''}`}
-                    onClick={() => setIsPanelOpen(!isPanelOpen)}
-                    aria-label="Toggle context panel"
-                  >
-                    {isPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-                  </button>
-                </Tooltip.Trigger>
-                <Tooltip.Portal>
-                  <Tooltip.Content className={styles.tooltip} sideOffset={6}>
-                    {isPanelOpen ? 'Close context panel' : 'Open context panel'}
-                    <Tooltip.Arrow className={styles.tooltipArrow} />
-                  </Tooltip.Content>
-                </Tooltip.Portal>
-              </Tooltip.Root>
-            </Tooltip.Provider>
-          </div>
-        </header>
+        </div>
+        <div className={styles.headerActions}>
+          <Tooltip.Provider>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  className={styles.actionBtn}
+                  onClick={() => setSearchOpen(!searchOpen)}
+                  aria-label="Search messages"
+                >
+                  <Search size={16} />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content className={styles.tooltip} side="bottom">
+                  Search
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </Tooltip.Provider>
 
-        <AnimatePresence>
-          {searchOpen ? <MessageSearch onClose={() => setSearchOpen(false)} /> : null}
-        </AnimatePresence>
+          <button
+            className={styles.actionBtn}
+            onClick={() => setIsPanelOpen(!isPanelOpen)}
+            aria-label={isPanelOpen ? 'Close context panel' : 'Open context panel'}
+          >
+            {isPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+          </button>
+        </div>
+      </header>
 
-        <QuotaBar remaining={3} total={5} />
-
+      <div className={styles.chatBody}>
         <div
-          ref={messageAreaRef}
           className={styles.messageArea}
+          ref={messageAreaRef}
           onScroll={(event) => {
             const element = event.currentTarget
             setShowScrollBtn(element.scrollHeight - element.scrollTop - element.clientHeight > 200)
           }}
         >
-          <HistoryLoader
-            isLoading={historyState?.isLoading ?? false}
-            hasMore={historyState?.hasMore ?? false}
-            onLoadMore={handleLoadMore}
-          />
+          <HistoryLoader isLoading={false} hasMore={false} onLoadMore={() => {}} />
+
+          {allMessages.length === 0 && (
+            <div className={styles.emptyMessages}>
+              <p>No messages yet. Start the conversation.</p>
+            </div>
+          )}
 
           {allMessages.map((msg, index) => {
             const showDate =
               index === 0 ||
               new Date(msg.timestamp).toDateString() !== new Date(allMessages[index - 1]!.timestamp).toDateString()
             const firstInGroup = isFirstInGroup(index)
-            const lastInGroup = isLastInGroup(index)
             const isOwn = msg.member === 'alex'
             const parentMsg = getParentMessage(msg.parentId)
 
@@ -189,129 +212,93 @@ export function ChatPage() {
 
                 <motion.div
                   id={`msg-${msg.id}`}
-                  className={`${styles.messageRow} ${isOwn ? styles.ownRow : ''} ${
-                    searchResults.length > 0
-                      ? searchResults.includes(msg.id)
-                        ? searchResults[searchActiveIndex] === msg.id
-                          ? styles.searchActive
-                          : styles.searchMatch
-                        : styles.searchDim
-                      : ''
-                  }`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.15, delay: Math.min(index * 0.015, 0.3) }}
+                  className={`${styles.messageRow} ${isOwn ? styles.ownMessage : ''}`}
+                  initial={false}
                   onMouseEnter={() => setHoveredMsg(msg.id)}
                   onMouseLeave={() => setHoveredMsg(null)}
-                  style={{ marginTop: firstInGroup ? 'var(--space-md)' : '2px' }}
                 >
-                  {!isOwn ? (
+                  {firstInGroup && !isOwn ? (
                     <div className={styles.avatarCol}>
-                      {firstInGroup ? (
-                        <div className={styles.avatarWrapper}>
-                          <div className={`${styles.avatar} ${msg.isAi ? styles.aiAvatarSmall : ''}`}>
-                            {msg.isAi
-                              ? <MathiaAvatar size={30} isActive={!!msg.isStreaming} />
-                              : room.participants.find((participant) => participant.username === msg.member)?.displayName?.[0] ?? '?'}
-                          </div>
-                          {(() => {
-                            const participant = room.participants.find((candidate) => candidate.username === msg.member)
-                            return participant ? (
-                              <div className={styles.presencePos}>
-                                <PresenceDot isOnline={participant.isOnline} lastSeen={participant.lastSeen} size={7} />
-                              </div>
-                            ) : null
-                          })()}
-                        </div>
+                      {msg.isAi ? (
+                        <MathiaAvatar size={32} />
                       ) : (
-                        <div className={styles.avatarSpacer} />
+                        <div className={styles.userAvatar}>
+                          {room.participants.find((p) => p.username === msg.member)?.displayName?.[0] ?? '?'}
+                        </div>
                       )}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className={styles.avatarCol} />
+                  )}
 
-                  <div className={styles.messageCol}>
+                  <div className={`${styles.msgContent} ${isOwn ? styles.ownContent : ''} ${resultSet.has(msg.id) ? styles.searchHit : ''} ${activeResultId === msg.id ? styles.searchActiveHit : ''}`}>
                     {firstInGroup && !isOwn ? (
-                      <div className={styles.senderRow}>
-                        <span className={styles.messageSender}>
-                          {msg.isAi ? 'Mathia' : room.participants.find((participant) => participant.username === msg.member)?.displayName ?? msg.member}
-                          {msg.isAi ? <span className={styles.aiLabel}>AI</span> : null}
+                      <div className={styles.msgHeader}>
+                        <span className={styles.senderName}>
+                          {msg.isAi ? 'Mathia' : room.participants.find((p) => p.username === msg.member)?.displayName ?? msg.member}
                         </span>
+                        {msg.isAi ? <span className={styles.aiBadge}>AI</span> : null}
+                        <span className={styles.msgTime}>{formatTime(msg.timestamp)}</span>
                       </div>
-                    ) : null}
-
-                    {firstInGroup && !isOwn ? (
-                      <span className={styles.marginTime}>{formatTime(msg.timestamp)}</span>
                     ) : null}
 
                     {parentMsg ? <ReplyReference parentMessage={parentMsg} /> : null}
 
-                    <div className={`${styles.message} ${msg.isAi ? styles.aiMessage : ''} ${isOwn ? styles.ownMessage : ''}`}>
-                      {msg.thinking ? <ThinkingBlock content={msg.thinking} durationMs={msg.thinkingDurationMs} /> : null}
-                      {msg.toolCalls?.map((toolCall, toolIndex) => (
-                        <ToolCallDisplay key={toolIndex} toolName={toolCall.name} status={toolCall.status} result={toolCall.result} />
-                      ))}
-                      {msg.audioUrl ? (
-                        <VoiceMessage audioUrl={msg.audioUrl} transcript={msg.voiceTranscript} />
-                      ) : msg.content ? (
-                        msg.isAi ? <MarkdownRenderer content={msg.content} /> : <div className={styles.messageText}>{msg.content}</div>
-                      ) : null}
-                      {msg.isStreaming ? <span className={styles.streamingCursor} /> : null}
-                    </div>
+                    {msg.thinking ? <ThinkingBlock content={msg.thinking} durationMs={msg.thinkingDurationMs} isActive={msg.isStreaming} /> : null}
+                    {msg.toolCalls?.map((tc, i) => <ToolCallDisplay key={i} toolName={tc.name} status={tc.status} result={tc.result} />)}
 
-                    <div className={styles.actionsRow}>
-                      <MessageActions content={msg.content} isAi={msg.isAi} visible={hoveredMsg === msg.id} />
-                    </div>
+                    {msg.audioUrl ? (
+                      <VoiceMessage audioUrl={msg.audioUrl} transcript={msg.voiceTranscript} />
+                    ) : msg.content ? (
+                      msg.isAi ? (
+                        <MarkdownRenderer content={msg.content} />
+                      ) : (
+                        <div className={styles.messageText}>{msg.content}</div>
+                      )
+                    ) : null}
+
+                    {msg.isStreaming ? <span className={styles.streamingCursor} /> : null}
+
+                    {hoveredMsg === msg.id && !msg.isStreaming ? (
+                      <div className={styles.msgActions}><MessageActions content={msg.content} isAi={msg.isAi} visible={true} /></div>
+                    ) : null}
                   </div>
 
-                  {isOwn && lastInGroup ? <span className={styles.ownTime}>{formatTime(msg.timestamp)}</span> : null}
+                  {isOwn ? <div className={styles.timeCol}><span>{formatTime(msg.timestamp)}</span></div> : null}
                 </motion.div>
               </div>
             )
           })}
 
-          <div className={styles.typingRow}>
-            <TypingIndicator username="Mathia" />
-          </div>
-
-          <AnimatePresence>
-            {showScrollBtn ? (
-              <motion.button
-                className={styles.scrollBtn}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => messageAreaRef.current?.scrollTo({ top: messageAreaRef.current.scrollHeight, behavior: 'smooth' })}
-              >
-                <ChevronDown size={18} />
-              </motion.button>
-            ) : null}
-          </AnimatePresence>
+          <TypingIndicator isThinking={isThinking} />
         </div>
 
-        <div data-tour="chat-input">
-          <ChatInput roomId={roomId} participants={room.participants} />
-        </div>
+        {showScrollBtn ? (
+          <button className={styles.scrollBtn} onClick={() => {
+            if (messageAreaRef.current) messageAreaRef.current.scrollTop = messageAreaRef.current.scrollHeight
+          }}>
+            <ChevronDown size={18} />
+          </button>
+        ) : null}
+
+        <AnimatePresence>
+          {isPanelOpen ? (
+            <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 'var(--context-panel-width)', opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.25 }} className={styles.contextWrap}>
+              <ContextPanel
+                room={room}
+                contacts={contacts}
+                notes={notes}
+                actionReceipts={actionReceipts}
+                summary={summary}
+                linkedRooms={linkedRooms}
+                onClose={() => setIsPanelOpen(false)}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {isPanelOpen ? (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 'var(--context-panel-width)', opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className={styles.contextWrap}
-          >
-            <ContextPanel
-              room={room}
-              contacts={mockContacts.filter((contact) => contact.roomId === room.id)}
-              notes={mockNotes}
-              actionReceipts={mockActionReceipts}
-              onClose={() => setIsPanelOpen(false)}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <ChatInput roomId={roomId} participants={room.participants} />
     </section>
   )
 }

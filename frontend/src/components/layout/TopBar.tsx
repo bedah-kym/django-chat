@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router-dom'
 import * as Popover from '@radix-ui/react-popover'
 import { Bell, Menu, Moon, Search, Sun } from 'lucide-react'
-import { mockNotifications } from '@/mocks/notifications'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useChatStore } from '@/stores/chatStore'
 import { formatTime } from '@/utils/format'
@@ -9,23 +9,25 @@ import styles from './TopBar.module.css'
 
 const pageTitles: Record<string, { title: string; description: string }> = {
   '/app/home': {
-    title: 'Operations home',
-    description: 'See the queue, switch workspaces, and move on the highest-value task first.',
+    title: 'Operations',
+    description: 'Queue, workspaces, and active tasks.',
   },
   '/app/settings': {
     title: 'Settings',
-    description: 'Manage profile, preferences, integrations, and workspace defaults.',
+    description: 'Profile, preferences, integrations, defaults.',
   },
   '/app/onboarding': {
-    title: 'Welcome to Kazi',
-    description: 'Set the product up once, then let every workspace inherit the right defaults.',
+    title: 'Welcome',
+    description: 'Configure once — every workspace inherits.',
   },
 }
 
 export function TopBar() {
   const location = useLocation()
+  const notifications = useNotificationStore((s) => s.notifications)
+  const unreadNotifs = notifications.filter((n) => !n.isRead).length
   const chatUnread = useChatStore((s) => s.rooms.reduce((sum, room) => sum + room.unreadCount, 0))
-  const unread = chatUnread || mockNotifications.filter((notification) => !notification.isRead).length
+  const unread = chatUnread || unreadNotifs
   const theme = useUiStore((s) => s.theme)
   const toggleTheme = useUiStore((s) => s.toggleTheme)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
@@ -64,7 +66,7 @@ export function TopBar() {
                 {unread > 0 ? <button className={styles.markAllBtn}>Mark all read</button> : null}
               </div>
               <div className={styles.notifList}>
-                {mockNotifications.map((notification) => (
+                {notifications.map((notification) => (
                   <div
                     key={notification.id}
                     className={`${styles.notifItem} ${!notification.isRead ? styles.unread : ''}`}

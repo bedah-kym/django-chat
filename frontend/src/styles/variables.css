@@ -1,30 +1,49 @@
 :root {
   color-scheme: light;
-  --primary-color: #4338ca;
-  --primary-hover: #3730a3;
-  --primary-subtle: rgba(67, 56, 202, 0.08);
-  --accent-strong: #4338ca;
-  --secondary-color: #6b7280;
-  --app-bg: #f4f5f8;
-  --bg-light: #eef1f5;
-  --chat-bg: #ffffff;
-  --surface: rgba(255, 255, 255, 0.92);
-  --surface-muted: #f6f7fb;
-  --surface-elevated: #ffffff;
-  --text-color: #1d1d1f;
-  --text-muted: #86868b;
-  --text-subtle: #667085;
-  --border-color: rgba(15, 23, 42, 0.09);
-  --border-strong: rgba(15, 23, 42, 0.16);
-  --input-bg: #ffffff;
-  --focus-color: rgba(67, 56, 202, 0.3);
-  --info-color: #2563eb;
+  --primary-color: #B45309;
+  --primary-hover: #92400E;
+  --primary-subtle: rgba(180, 83, 9, 0.09);
+  --accent-strong: #9A4A0C;
+  --secondary-color: #6B7280;
+  /* Warm-paper light theme — softened off the near-white that caused glare,
+     with stronger text contrast and clearer surface layering. */
+  --surface-bg: #ECE9E1;
+  --app-bg: #EAE6DD;
+  --bg-light: #E1DCD1;
+  --chat-bg: #F6F4EF;
+  --surface: rgba(250, 248, 244, 0.92);
+  --surface-muted: #E5E1D8;
+  --surface-elevated: #FAF8F4;
+  --text-color: #211C17;
+  --text-muted: #685F54;
+  --text-subtle: #807769;
+  --border-color: rgba(40, 33, 26, 0.13);
+  --border-strong: rgba(40, 33, 26, 0.22);
+  --input-bg: #FAF8F4;
+  --focus-color: rgba(180, 83, 9, 0.28);
+  --info-color: #2563EB;
   --success-color: #059669;
-  --critical-color: #dc2626;
-  --danger-color: #dc2626;
-  --warning-color: #d97706;
+  --critical-color: #DC2626;
+  --danger-color: #DC2626;
+  --warning-color: #D97706;
 
-  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+  /* semantic severity — finding / bug triage tiers */
+  --severity-high: #EA580C;
+  --severity-medium: #CA8A04;
+  --severity-low: #2563EB;
+
+  /* terminal / live-output stream colors (dark mini-console surfaces) */
+  --term-text: #E5E7EB;
+  --term-muted: #94A3B8;
+  --term-warning: #FDBA74;
+  --term-danger: #FCA5A5;
+  --term-success: #86EFAC;
+
+  /* program brand accents */
+  --brand-hackerone: #2563EB;
+  --brand-bugcrowd: #EA580C;
+
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', 'Courier New', monospace;
   --chat-font-size: 15px;
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
     'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
@@ -63,46 +82,46 @@
   --transition-slow: 400ms cubic-bezier(0.25, 0.1, 0.25, 1);
 
   --blur-bg: blur(16px) saturate(140%);
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-bg-heavy: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(15, 23, 42, 0.08);
-  --glass-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  --glass-bg: rgba(248, 246, 241, 0.82);
+  --glass-bg-heavy: rgba(248, 246, 241, 0.93);
+  --glass-border: rgba(40, 33, 26, 0.10);
+  --glass-shadow: 0 12px 28px rgba(40, 33, 26, 0.07);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --primary-color: #6366f1;
-  --primary-hover: #818cf8;
-  --primary-subtle: rgba(99, 102, 241, 0.1);
-  --accent-strong: #a5b4fc;
-  --secondary-color: #48484a;
-  --app-bg: #0a0b0f;
-  --bg-light: #11131a;
-  --chat-bg: #1c1c1e;
-  --surface: rgba(22, 25, 34, 0.88);
-  --surface-muted: #11131a;
-  --surface-elevated: #1d2230;
-  --text-color: #f5f5f7;
-  --text-muted: #98989d;
-  --text-subtle: #a0a7b8;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --input-bg: #2c2c2e;
-  --focus-color: rgba(129, 140, 248, 0.36);
-  --info-color: #60a5fa;
-  --success-color: #34d399;
-  --critical-color: #f87171;
-  --danger-color: #f87171;
-  --warning-color: #fbbf24;
+  --primary-color: #F59E0B;
+  --primary-hover: #FBBF24;
+  --primary-subtle: rgba(245, 158, 11, 0.10);
+  --accent-strong: #FCD34D;
+  --secondary-color: #4B5563;
+  --app-bg: #07090C;
+  --bg-light: #0D1117;
+  --chat-bg: #0B0E13;
+  --surface: rgba(13, 17, 23, 0.92);
+  --surface-muted: #0D1117;
+  --surface-elevated: #111827;
+  --text-color: #E2E8F0;
+  --text-muted: #64748B;
+  --text-subtle: #94A3B8;
+  --border-color: rgba(31, 41, 55, 0.8);
+  --border-strong: #374151;
+  --input-bg: #0B0E13;
+  --focus-color: rgba(245, 158, 11, 0.30);
+  --info-color: #3B82F6;
+  --success-color: #10B981;
+  --critical-color: #EF4444;
+  --danger-color: #EF4444;
+  --warning-color: #F59E0B;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 
-  --glass-bg: rgba(15, 17, 24, 0.82);
-  --glass-bg-heavy: rgba(19, 21, 31, 0.92);
-  --glass-border: rgba(255, 255, 255, 0.06);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --glass-bg: rgba(11, 14, 19, 0.82);
+  --glass-bg-heavy: rgba(13, 17, 23, 0.94);
+  --glass-border: rgba(31, 41, 55, 0.6);
+  --glass-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
 }
 
 [data-ui-density="compact"] {

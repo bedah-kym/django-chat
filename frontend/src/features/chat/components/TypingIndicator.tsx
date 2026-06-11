@@ -2,10 +2,12 @@ import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
 import styles from './TypingIndicator.module.css'
 
 interface Props {
-  username?: string
+  isThinking?: boolean
 }
 
-export function TypingIndicator({ username }: Props) {
+export function TypingIndicator({ isThinking }: Props) {
+  if (!isThinking) return null
+  
   return (
     <div className={styles.container}>
       <MathiaAvatar size={28} isActive />
@@ -16,7 +18,7 @@ export function TypingIndicator({ username }: Props) {
           <span className={styles.dot} />
         </div>
       </div>
-      {username && <span className={styles.label}>{username} is typing</span>}
+      <span className={styles.label}>thinking</span>
     </div>
   )
 }

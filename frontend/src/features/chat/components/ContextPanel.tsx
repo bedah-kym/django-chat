@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Room, Contact, Note, ActionReceipt } from '@/types/chat'
-import { mockLinkedRooms } from '@/mocks/chat'
 import { formatDate, formatDateTime } from '@/utils/format'
 import styles from './ContextPanel.module.css'
 
@@ -15,10 +14,12 @@ interface Props {
   contacts: Contact[]
   notes: Note[]
   actionReceipts: ActionReceipt[]
+  summary?: string
+  linkedRooms?: { id: number; name: string }[]
   onClose: () => void
 }
 
-export function ContextPanel({ room: _room, contacts, notes, actionReceipts, onClose }: Props) {
+export function ContextPanel({ room: _room, contacts, notes, actionReceipts, summary = '', linkedRooms = [], onClose }: Props) {
   return (
     <aside className={styles.panel}>
       <div className={styles.header}>
@@ -139,16 +140,16 @@ export function ContextPanel({ room: _room, contacts, notes, actionReceipts, onC
           <Accordion.Trigger className={styles.sectionHeader}>
             <div className={styles.sectionLabel}>
               <Link2 size={15} />
-              <span>Linked Rooms ({mockLinkedRooms.length})</span>
+              <span>Linked Rooms ({linkedRooms.length})</span>
             </div>
             <ChevronDown size={14} className={styles.chevron} />
           </Accordion.Trigger>
           <Accordion.Content className={styles.sectionContent}>
             <div className={styles.sectionBody}>
-              {mockLinkedRooms.map((linkedRoom) => (
+              {linkedRooms.map((linkedRoom) => (
                 <div key={linkedRoom.id} className={styles.linkedRoom}>
                   <Link2 size={13} />
-                  <span>{linkedRoom.displayName}</span>
+                  <span>{linkedRoom.name}</span>
                 </div>
               ))}
               <button className={styles.addBtn} onClick={() => toast('Link room coming soon')}>
@@ -169,8 +170,9 @@ export function ContextPanel({ room: _room, contacts, notes, actionReceipts, onC
           <Accordion.Content className={styles.sectionContent}>
             <div className={styles.sectionBody}>
               <div className={styles.summaryText}>
-                <p>This room focuses on TechVentures Q2 strategy. Key topics include revenue growth, churn reduction, and operator follow-through.</p>
-                <p>Active participants remain visible in the room header, and the latest major decision is reflected in the message timeline.</p>
+                {summary
+                  ? <p>{summary}</p>
+                  : <p className={styles.summaryEmpty}>No summary yet — Mathia builds one as the conversation grows.</p>}
               </div>
             </div>
           </Accordion.Content>

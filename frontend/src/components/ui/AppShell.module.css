@@ -1,7 +1,7 @@
 .shell {
   display: flex;
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
+  height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background:
     linear-gradient(180deg, color-mix(in srgb, #f2efe8 46%, transparent), transparent 180px),

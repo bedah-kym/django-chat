@@ -25,37 +25,58 @@ class LLMClient:
     def __init__(self):
         self.anthropic_key = getattr(settings, 'ANTHROPIC_API_KEY', os.environ.get('ANTHROPIC_API_KEY'))
         self.hf_key = getattr(settings, 'HF_API_TOKEN', os.environ.get('HF_API_TOKEN'))
+        self.deepseek_key = getattr(settings, 'DEEPSEEK_API_KEY', os.environ.get('DEEPSEEK_API_KEY'))
 
         # Models
         self.claude_model = "claude-sonnet-4-6"
         self.hf_model = "meta-llama/Llama-3.1-8B-Instruct"  # router-friendly chat model
+        self.deepseek_model = getattr(settings, 'DEEPSEEK_MODEL', os.environ.get('DEEPSEEK_MODEL', 'deepseek-chat'))
 
         # Endpoints
         self.anthropic_url = "https://api.anthropic.com/v1/messages"
         self.hf_url = "https://router.huggingface.co/v1/chat/completions"
+        # DeepSeek is OpenAI-compatible, so it reuses the HF (OpenAI) call paths.
+        self.deepseek_url = getattr(
+            settings, 'DEEPSEEK_BASE_URL',
+            os.environ.get('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1/chat/completions'),
+        )
+
+    def _openai_config(self, provider: str, model_name: Optional[str] = None):
+        """Endpoint URL, API key, and model for an OpenAI-compatible provider."""
+        if provider == "deepseek":
+            return self.deepseek_url, self.deepseek_key, (model_name or self.deepseek_model)
+        return self.hf_url, self.hf_key, (model_name or self.hf_model)
 
     def _provider_order(self, model_role: str, provider_preference: Optional[str]) -> List[str]:
         role = (model_role or "default").lower()
         preference = (provider_preference or "").lower().strip()
+        # DeepSeek is listed first: call sites skip any provider whose key is
+        # unset, so it is only used when DEEPSEEK_API_KEY is configured.
         if preference:
-            ordered = [preference, "anthropic", "huggingface"]
+            ordered = [preference, "deepseek", "anthropic", "huggingface"]
         elif role == "planner":
-            ordered = [getattr(settings, "LLM_PLANNER_PROVIDER", "anthropic").lower(), "anthropic", "huggingface"]
+            ordered = [getattr(settings, "LLM_PLANNER_PROVIDER", "deepseek").lower(), "deepseek", "anthropic", "huggingface"]
         elif role == "executor":
-            ordered = [getattr(settings, "LLM_EXECUTOR_PROVIDER", "huggingface").lower(), "huggingface", "anthropic"]
+            ordered = [getattr(settings, "LLM_EXECUTOR_PROVIDER", "deepseek").lower(), "deepseek", "huggingface", "anthropic"]
         else:
-            ordered = ["anthropic", "huggingface"]
+            ordered = ["deepseek", "anthropic", "huggingface"]
         # De-dup while preserving order
         seen = set()
         result: List[str] = []
         for item in ordered:
-            if item in ("anthropic", "huggingface") and item not in seen:
+            if item in ("deepseek", "anthropic", "huggingface") and item not in seen:
                 result.append(item)
                 seen.add(item)
         return result
 
     def _model_for(self, provider: str, model_role: str) -> str:
         role = (model_role or "default").lower()
+        if provider == "deepseek":
+            if role == "planner":
+                return getattr(settings, "LLM_PLANNER_MODEL", self.deepseek_model)
+            if role == "executor":
+                return getattr(settings, "LLM_EXECUTOR_MODEL", self.deepseek_model)
+            return self.deepseek_model
         if provider == "anthropic":
             if role == "planner":
                 return getattr(settings, "LLM_PLANNER_MODEL", self.claude_model)
@@ -124,8 +145,9 @@ class LLMClient:
         user_id: Optional[int],
         model: Optional[str] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
+        provider: str = "huggingface",
     ) -> Dict[str, Any]:
-        """Fallback for create_message when Anthropic is unavailable."""
+        """Fallback for create_message via an OpenAI-compatible provider (HF or DeepSeek)."""
         prompt = self._messages_to_plain_text(messages)
         fallback_system = system or "You are Mathia, a helpful AI assistant."
         if tools:
@@ -140,7 +162,8 @@ class LLMClient:
             temperature,
             max_tokens,
             False,
-            model_name=model or self._model_for("huggingface", "executor"),
+            model_name=model or self._model_for(provider, "executor"),
+            provider=provider,
         )
 
         input_tokens = self._estimate_tokens(fallback_system) + self._estimate_tokens(prompt)
@@ -148,7 +171,7 @@ class LLMClient:
         self._record_token_usage(input_tokens + output_tokens, user_id)
 
         return {
-            "id": "hf-fallback-message",
+            "id": f"{provider}-fallback-message",
             "type": "message",
             "role": "assistant",
             "content": [{"type": "text", "text": response_text}],
@@ -263,6 +286,16 @@ class LLMClient:
         provider_order = self._provider_order(model_role, provider_preference)
         last_error: Optional[Exception] = None
         for provider in provider_order:
+            if provider == "deepseek" and self.deepseek_key:
+                try:
+                    model_name = self._model_for("deepseek", model_role)
+                    response = await self._call_huggingface(system_prompt, user_prompt, temperature, max_tokens, json_mode, model_name, provider="deepseek")
+                    self._record_token_usage(estimated_tokens, user_id)
+                    self._store_cache(cache_key, response)
+                    return response
+                except Exception as e:
+                    last_error = e
+                    logger.error(f"DeepSeek API failed: {e}. Falling back.")
             if provider == "anthropic" and self.anthropic_key:
                 try:
                     model_name = self._model_for("anthropic", model_role)
@@ -308,6 +341,15 @@ class LLMClient:
         provider_order = self._provider_order(model_role, provider_preference)
         last_error: Optional[Exception] = None
         for provider in provider_order:
+            if provider == "deepseek" and self.deepseek_key:
+                try:
+                    model_name = self._model_for("deepseek", model_role)
+                    async for chunk in self._stream_huggingface(system_prompt, user_prompt, temperature, max_tokens, model_name, provider="deepseek"):
+                        yield chunk
+                    return
+                except Exception as e:
+                    last_error = e
+                    logger.error(f"DeepSeek API failed: {e}. Falling back.")
             if provider == "anthropic" and self.anthropic_key:
                 try:
                     model_name = self._model_for("anthropic", model_role)
@@ -362,8 +404,8 @@ class LLMClient:
             stop_reason: "end_turn" | "tool_use" | "max_tokens"
             usage: {input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens}
         """
-        if not self.anthropic_key and not self.hf_key:
-            raise Exception("No valid API keys configured for Anthropic or Hugging Face.")
+        if not self.anthropic_key and not self.hf_key and not self.deepseek_key:
+            raise Exception("No valid API keys configured for DeepSeek, Anthropic, or Hugging Face.")
 
         estimated_tokens = sum(
             self._estimate_tokens(
@@ -432,22 +474,25 @@ class LLMClient:
 
                 return data
             except Exception as exc:
-                if not self.hf_key:
+                if not self.hf_key and not self.deepseek_key:
                     raise
                 logger.warning(
-                    "Anthropic create_message failed; using Hugging Face fallback: %s",
+                    "Anthropic create_message failed; using OpenAI-compatible fallback: %s",
                     exc,
                 )
 
-        # Fallback path (no Anthropic key or Anthropic call failed)
+        # Fallback path (no Anthropic key or Anthropic call failed).
+        # Prefer DeepSeek when configured, else Hugging Face.
+        fallback_provider = "deepseek" if self.deepseek_key else "huggingface"
         return await self._create_hf_fallback_message(
             messages=messages,
             system=system,
             temperature=temperature,
             max_tokens=max_tokens,
             user_id=user_id,
-            model=model,
+            model=model if fallback_provider == "huggingface" else None,
             tools=tools,
+            provider=fallback_provider,
         )
 
     async def stream_message(
@@ -723,8 +768,11 @@ class LLMClient:
         max_tokens: int,
         json_mode: bool,
         model_name: Optional[str] = None,
+        provider: str = "huggingface",
     ) -> str:
-        """Call Hugging Face Router (OpenAI-compatible /v1/chat/completions API)"""
+        """Call an OpenAI-compatible /v1/chat/completions API (Hugging Face or DeepSeek)."""
+
+        url, key, model = self._openai_config(provider, model_name)
 
         # Build messages array in OpenAI/ChatML style
         messages = []
@@ -738,15 +786,15 @@ class LLMClient:
 
         messages.append({"role": "user", "content": user_content})
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                self.hf_url,
+                url,
                 headers={
-                    "Authorization": f"Bearer {self.hf_key}",
+                    "Authorization": f"Bearer {key}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": model_name or self.hf_model,
+                    "model": model,
                     "messages": messages,
                     "max_tokens": max_tokens,
                     "temperature": temperature,
@@ -754,7 +802,7 @@ class LLMClient:
             )
 
             if response.status_code != 200:
-                raise Exception(f"HF Error {response.status_code}: {response.text}")
+                raise Exception(f"{provider} Error {response.status_code}: {response.text}")
 
             data = response.json()
 
@@ -780,24 +828,26 @@ class LLMClient:
                 # Fallback: just return the raw data stringified
                 return str(data)
 
-    async def _stream_huggingface(self, system_prompt: str, user_prompt: str, temperature: float, max_tokens: int, model_name: Optional[str] = None):
-        """Stream from Hugging Face Router (OpenAI-compatible SSE)"""
+    async def _stream_huggingface(self, system_prompt: str, user_prompt: str, temperature: float, max_tokens: int, model_name: Optional[str] = None, provider: str = "huggingface"):
+        """Stream from an OpenAI-compatible SSE endpoint (Hugging Face or DeepSeek)."""
+
+        url, key, model = self._openai_config(provider, model_name)
 
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_prompt})
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream(
                 "POST",
-                self.hf_url,
+                url,
                 headers={
-                    "Authorization": f"Bearer {self.hf_key}",
+                    "Authorization": f"Bearer {key}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": model_name or self.hf_model,
+                    "model": model,
                     "messages": messages,
                     "max_tokens": max_tokens,
                     "temperature": temperature,
@@ -806,7 +856,7 @@ class LLMClient:
             ) as response:
                 if response.status_code != 200:
                     error_text = await response.aread()
-                    raise Exception(f"HF Stream Error {response.status_code}: {error_text}")
+                    raise Exception(f"{provider} Stream Error {response.status_code}: {error_text}")
 
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):

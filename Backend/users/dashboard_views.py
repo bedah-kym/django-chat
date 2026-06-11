@@ -7,6 +7,9 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Max
 from django.utils import timezone
 from django.core.cache import cache
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from django.http import JsonResponse
 from datetime import timedelta
 from chatbot.models import Chatroom, Message, Reminder
@@ -118,7 +121,8 @@ def _room_display_name(room, members, current_user):
     return display
 
 
-@login_required
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def list_rooms(request):
     """
     Lightweight JSON endpoint to list the user's rooms.
@@ -129,13 +133,12 @@ def list_rooms(request):
 
     cache_key = f"user_rooms:{request.user.id}"
     force_refresh = request.GET.get('refresh') == '1'
+    rooms_payload = None
 
+    # If client explicitly requests a refresh, compute and store the
+    # fresh payload immediately to avoid races where a deleted cache
+    # key might still return stale data for concurrent requests.
     if force_refresh:
-        cache.delete(cache_key)
-
-    rooms_payload = cache.get(cache_key)
-
-    if rooms_payload is None:
         rooms_qs = (
             Chatroom.objects.filter(participants__User=request.user)
             .annotate(last_message_at=Max('chats__timestamp'))
@@ -148,7 +151,8 @@ def list_rooms(request):
             members = list(room.participants.all())
             rooms_payload.append({
                 "id": room.id,
-                "name": _room_display_name(room, members, request.user),
+                "name": room.name or _room_display_name(room, members, request.user),
+                "domain": room.domain or "ops",
                 "participant_count": len(members),
                 "last_message_at": room.last_message_at.isoformat() if room.last_message_at else None,
                 "url": request.build_absolute_uri(
@@ -157,6 +161,33 @@ def list_rooms(request):
                 "has_ai": any(m.User.username == 'mathia' for m in members),
             })
 
-        cache.set(cache_key, rooms_payload, 60)  # 1 minute cache to reduce DB hits
+        cache.set(cache_key, rooms_payload, 60)
+    else:
+        rooms_payload = cache.get(cache_key)
+
+        if rooms_payload is None:
+            rooms_qs = (
+                Chatroom.objects.filter(participants__User=request.user)
+                .annotate(last_message_at=Max('chats__timestamp'))
+                .prefetch_related('participants__User')
+                .order_by('-last_message_at', '-id')
+            )
+
+            rooms_payload = []
+            for room in rooms_qs:
+                members = list(room.participants.all())
+                rooms_payload.append({
+                    "id": room.id,
+                    "name": room.name or _room_display_name(room, members, request.user),
+                    "domain": room.domain or "ops",
+                    "participant_count": len(members),
+                    "last_message_at": room.last_message_at.isoformat() if room.last_message_at else None,
+                    "url": request.build_absolute_uri(
+                        reverse('chatbot:bot-home', kwargs={"room_name": room.id})
+                    ),
+                    "has_ai": any(m.User.username == 'mathia' for m in members),
+                })
+
+            cache.set(cache_key, rooms_payload, 60)  # 1 minute cache to reduce DB hits
 
     return JsonResponse({"rooms": rooms_payload, "count": len(rooms_payload)})

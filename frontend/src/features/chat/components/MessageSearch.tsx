@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { X, ChevronUp, ChevronDown, Search } from 'lucide-react'
+import { X, ChevronUp, ChevronDown, Search, SlidersHorizontal } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 import { useDebounce } from '@/hooks/useDebounce'
 import styles from './MessageSearch.module.css'
@@ -21,7 +21,11 @@ export function MessageSearch({ onClose }: Props) {
   const setSearchActiveIndex = useChatStore(s => s.setSearchActiveIndex)
   const clearSearch = useChatStore(s => s.clearSearch)
 
-  const debouncedQuery = useDebounce(searchQuery, 300)
+  const [showFilters, setShowFilters] = useState(false)
+  const debouncedQuery = useDebounce(searchQuery, 250)
+  const hasDateFilter = Boolean(searchDateFrom || searchDateTo)
+  const hasResults = searchResults.length > 0
+  const noMatches = debouncedQuery.trim().length > 0 && !hasResults
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -33,12 +37,12 @@ export function MessageSearch({ onClose }: Props) {
   }, [debouncedQuery, setSearchQuery])
 
   const goNext = () => {
-    if (searchResults.length === 0) return
+    if (!hasResults) return
     setSearchActiveIndex((searchActiveIndex + 1) % searchResults.length)
   }
 
   const goPrev = () => {
-    if (searchResults.length === 0) return
+    if (!hasResults) return
     setSearchActiveIndex(searchActiveIndex <= 0 ? searchResults.length - 1 : searchActiveIndex - 1)
   }
 
@@ -51,63 +55,86 @@ export function MessageSearch({ onClose }: Props) {
   return (
     <motion.div
       className={styles.panel}
-      initial={{ opacity: 0, y: -8 }}
+      initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
+      exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.15 }}
     >
       <div className={styles.row}>
-        <Search size={15} className={styles.icon} />
+        <Search size={16} className={styles.icon} />
         <input
           ref={inputRef}
           className={styles.input}
-          placeholder="Search messages..."
+          placeholder="Search this conversation…"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        {searchResults.length > 0 && (
+
+        {hasResults && (
           <span className={styles.count}>
-            {searchActiveIndex + 1} / {searchResults.length}
+            {searchActiveIndex + 1}<span className={styles.countSep}>/</span>{searchResults.length}
           </span>
         )}
+        {noMatches && <span className={styles.noMatch}>No matches</span>}
+
         <div className={styles.navBtns}>
-          <button className={styles.navBtn} onClick={goPrev} disabled={searchResults.length === 0}>
+          <button className={styles.navBtn} onClick={goPrev} disabled={!hasResults} aria-label="Previous match" title="Previous (Shift+Enter)">
             <ChevronUp size={16} />
           </button>
-          <button className={styles.navBtn} onClick={goNext} disabled={searchResults.length === 0}>
+          <button className={styles.navBtn} onClick={goNext} disabled={!hasResults} aria-label="Next match" title="Next (Enter)">
             <ChevronDown size={16} />
           </button>
         </div>
-        <button className={styles.closeBtn} onClick={() => { clearSearch(); onClose() }}>
+
+        <span className={styles.divider} />
+
+        <button
+          className={`${styles.iconBtn} ${showFilters || hasDateFilter ? styles.iconBtnActive : ''}`}
+          onClick={() => setShowFilters(v => !v)}
+          aria-label="Date filters"
+          title="Filter by date"
+        >
+          <SlidersHorizontal size={15} />
+          {hasDateFilter && <span className={styles.filterDot} />}
+        </button>
+        <button className={styles.iconBtn} onClick={() => { clearSearch(); onClose() }} aria-label="Close search" title="Close (Esc)">
           <X size={16} />
         </button>
       </div>
-      <div className={styles.filters}>
-        <label className={styles.dateLabel}>
-          From
-          <input
-            type="date"
-            className={styles.dateInput}
-            value={searchDateFrom ?? ''}
-            onChange={e => setSearchDateRange(e.target.value || null, searchDateTo)}
-          />
-        </label>
-        <label className={styles.dateLabel}>
-          To
-          <input
-            type="date"
-            className={styles.dateInput}
-            value={searchDateTo ?? ''}
-            onChange={e => setSearchDateRange(searchDateFrom, e.target.value || null)}
-          />
-        </label>
-        {(searchDateFrom || searchDateTo) && (
-          <button className={styles.clearBtn} onClick={() => setSearchDateRange(null, null)}>
-            Clear dates
-          </button>
-        )}
-      </div>
+
+      {showFilters && (
+        <motion.div
+          className={styles.filters}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          transition={{ duration: 0.15 }}
+        >
+          <label className={styles.dateLabel}>
+            <span>From</span>
+            <input
+              type="date"
+              className={styles.dateInput}
+              value={searchDateFrom ?? ''}
+              onChange={e => setSearchDateRange(e.target.value || null, searchDateTo)}
+            />
+          </label>
+          <label className={styles.dateLabel}>
+            <span>To</span>
+            <input
+              type="date"
+              className={styles.dateInput}
+              value={searchDateTo ?? ''}
+              onChange={e => setSearchDateRange(searchDateFrom, e.target.value || null)}
+            />
+          </label>
+          {hasDateFilter && (
+            <button className={styles.clearBtn} onClick={() => setSearchDateRange(null, null)}>
+              Clear dates
+            </button>
+          )}
+        </motion.div>
+      )}
     </motion.div>
   )
 }

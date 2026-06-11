@@ -7,7 +7,7 @@ import {
   Code2,
   House,
   Plane,
-  Radio,
+  ScanEye,
   Settings,
   ShieldAlert,
 } from 'lucide-react'
@@ -49,16 +49,6 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
       { label: 'Bug Bounty', path: '/app/security/bugbounty', icon: Bug },
     ],
   },
-  social: {
-    id: 'social',
-    label: 'Social',
-    description: 'Channels, campaigns, drafts, and performance.',
-    icon: Radio,
-    defaultRoute: '/app/social',
-    featureNav: [
-      { label: 'Overview', path: '/app/social', icon: Radio },
-    ],
-  },
   dev: {
     id: 'dev',
     label: 'Dev',
@@ -82,9 +72,19 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
       { label: 'Travel', path: '/app/ops/travel/itineraries', icon: Plane },
     ],
   },
+  signet: {
+    id: 'signet',
+    label: 'Social Intel',
+    description: 'Accounts, narratives, hashtags, and disinformation tracking.',
+    icon: ScanEye,
+    defaultRoute: '/app/signet',
+    featureNav: [
+      { label: 'Dashboard', path: '/app/signet', icon: ScanEye },
+    ],
+  },
 }
 
-export const domainOrder: DomainId[] = ['security', 'social', 'dev', 'ops']
+export const domainOrder: DomainId[] = ['signet', 'security', 'dev', 'ops']
 
 export const globalNavItems: GlobalNavItem[] = [
   { label: 'Home', path: '/app/home', icon: House },
@@ -105,7 +105,7 @@ export function isDomainId(value: string | undefined): value is DomainId {
 }
 
 export function getDomainFromPathname(pathname: string): DomainId | null {
-  const match = pathname.match(/^\/app\/(security|social|dev|ops)(?:\/|$)/)
+  const match = pathname.match(/^\/app\/(signet|security|dev|ops)(?:\/|$)/)
   return match?.[1] ? (match[1] as DomainId) : null
 }
 
@@ -129,8 +129,8 @@ export function getDomainIcon(domainId: DomainId): LucideIcon {
 }
 
 export const domainStatusCopy: Record<DomainId, string> = {
+  signet: 'Accounts, narratives, hashtags, and disinformation patterns tracked.',
   security: 'Findings and approvals need attention.',
-  social: 'Campaign drafts, publishing slots, and approvals are active.',
   dev: 'Release work, repo coordination, and staging health are active.',
   ops: 'Finance, reminders, and travel stay grouped here for now.',
 }

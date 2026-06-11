@@ -1,1 +1,1 @@
-export type DomainId = 'security' | 'social' | 'dev' | 'ops'
+export type DomainId = 'signet' | 'security' | 'dev' | 'ops'

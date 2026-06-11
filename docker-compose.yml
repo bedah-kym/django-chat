@@ -53,6 +53,7 @@ services:
       - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
       - HF_API_TOKEN=${HF_API_TOKEN}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - CALENDLY_CLIENT_ID=${CALENDLY_CLIENT_ID}
       - Webhook_signing_key=${Webhook_signing_key}
       - CALENDLY_CLIENT_SECRET=${CALENDLY_CLIENT_SECRET}

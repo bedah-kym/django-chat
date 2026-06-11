@@ -1,0 +1,195 @@
+/* SIGNET shared primitives — reticle panels, labels, chips, meters, signal dots. */
+
+/* ---------------- SectionLabel ---------------- */
+.label {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-wide);
+  color: var(--sg-text-low);
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1;
+}
+
+.labelAccent {
+  color: var(--sg-signal);
+}
+
+/* ---------------- Panel (corner-bracket reticle) ---------------- */
+.panel {
+  position: relative;
+  background: var(--sg-panel);
+  border: 1px solid var(--sg-line);
+  border-radius: var(--sg-radius);
+}
+
+.panelInset {
+  background: var(--sg-panel-inset);
+}
+
+.panelRaised {
+  background: var(--sg-panel-raised);
+}
+
+.corner {
+  position: absolute;
+  inline-size: var(--sg-bezel);
+  block-size: var(--sg-bezel);
+  pointer-events: none;
+  opacity: 0.7;
+}
+.cornerTL {
+  inset-block-start: -1px;
+  inset-inline-start: -1px;
+  border-block-start: 1px solid var(--sg-signal-line);
+  border-inline-start: 1px solid var(--sg-signal-line);
+}
+.cornerTR {
+  inset-block-start: -1px;
+  inset-inline-end: -1px;
+  border-block-start: 1px solid var(--sg-signal-line);
+  border-inline-end: 1px solid var(--sg-signal-line);
+}
+.cornerBL {
+  inset-block-end: -1px;
+  inset-inline-start: -1px;
+  border-block-end: 1px solid var(--sg-signal-line);
+  border-inline-start: 1px solid var(--sg-signal-line);
+}
+.cornerBR {
+  inset-block-end: -1px;
+  inset-inline-end: -1px;
+  border-block-end: 1px solid var(--sg-signal-line);
+  border-inline-end: 1px solid var(--sg-signal-line);
+}
+
+/* ---------------- TagChip ---------------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  padding: 2px 7px;
+  border-radius: 2px;
+  background: var(--sg-panel-raised);
+  color: var(--sg-signal);
+  border: 1px solid var(--sg-line-strong);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.chipHigh {
+  background: var(--sg-high-soft);
+  color: var(--sg-high);
+  border-color: rgba(255, 92, 73, 0.4);
+}
+.chipMore {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  color: var(--sg-text-low);
+  align-self: center;
+}
+
+/* ---------------- SignalDot ---------------- */
+.dot {
+  position: relative;
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dotLive {
+  background: var(--sg-live);
+  box-shadow: var(--sg-glow-live);
+}
+.dotLive::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid var(--sg-live);
+  animation: sg-pulse 1.8s ease-in-out infinite;
+}
+.dotIdle {
+  background: var(--sg-text-faint);
+}
+
+/* ---------------- ThreatMeter ---------------- */
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.meterTrack {
+  position: relative;
+  flex: 1;
+  block-size: 4px;
+  min-inline-size: 32px;
+  background: var(--sg-line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.meterFill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-radius: 2px;
+  transition: inline-size var(--transition-normal, 250ms ease);
+}
+.meterValue {
+  font-family: var(--sg-display);
+  font-size: var(--sg-fs-sm);
+  font-weight: 700;
+  min-inline-size: 26px;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- KeyValue (stat tile) ---------------- */
+.kv {
+  padding: 9px 11px;
+  background: var(--sg-panel-inset);
+  border: 1px solid var(--sg-line);
+  border-radius: var(--sg-radius);
+}
+.kvLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  color: var(--sg-text-low);
+  text-transform: uppercase;
+  margin-block-end: 5px;
+}
+.kvValue {
+  font-family: var(--sg-display);
+  font-size: var(--sg-fs-md);
+  font-weight: 700;
+  color: var(--sg-text-hi);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* ---------------- ConfidenceRing ---------------- */
+.ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+.ringTrack {
+  fill: none;
+  stroke: var(--sg-line);
+}
+.ringValue {
+  fill: none;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  animation: sg-ring-draw 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.ringLabel {
+  position: absolute;
+  font-family: var(--sg-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--sg-text-hi);
+}

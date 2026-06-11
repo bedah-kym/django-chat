@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
+import { ensureAuth } from '@/stores/authStore'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DomainLayout } from '@/components/layout/DomainLayout'
 import { ChatPage } from '@/features/chat/ChatPage'
@@ -20,11 +22,28 @@ import { BugBountyPage } from '@/features/bugbounty/BugBountyPage'
 import { ProgramDetailPage } from '@/features/bugbounty/ProgramDetailPage'
 import { ReportsPage } from '@/features/bugbounty/ReportsPage'
 import { HomePage } from '@/features/home/HomePage'
+import { SignetPage } from '@/features/signet/SignetPage'
 import { SecurityDomainPage } from '@/features/domains/SecurityDomainPage'
 import { OpsDomainPage } from '@/features/domains/OpsDomainPage'
 import { ComingSoonDomainPage } from '@/features/domains/ComingSoonDomainPage'
+import { useChatStore } from '@/stores/chatStore'
+import { usePentestStore } from '@/stores/pentestStore'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
+import { usePaymentStore } from '@/stores/paymentStore'
+import { useTravelStore } from '@/stores/travelStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 export function App() {
+  useEffect(() => {
+    ensureAuth()
+    useChatStore.getState().initialize()
+    usePentestStore.getState().initialize()
+    useBugBountyStore.getState().initialize()
+    usePaymentStore.getState().initialize()
+    useTravelStore.getState().initialize()
+    useNotificationStore.getState().initialize()
+  }, [])
+
   return (
     <>
       <Toaster
@@ -46,6 +65,10 @@ export function App() {
           <Route path="dashboard" element={<Navigate to="/app/home" replace />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
+          <Route path="signet" element={<DomainLayout domainId="signet" />}>
+            <Route index element={<SignetPage />} />
+            <Route path="chat/:roomId" element={<ChatPage />} />
+          </Route>
           <Route path="security" element={<DomainLayout domainId="security" />}>
             <Route index element={<SecurityDomainPage />} />
             <Route path="chat/:roomId" element={<ChatPage />} />
@@ -55,10 +78,6 @@ export function App() {
             <Route path="bugbounty" element={<BugBountyPage />} />
             <Route path="bugbounty/:programId" element={<ProgramDetailPage />} />
             <Route path="bugbounty/reports" element={<ReportsPage />} />
-          </Route>
-          <Route path="social" element={<DomainLayout domainId="social" />}>
-            <Route index element={<ComingSoonDomainPage domainId="social" />} />
-            <Route path="chat/:roomId" element={<ChatPage />} />
           </Route>
           <Route path="dev" element={<DomainLayout domainId="dev" />}>
             <Route index element={<ComingSoonDomainPage domainId="dev" />} />

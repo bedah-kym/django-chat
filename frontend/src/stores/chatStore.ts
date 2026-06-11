@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Message, Room } from '@/types/chat'
-import { mockRooms, mockMessages, mockOlderMessages } from '@/mocks/chat'
+import { fetchRooms, fetchMessages } from '@/api/rooms'
+import { getChatSocket } from '@/api/chatSocket'
 
 interface HistoryState {
   hasMore: boolean
@@ -12,6 +13,11 @@ interface ChatState {
   rooms: Room[]
   messagesByRoom: Record<number, Message[]>
   activeRoomId: number | null
+  isInitialized: boolean
+  isLoadingRooms: boolean
+
+  initialize: () => Promise<void>
+  fetchRoomMessages: (roomId: number) => Promise<void>
 
   // Reply
   replyingTo: Message | null
@@ -39,17 +45,63 @@ interface ChatState {
 
   // Core
   setActiveRoom: (roomId: number) => void
+  addRoom: (room: Room) => void
   sendMessage: (roomId: number, content: string, parentId?: number | null) => void
+  addMessage: (roomId: number, msg: Message) => void
+  setMessages: (roomId: number, msgs: Message[], hasMore: boolean, oldestId: number | null) => void
+  updateStreamingMessage: (roomId: number, chunk: string, isFinal: boolean) => void
+  finalizeStreamingMessage: (roomId: number, msg: Message) => void
   getMessages: (roomId: number) => Message[]
   getTotalUnread: () => number
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  rooms: mockRooms.map(r => ({ ...r })),
-  messagesByRoom: Object.fromEntries(
-    Object.entries(mockMessages).map(([k, v]) => [Number(k), [...v]])
-  ),
+  rooms: [],
+  messagesByRoom: {},
   activeRoomId: null,
+  isInitialized: false,
+  isLoadingRooms: false,
+
+  initialize: async () => {
+    set({ isLoadingRooms: true })
+    try {
+      const rooms = await fetchRooms()
+      set({
+        rooms,
+        isInitialized: true,
+        isLoadingRooms: false,
+      })
+    } catch {
+      set({
+        isInitialized: true,
+        isLoadingRooms: false,
+      })
+    }
+  },
+
+  fetchRoomMessages: async (roomId: number) => {
+    try {
+      const msgs = await fetchMessages(roomId)
+      if (msgs.length > 0) {
+        set(s => ({
+          messagesByRoom: {
+            ...s.messagesByRoom,
+            [roomId]: msgs,
+          },
+          historyState: {
+            ...s.historyState,
+            [roomId]: {
+              hasMore: false,
+              oldestMsgId: msgs[0]?.id ?? null,
+              isLoading: false,
+            },
+          },
+        }))
+      }
+    } catch {
+      // Keep mock data on failure
+    }
+  },
 
   // Reply
   replyingTo: null,
@@ -83,7 +135,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
   setSearchDateRange: (from, to) => {
     set({ searchDateFrom: from, searchDateTo: to })
-    // Re-run search with new dates
     get().setSearchQuery(get().searchQuery)
   },
   setSearchActiveIndex: (i) => set({ searchActiveIndex: i }),
@@ -93,44 +144,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   }),
 
   // Pagination
-  historyState: Object.fromEntries(
-    mockRooms.map(r => {
-      const msgs = mockMessages[r.id]
-      const oldest = msgs?.[0]
-      return [r.id, { hasMore: !!(mockOlderMessages[r.id]?.length), oldestMsgId: oldest?.id ?? null, isLoading: false }]
-    })
-  ),
-  loadOlderMessages: (roomId) => {
-    const state = get()
-    const hs = state.historyState[roomId]
-    if (!hs || hs.isLoading || !hs.hasMore) return
-
-    set(s => ({
-      historyState: { ...s.historyState, [roomId]: { ...hs, isLoading: true } },
-    }))
-
-    // Simulate async load
-    setTimeout(() => {
-      const older = mockOlderMessages[roomId] ?? []
-      const existing = get().messagesByRoom[roomId] ?? []
-      const existingIds = new Set(existing.map(m => m.id))
-      const newMsgs = older.filter(m => !existingIds.has(m.id))
-
-      set(s => ({
-        messagesByRoom: {
-          ...s.messagesByRoom,
-          [roomId]: [...newMsgs, ...(s.messagesByRoom[roomId] ?? [])],
-        },
-        historyState: {
-          ...s.historyState,
-          [roomId]: {
-            hasMore: false, // One batch only for mock
-            oldestMsgId: newMsgs[0]?.id ?? hs.oldestMsgId,
-            isLoading: false,
-          },
-        },
-      }))
-    }, 800)
+  historyState: {},
+  loadOlderMessages: (roomId: number) => {
+    // TODO: implement pagination via API when available
+    void roomId
   },
 
   // Notifications
@@ -143,23 +160,71 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ activeRoomId: roomId })
     get().markRoomAsRead(roomId)
   },
-  sendMessage: (roomId, content, parentId) => {
-    const newMsg: Message = {
-      id: Date.now(),
-      member: 'alex',
-      content,
-      timestamp: new Date().toISOString(),
-      parentId: parentId ?? null,
-      isAi: false,
+  addRoom: (room: Room) => set(s => ({
+    rooms: s.rooms.some(r => r.id === room.id) ? s.rooms : [...s.rooms, room],
+  })),
+  sendMessage: (_roomId, content, parentId) => {
+    const socket = getChatSocket()
+    if (socket.isConnected()) {
+      socket.sendMessage(content, parentId)
+      set({ replyingTo: null })
     }
-    set(s => ({
+  },
+  addMessage: (roomId, msg) => set(s => {
+    const existing = s.messagesByRoom[roomId] ?? []
+    if (existing.some(m => m.id === msg.id)) return {}
+    return {
       messagesByRoom: {
         ...s.messagesByRoom,
-        [roomId]: [...(s.messagesByRoom[roomId] ?? []), newMsg],
+        [roomId]: [...existing, msg],
       },
-      replyingTo: null,
-    }))
-  },
+    }
+  }),
+  setMessages: (roomId, msgs, hasMore, oldestId) => set(s => ({
+    messagesByRoom: {
+      ...s.messagesByRoom,
+      [roomId]: msgs,
+    },
+    historyState: {
+      ...s.historyState,
+      [roomId]: { hasMore, oldestMsgId: oldestId, isLoading: false },
+    },
+  })),
+  updateStreamingMessage: (roomId, chunk, isFinal) => set(s => {
+    const msgs = [...(s.messagesByRoom[roomId] ?? [])]
+    const lastIdx = msgs.length - 1
+    const last = msgs[lastIdx]
+    if (last && last.isStreaming) {
+      msgs[lastIdx] = {
+        ...last,
+        content: last.content + chunk,
+        isStreaming: !isFinal,
+      }
+    } else if (!isFinal) {
+      msgs.push({
+        id: Date.now(),
+        member: 'mathia',
+        content: chunk,
+        timestamp: new Date().toISOString(),
+        parentId: null,
+        isAi: true,
+        isStreaming: true,
+      })
+    }
+    return { messagesByRoom: { ...s.messagesByRoom, [roomId]: msgs } }
+  }),
+  finalizeStreamingMessage: (roomId, msg) => set(s => {
+    const msgs = [...(s.messagesByRoom[roomId] ?? [])]
+    const last = msgs[msgs.length - 1]
+    if (last && last.isStreaming) {
+      msgs[msgs.length - 1] = { ...msg, isAi: true, isStreaming: false }
+    } else {
+      if (!msgs.some(m => m.id === msg.id)) {
+        msgs.push({ ...msg, isAi: true })
+      }
+    }
+    return { messagesByRoom: { ...s.messagesByRoom, [roomId]: msgs } }
+  }),
   getMessages: (roomId) => get().messagesByRoom[roomId] ?? [],
   getTotalUnread: () => get().rooms.reduce((sum, r) => sum + r.unreadCount, 0),
 }))

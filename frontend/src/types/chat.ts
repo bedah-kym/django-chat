@@ -36,6 +36,7 @@ export interface Message {
   thinkingDurationMs?: number
   toolCalls?: ToolCall[]
   isStreaming?: boolean
+  isTemp?: boolean
 }
 
 export interface ToolCall {

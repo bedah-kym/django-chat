@@ -99,8 +99,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.last_key_rotation = timezone.now()
 
     async def connect(self):
-        # 1. Auth check
-        if not self.scope["user"].is_authenticated:
+        # 1. Auth check — session auth or token via query parameter
+        user = self.scope.get("user")
+        authenticated = bool(user and getattr(user, 'is_authenticated', False))
+
+        if not authenticated:
+            qs = self.scope.get("query_string", b"")
+            if isinstance(qs, bytes):
+                qs = qs.decode()
+            path = self.scope.get("path", "")
+            token = None
+            for source in [qs, path]:
+                if "token=" in source:
+                    parts = source.lstrip("?").split("&")
+                    for p in parts:
+                        if p.startswith("token="):
+                            token = p.split("=", 1)[1]
+                            break
+                if token:
+                    break
+            if token:
+                from rest_framework.authtoken.models import Token
+                try:
+                    token_obj = await sync_to_async(Token.objects.select_related('user').get)(key=token)
+                    self.scope["user"] = token_obj.user
+                    authenticated = True
+                except Token.DoesNotExist:
+                    pass
+
+        if not authenticated:
+            logger.info("WS auth: closing 403 — not authenticated")
             await self.close(code=4001)
             return
 
@@ -2262,7 +2290,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if before_id:
                 qs = qs.filter(id__lt=before_id)
             # Optimize: select_related to avoid N+1 queries on member.User
-            qs = qs.select_related('member__User').order_by('-timestamp')[:limit + 1]
+            # Secondary sort on -id gives a stable, deterministic order when
+            # messages share a timestamp (e.g. a user msg + AI reply in the
+            # same instant) — otherwise tie order flips between queries.
+            qs = qs.select_related('member__User').order_by('-timestamp', '-id')[:limit + 1]
             msgs = list(qs)
             # Check if there are more messages beyond this page
             has_more = len(msgs) > limit

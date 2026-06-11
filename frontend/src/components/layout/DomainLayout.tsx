@@ -1,11 +1,13 @@
 import { Outlet, useLocation, NavLink } from 'react-router-dom'
 import { Menu, Plus, Search } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { domainConfigs, getRoomPath } from '@/domains'
 import { useChatStore } from '@/stores/chatStore'
 import { useUiStore } from '@/stores/uiStore'
 import { PresenceDot } from '@/features/chat/components/PresenceDot'
 import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
+import { apiRequest } from '@/api/client'
 import type { DomainId } from '@/types/domain'
 import styles from './DomainLayout.module.css'
 
@@ -21,6 +23,10 @@ export function DomainLayout({ domainId }: Props) {
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
   const rooms = useChatStore((s) => s.rooms)
 
+  const [showCreate, setShowCreate] = useState(false)
+  const [newRoomName, setNewRoomName] = useState('')
+  const [creating, setCreating] = useState(false)
+
   const domain = domainConfigs[domainId]
   const domainRooms = rooms.filter((room) => room.domain === domainId)
 
@@ -29,6 +35,47 @@ export function DomainLayout({ domainId }: Props) {
       setLastDomain(domainId)
     }
   }, [domainId, lastDomain, setLastDomain])
+
+  const handleCreateRoom = async () => {
+    if (!newRoomName.trim()) return
+    setCreating(true)
+    try {
+      const roomData = await apiRequest<{
+        id: number
+        name: string
+        displayName: string
+        lastMessage: string
+        lastMessageTime: string | null
+        unreadCount: number
+        isAiRoom: boolean
+        participants: { username: string; displayName: string; isOnline: boolean }[]
+      }>('/rooms/create/', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newRoomName.trim().toLowerCase().replace(/\s+/g, '-'),
+          domain: domainId,
+        }),
+      })
+      useChatStore.getState().addRoom({
+        id: roomData.id,
+        name: roomData.name,
+        displayName: roomData.displayName,
+        domain: domainId,
+        lastMessage: roomData.lastMessage || '',
+        lastMessageTime: roomData.lastMessageTime || '',
+        unreadCount: roomData.unreadCount || 0,
+        isAiRoom: roomData.isAiRoom ?? true,
+        participants: roomData.participants || [],
+      })
+      setNewRoomName('')
+      setShowCreate(false)
+      toast.success('Room created')
+    } catch {
+      toast.error('Failed to create room')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   return (
     <div className={styles.domainLayout}>
@@ -67,10 +114,44 @@ export function DomainLayout({ domainId }: Props) {
           <div className={styles.section}>
             <div className={styles.roomsHeader}>
               <span className={styles.sectionLabel}>Rooms</span>
-              <button className={styles.addRoomBtn} title="New room">
+              <button className={styles.addRoomBtn} title="New room" onClick={() => setShowCreate(true)}>
                 <Plus size={14} />
               </button>
             </div>
+
+            {showCreate && (
+              <div style={{
+                padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border-color)',
+                borderRadius: 8, display: 'flex', gap: 6, alignItems: 'center',
+              }}>
+                <input
+                  autoFocus
+                  value={newRoomName}
+                  onChange={e => setNewRoomName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleCreateRoom(); if (e.key === 'Escape') setShowCreate(false) }}
+                  placeholder="Room name"
+                  style={{
+                    flex: 1, background: 'none', border: 'none', outline: 'none',
+                    fontSize: 12, color: 'var(--text-color)',
+                  }}
+                />
+                <button onClick={handleCreateRoom} disabled={creating || !newRoomName.trim()}
+                  style={{
+                    fontSize: 11, padding: '3px 8px', background: 'var(--primary-color)', color: '#fff',
+                    border: 'none', borderRadius: 5, cursor: 'pointer', opacity: newRoomName.trim() ? 1 : 0.5,
+                  }}>
+                  {creating ? '...' : 'Create'}
+                </button>
+                <button onClick={() => setShowCreate(false)}
+                  style={{
+                    fontSize: 11, padding: '3px 6px', background: 'none', color: 'var(--text-muted)',
+                    border: 'none', cursor: 'pointer',
+                  }}>
+                  ×
+                </button>
+              </div>
+            )}
+
             <div className={styles.searchBox}>
               <Search size={14} className={styles.searchIcon} />
               <input className={styles.searchInput} placeholder={`Search ${domain.label.toLowerCase()} rooms`} />

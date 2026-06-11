@@ -1,9 +1,9 @@
 .panel {
-  background: var(--glass-bg);
+  background: var(--glass-bg-heavy);
   backdrop-filter: var(--blur-bg);
   -webkit-backdrop-filter: var(--blur-bg);
-  border-bottom: 1px solid var(--glass-border);
-  padding: var(--space-sm) var(--space-lg);
+  border-block-end: 1px solid var(--border-color);
+  padding: 10px var(--space-lg);
   flex-shrink: 0;
 }
 
@@ -13,78 +13,153 @@
   gap: var(--space-sm);
 }
 
-.icon { color: var(--text-muted); flex-shrink: 0; }
+.icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
 
 .input {
   flex: 1;
-  border: none; background: none; outline: none;
-  font-size: 14px; padding: var(--space-xs) 0;
+  min-inline-size: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--text-color);
+  padding: 6px 0;
   font-family: var(--font-family);
 }
 
-.input::placeholder { color: var(--text-muted); }
+.input::placeholder {
+  color: var(--text-subtle);
+}
 
 .count {
-  font-size: 12px; color: var(--text-muted);
-  font-weight: var(--font-weight-medium);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
-.navBtns { display: flex; gap: 2px; }
-
-.navBtn {
-  width: 28px; height: 28px;
-  border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-muted);
+.countSep {
+  margin-inline: 3px;
+  color: var(--text-subtle);
+  font-weight: var(--font-weight-normal);
 }
 
-.navBtn:hover:not(:disabled) { background: var(--bg-light); color: var(--text-color); }
-.navBtn:disabled { opacity: 0.3; }
-
-.closeBtn {
-  width: 28px; height: 28px;
-  border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-muted);
+.noMatch {
+  font-size: 12px;
+  color: var(--text-subtle);
+  font-weight: var(--font-weight-medium);
+  flex-shrink: 0;
 }
 
-.closeBtn:hover { background: var(--bg-light); color: var(--text-color); }
+.navBtns {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.navBtn,
+.iconBtn {
+  position: relative;
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.navBtn:hover:not(:disabled),
+.iconBtn:hover {
+  background: var(--bg-light);
+  color: var(--text-color);
+}
+
+.navBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.iconBtnActive {
+  color: var(--primary-color);
+  background: var(--primary-subtle);
+}
+
+.filterDot {
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-end: 5px;
+  inline-size: 5px;
+  block-size: 5px;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+}
+
+.divider {
+  inline-size: 1px;
+  block-size: 18px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
 
 .filters {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  margin-top: var(--space-xs);
+  margin-block-start: 8px;
+  padding-block-start: 8px;
+  border-block-start: 1px solid var(--border-color);
+  overflow: hidden;
 }
 
 .dateLabel {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 6px;
   font-size: 11px;
-  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
 }
 
 .dateInput {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 2px var(--space-xs);
+  padding: 4px 8px;
   font-size: 12px;
   background: var(--input-bg);
   color: var(--text-color);
   font-family: var(--font-family);
+  transition: border-color var(--transition-fast);
+}
+
+.dateInput:focus {
+  outline: none;
+  border-color: var(--primary-color);
 }
 
 .clearBtn {
   font-size: 11px;
+  font-weight: var(--font-weight-medium);
   color: var(--primary-color);
 }
 
-.clearBtn:hover { text-decoration: underline; }
+.clearBtn:hover {
+  text-decoration: underline;
+}
 
 @media (max-width: 768px) {
-  .panel { padding: var(--space-sm) var(--space-md); }
-  .filters { flex-wrap: wrap; }
+  .panel {
+    padding: 8px var(--space-md);
+  }
+
+  .filters {
+    flex-wrap: wrap;
+  }
 }

@@ -301,3 +301,65 @@ class GetAllMessages(generics.ListAPIView):
         room = get_object_or_404(Chatroom, id=room_id, participants__User=self.request.user)
         qs = room.chats.all()
         return qs
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_user(request):
+    """Return the current authenticated user's profile."""
+    user = request.user
+    profile = getattr(user, 'profile', None)
+    response_data = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'date_joined': user.date_joined.isoformat(),
+    }
+    if profile:
+        response_data.update({
+            'bio': profile.bio,
+            'location': profile.location,
+            'website': profile.website,
+            'role': profile.role,
+            'industry': profile.industry,
+            'company_name': profile.company_name,
+            'company_size': profile.company_size,
+            'twitter_handle': profile.twitter_handle,
+            'linkedin_url': profile.linkedin_url,
+            'github_url': profile.github_url,
+            'avatar': request.build_absolute_uri(profile.avatar.url) if profile.avatar else None,
+            'theme_preference': profile.theme_preference,
+            'timezone': profile.timezone,
+        })
+    return Response(response_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_room(request):
+    """Create a new chat room."""
+    from chatbot.models import Chatroom, Member
+
+    room = Chatroom.objects.create()
+    member, _ = Member.objects.get_or_create(User=request.user)
+    room.participants.add(member)
+
+    name = request.data.get('name', f'room-{room.id}')
+    domain = request.data.get('domain', 'ops')
+    room.name = name
+    room.domain = domain
+    room.save()
+
+    return Response({
+        'id': room.id,
+        'name': name,
+        'displayName': name.replace('-', ' ').replace('_', ' ').title(),
+        'domain': domain,
+        'lastMessage': '',
+        'lastMessageTime': None,
+        'unreadCount': 0,
+        'isAiRoom': True,
+        'participants': [{'username': request.user.username, 'displayName': request.user.get_full_name() or request.user.username, 'isOnline': True}],
+    }, status=201)

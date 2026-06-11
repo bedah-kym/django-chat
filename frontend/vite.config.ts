@@ -4,6 +4,9 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    exclude: ['d3'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -17,14 +20,18 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/chatbot/api': 'http://localhost:8000',
-      '/notifications': 'http://localhost:8000',
-      '/payments': 'http://localhost:8000',
-      '/travel': 'http://localhost:8000',
-      '/uploads': 'http://localhost:8000',
+      // Use 127.0.0.1 (IPv4) not localhost: on Windows + Docker Desktop, Node
+      // resolves localhost to IPv6 ::1, whose wslrelay forwarder hangs.
+      '/api': 'http://127.0.0.1:8000',
+      '/chatbot/api': 'http://127.0.0.1:8000',
+      '/accounts': 'http://127.0.0.1:8000',
+      '/auth': 'http://127.0.0.1:8000',
+      '/notifications': 'http://127.0.0.1:8000',
+      '/payments': 'http://127.0.0.1:8000',
+      '/travel': 'http://127.0.0.1:8000',
+      '/uploads': 'http://127.0.0.1:8000',
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: 'ws://127.0.0.1:8000',
         ws: true,
       },
     },

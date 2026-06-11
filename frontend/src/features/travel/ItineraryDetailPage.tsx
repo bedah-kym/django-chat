@@ -1,11 +1,12 @@
 import { Link, useParams } from 'react-router-dom'
-import { mockItineraries } from '@/mocks/travel'
+import { useTravelStore } from '@/stores/travelStore'
 import { formatCurrency } from '@/utils/format'
 import styles from './TravelPages.module.css'
 
 export function ItineraryDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const itinerary = mockItineraries.find((item) => item.id === Number(id))
+  const itineraries = useTravelStore((s) => s.itineraries)
+  const itinerary = itineraries.find((item) => item.id === Number(id))
 
   if (!itinerary) return <div>Trip not found</div>
 

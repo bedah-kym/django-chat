@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom'
-import { mockWallet, mockInvoices } from '@/mocks/payments'
-import { mockItineraries } from '@/mocks/travel'
 import { useChatStore } from '@/stores/chatStore'
+import { usePaymentStore } from '@/stores/paymentStore'
+import { useTravelStore } from '@/stores/travelStore'
 import { getRoomPath } from '@/domains'
 import { formatCurrency } from '@/utils/format'
 import styles from './OpsDomainPage.module.css'
 
 export function OpsDomainPage() {
   const rooms = useChatStore((s) => s.rooms)
+  const wallet = usePaymentStore((s) => s.wallet)
+  const itineraries = useTravelStore((s) => s.itineraries)
   const opsRooms = rooms.filter((room) => room.domain === 'ops')
 
   return (
@@ -15,7 +17,7 @@ export function OpsDomainPage() {
       <div className={styles.hero}>
         <div>
           <div className={styles.label}>Business/Ops</div>
-          <div className={styles.value}>{formatCurrency(mockWallet.balance)}</div>
+          <div className={styles.value}>{formatCurrency(wallet?.balance ?? 0)}</div>
           <p className={styles.description}>Wallet, invoices, reminders, and travel stay grouped together in one operational workspace.</p>
         </div>
       </div>
@@ -26,7 +28,7 @@ export function OpsDomainPage() {
             <h2>Wallet</h2>
             <Link to="/app/ops/wallet" className={styles.linkBtn}>Open</Link>
           </div>
-          <div className={styles.metric}>{formatCurrency(mockWallet.balance)}</div>
+          <div className={styles.metric}>{formatCurrency(wallet?.balance ?? 0)}</div>
         </section>
 
         <section className={styles.card}>
@@ -34,7 +36,7 @@ export function OpsDomainPage() {
             <h2>Invoices</h2>
             <Link to="/app/ops/wallet" className={styles.linkBtn}>Open</Link>
           </div>
-          <div className={styles.metric}>{mockInvoices.length} invoice records</div>
+          <div className={styles.metric}>0 invoice records</div>
         </section>
 
         <section className={styles.card}>
@@ -42,7 +44,7 @@ export function OpsDomainPage() {
             <h2>Travel</h2>
             <Link to="/app/ops/travel/itineraries" className={styles.linkBtn}>Open</Link>
           </div>
-          <div className={styles.metric}>{mockItineraries.length} planned trips</div>
+          <div className={styles.metric}>{itineraries?.length ?? 0} planned trips</div>
         </section>
 
         <section className={styles.card}>

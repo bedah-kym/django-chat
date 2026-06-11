@@ -1,17 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Calendar, ChevronLeft, ChevronRight, CreditCard, Mail, Settings } from 'lucide-react'
-import { mockCurrentUser } from '@/mocks/users'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { globalNavItems, getDomainFromPathname, domainConfigs } from '@/domains'
 import { MiniSettings } from '@/features/chat/components/MiniSettings'
 import { useUiStore } from '@/stores/uiStore'
 import styles from './Sidebar.module.css'
-
-const connectorIcons: Record<string, typeof Calendar> = {
-  calendly: Calendar,
-  gmail: Mail,
-  intasend: CreditCard,
-}
 
 interface Props {
   includeDomainContext?: boolean
@@ -21,6 +15,7 @@ interface Props {
 export function Sidebar({ includeDomainContext = false, collapsible = true }: Props) {
   const location = useLocation()
   const activeDomainId = getDomainFromPathname(location.pathname)
+  const currentUser = useCurrentUser()
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggleSidebarCollapsed = useUiStore((s) => s.toggleSidebarCollapsed)
   const isCollapsed = collapsible ? collapsed : false
@@ -30,11 +25,11 @@ export function Sidebar({ includeDomainContext = false, collapsible = true }: Pr
       <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`} aria-label="Global navigation" data-tour="sidebar">
         <div className={styles.topSection}>
           <div className={styles.logoRow}>
-            <div className={styles.logoMark}>K</div>
+            <div className={styles.logoMark}>M</div>
             {!isCollapsed ? (
               <div className={styles.logoCopy}>
-                <div className={styles.logoText}>Kazi</div>
-                <div className={styles.logoSub}>Operator workspace</div>
+                <div className={styles.logoText}>MATHIA</div>
+                <div className={styles.logoSub}>os/1.0</div>
               </div>
             ) : null}
             {collapsible ? (
@@ -93,27 +88,10 @@ export function Sidebar({ includeDomainContext = false, collapsible = true }: Pr
         ) : null}
 
         <div className={styles.bottomSection}>
-          <div className={styles.integrationRow}>
-            {mockCurrentUser.integrations.filter((integration) => integration.connected).map((integration) => {
-              const Icon = connectorIcons[integration.type] ?? Settings
-              return (
-                <Tooltip.Root key={integration.type}>
-                  <Tooltip.Trigger asChild>
-                    <div className={styles.connectorDot}>
-                      <Icon size={12} />
-                    </div>
-                  </Tooltip.Trigger>
-                  <Tooltip.Portal>
-                    <Tooltip.Content className={styles.tooltip} side="top" sideOffset={6}>
-                      {integration.accountName}
-                      <Tooltip.Arrow className={styles.tooltipArrow} />
-                    </Tooltip.Content>
-                  </Tooltip.Portal>
-                </Tooltip.Root>
-              )
-            })}
-          </div>
+          {/* TODO: wire integrations from /api/integrations when endpoint exists */}
+          <div className={styles.integrationRow} />
           {!isCollapsed ? <MiniSettings /> : null}
+          {!isCollapsed ? <div className={styles.userDisplay}>{currentUser?.displayName || 'User'}</div> : null}
         </div>
       </aside>
     </Tooltip.Provider>
