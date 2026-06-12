@@ -15,6 +15,7 @@ import { InvoiceCreatePage } from '@/features/payments/InvoiceCreatePage'
 import { InvoiceDetailPage } from '@/features/payments/InvoiceDetailPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { OnboardingTour } from '@/features/onboarding/OnboardingTour'
+import { CommandPalette } from '@/components/CommandPalette'
 import { PentestPage } from '@/features/pentest/PentestPage'
 import { NewEngagementPage } from '@/features/pentest/NewEngagementPage'
 import { EngagementWorkspace } from '@/features/pentest/EngagementWorkspace'
@@ -58,6 +59,7 @@ export function App() {
         }}
       />
       <OnboardingTour />
+      <CommandPalette />
       <Routes>
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Navigate to="home" replace />} />

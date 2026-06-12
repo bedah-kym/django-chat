@@ -4,13 +4,19 @@ import { Bell, Menu, Moon, Search, Sun, X } from 'lucide-react'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useChatStore } from '@/stores/chatStore'
+import { domainConfigs, getDomainFromPathname } from '@/domains'
 import { formatTime } from '@/utils/format'
 import styles from './TopBar.module.css'
 
-const pageTitles: Record<string, { title: string; description: string }> = {
+interface PageCopy {
+  title: string
+  description: string
+}
+
+const staticPageCopy: Record<string, PageCopy> = {
   '/app/home': {
-    title: 'Operations',
-    description: 'Queue, workspaces, and active tasks.',
+    title: 'Home',
+    description: "Today's focus across every workspace.",
   },
   '/app/settings': {
     title: 'Settings',
@@ -20,6 +26,16 @@ const pageTitles: Record<string, { title: string; description: string }> = {
     title: 'Welcome',
     description: 'Configure once — every workspace inherits.',
   },
+}
+
+function pickPageCopy(pathname: string): PageCopy {
+  if (staticPageCopy[pathname]) return staticPageCopy[pathname]
+  const domain = getDomainFromPathname(pathname)
+  if (domain) {
+    const d = domainConfigs[domain]
+    return { title: d.label, description: d.description }
+  }
+  return staticPageCopy['/app/home']!
 }
 
 export function TopBar() {
@@ -36,7 +52,7 @@ export function TopBar() {
   const theme = useUiStore((s) => s.theme)
   const toggleTheme = useUiStore((s) => s.toggleTheme)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
-  const routeCopy = pageTitles[location.pathname] ?? pageTitles['/app/home']!
+  const routeCopy = pickPageCopy(location.pathname)
 
   return (
     <header className={styles.topbar}>
