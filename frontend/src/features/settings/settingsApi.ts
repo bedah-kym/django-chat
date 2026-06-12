@@ -1,3 +1,5 @@
+import { getAuthToken } from '@/api/client'
+
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
 // CSRF helper — Django's CsrfViewMiddleware requires X-CSRFToken on
@@ -8,8 +10,19 @@ function getCsrfToken(): string {
   return match?.[1] ? decodeURIComponent(match[1]) : ''
 }
 
+// Auth headers for settings/account endpoints. Every Settings endpoint
+// is now DRF token-authenticated, so we MUST send Authorization: Token;
+// CSRF is also echoed for any view still routed through session auth.
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = { 'X-CSRFToken': getCsrfToken() }
+  if (token) headers['Authorization'] = `Token ${token}`
+  return headers
+}
+
+// Back-compat alias for the (many) callsites in this file.
 function csrfHeaders(): Record<string, string> {
-  return { 'X-CSRFToken': getCsrfToken() }
+  return authHeaders()
 }
 
 // ─── REAL: Avatar Upload ──────────────────────────────────────────────────────
@@ -28,7 +41,7 @@ export async function uploadAvatar(file: File): Promise<{ url: string }> {
 
 // ─── REAL: Calendly ───────────────────────────────────────────────────────────
 export async function getCalendlyStatus(): Promise<{ connected: boolean; username?: string }> {
-  const res = await fetch(`${BASE}/api/calendly/user/status/`, { credentials: 'include' })
+  const res = await fetch(`${BASE}/api/calendly/user/status/`, { credentials: 'include', headers: authHeaders() })
   if (!res.ok) throw new Error('Failed to get Calendly status')
   return res.json() as Promise<{ connected: boolean; username?: string }>
 }

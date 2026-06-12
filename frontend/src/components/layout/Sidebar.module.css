@@ -309,8 +309,8 @@
 .userMenuItem {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 9px 10px;
   border-radius: 10px;
   font-size: 14px;
   font-weight: var(--font-weight-medium);
@@ -319,17 +319,33 @@
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.userMenuItem svg {
+.userMenuItemIcon {
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-light);
   color: var(--text-muted);
   flex-shrink: 0;
-  transition: color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.userMenuItemLabel {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userMenuItem:hover {
   background: var(--bg-light);
 }
 
-.userMenuItem:hover svg {
+.userMenuItem:hover .userMenuItemIcon {
+  background: var(--surface-elevated);
   color: var(--primary-color);
 }
 
@@ -338,8 +354,9 @@
   color: var(--primary-color);
 }
 
-.userMenuItemActive svg {
-  color: var(--primary-color);
+.userMenuItemActive .userMenuItemIcon {
+  background: var(--primary-color);
+  color: #fff;
 }
 
 .tooltip {

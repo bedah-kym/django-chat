@@ -139,8 +139,10 @@ export function Sidebar({ collapsible = true }: Props) {
                             `${styles.userMenuItem} ${isActive ? styles.userMenuItemActive : ''}`
                           }
                         >
-                          <Icon size={15} strokeWidth={1.9} />
-                          <span>{item.label}</span>
+                          <span className={styles.userMenuItemIcon}>
+                            <Icon size={17} strokeWidth={1.9} />
+                          </span>
+                          <span className={styles.userMenuItemLabel}>{item.label}</span>
                         </NavLink>
                       </Popover.Close>
                     )
