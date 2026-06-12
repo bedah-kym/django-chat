@@ -59,3 +59,36 @@ export async function createContact(data: { name: string; email: string; phone?:
     body: JSON.stringify(data),
   })
 }
+
+export async function markRoomRead(roomId: number): Promise<void> {
+  await apiRequest(`/chatbot/api/rooms/${roomId}/read/`, { method: 'POST' })
+}
+
+export async function addNote(
+  roomId: number,
+  data: { note_type: string; content: string; priority?: string; tags?: string[] },
+): Promise<{ id: number; type: string; content: string; priority: string; created_at: string }> {
+  return apiRequest(`/chatbot/api/rooms/${roomId}/notes/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function pinMessage(roomId: number, messageId: number): Promise<{ id: number }> {
+  return apiRequest(`/chatbot/api/rooms/${roomId}/messages/${messageId}/pin/`, { method: 'POST' })
+}
+
+export async function retryAiMessage(roomId: number, messageId: number): Promise<void> {
+  await apiRequest(`/chatbot/api/rooms/${roomId}/messages/${messageId}/retry/`, { method: 'POST' })
+}
+
+export async function linkRoom(roomId: number, targetRoomId: number): Promise<void> {
+  await apiRequest(`/chatbot/api/rooms/${roomId}/linked/`, {
+    method: 'POST',
+    body: JSON.stringify({ target_room_id: targetRoomId }),
+  })
+}
+
+export async function unlinkRoom(roomId: number, targetRoomId: number): Promise<void> {
+  await apiRequest(`/chatbot/api/rooms/${roomId}/linked/${targetRoomId}/`, { method: 'DELETE' })
+}

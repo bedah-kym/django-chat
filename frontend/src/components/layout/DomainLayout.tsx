@@ -25,6 +25,7 @@ export function DomainLayout({ domainId }: Props) {
 
   const [showCreate, setShowCreate] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
+  const [newRoomType, setNewRoomType] = useState<'general' | 'private'>('general')
   const [creating, setCreating] = useState(false)
 
   const domain = domainConfigs[domainId]
@@ -54,6 +55,7 @@ export function DomainLayout({ domainId }: Props) {
         body: JSON.stringify({
           name: newRoomName.trim().toLowerCase().replace(/\s+/g, '-'),
           domain: domainId,
+          room_type: newRoomType,
         }),
       })
       useChatStore.getState().addRoom({
@@ -68,8 +70,9 @@ export function DomainLayout({ domainId }: Props) {
         participants: roomData.participants || [],
       })
       setNewRoomName('')
+      setNewRoomType('general')
       setShowCreate(false)
-      toast.success('Room created')
+      toast.success(newRoomType === 'general' ? 'Room created with Mathia' : 'Private room created')
     } catch {
       toast.error('Failed to create room')
     } finally {
@@ -122,8 +125,27 @@ export function DomainLayout({ domainId }: Props) {
             {showCreate && (
               <div style={{
                 padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border-color)',
-                borderRadius: 8, display: 'flex', gap: 6, alignItems: 'center',
+                borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6,
               }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['general', 'private'] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setNewRoomType(t)}
+                      title={t === 'general' ? 'Includes Mathia AI — replies automatically' : 'Solo or human-only — use @mathia to invoke AI'}
+                      style={{
+                        flex: 1, fontSize: 10, padding: '4px 8px', cursor: 'pointer',
+                        background: newRoomType === t ? 'var(--primary-subtle)' : 'transparent',
+                        color: newRoomType === t ? 'var(--primary-color)' : 'var(--text-muted)',
+                        border: `1px solid ${newRoomType === t ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                        borderRadius: 5, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+                      }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <input
                   autoFocus
                   value={newRoomName}
@@ -149,6 +171,7 @@ export function DomainLayout({ domainId }: Props) {
                   }}>
                   ×
                 </button>
+                </div>
               </div>
             )}
 

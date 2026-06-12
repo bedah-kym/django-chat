@@ -182,6 +182,159 @@ class LLMClient:
             },
         }
 
+    # ------------------------------------------------------------------ #
+    #  OpenAI-compatible tool-calling adapter (DeepSeek)                   #
+    #  Translates the Anthropic Messages contract (content blocks +       #
+    #  tool_use / tool_result, stop_reason) to/from OpenAI chat tools so  #
+    #  the agent loop keeps working unchanged on a non-Anthropic model.   #
+    # ------------------------------------------------------------------ #
+    def _anthropic_to_openai_messages(self, system: str, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        if system:
+            out.append({"role": "system", "content": system if isinstance(system, str) else self._message_content_to_text(system)})
+        for m in messages:
+            role = m.get("role")
+            content = m.get("content")
+            if isinstance(content, str):
+                out.append({"role": role, "content": content})
+                continue
+            if not isinstance(content, list):
+                out.append({"role": role, "content": str(content or "")})
+                continue
+            if role == "assistant":
+                text_parts: List[str] = []
+                tool_calls: List[Dict[str, Any]] = []
+                for b in content:
+                    if not isinstance(b, dict):
+                        text_parts.append(str(b))
+                    elif b.get("type") == "text":
+                        text_parts.append(b.get("text", ""))
+                    elif b.get("type") == "tool_use":
+                        tool_calls.append({
+                            "id": b.get("id"),
+                            "type": "function",
+                            "function": {
+                                "name": b.get("name"),
+                                "arguments": json.dumps(b.get("input", {}), default=str),
+                            },
+                        })
+                msg: Dict[str, Any] = {"role": "assistant", "content": "\n".join(p for p in text_parts if p) or None}
+                if tool_calls:
+                    msg["tool_calls"] = tool_calls
+                out.append(msg)
+            elif role == "user":
+                tool_results = [b for b in content if isinstance(b, dict) and b.get("type") == "tool_result"]
+                if tool_results:
+                    for b in tool_results:
+                        payload = b.get("content")
+                        if not isinstance(payload, str):
+                            payload = self._message_content_to_text(payload)
+                        out.append({"role": "tool", "tool_call_id": b.get("tool_use_id"), "content": payload})
+                    leftover = self._message_content_to_text([b for b in content if isinstance(b, dict) and b.get("type") == "text"])
+                    if leftover.strip():
+                        out.append({"role": "user", "content": leftover})
+                else:
+                    out.append({"role": "user", "content": self._message_content_to_text(content)})
+            else:
+                out.append({"role": role, "content": self._message_content_to_text(content)})
+        return out
+
+    def _anthropic_tools_to_openai(self, tools: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for t in tools or []:
+            if not isinstance(t, dict) or "input_schema" not in t:
+                continue  # skip server-side tools without a JSON schema
+            out.append({
+                "type": "function",
+                "function": {
+                    "name": t.get("name"),
+                    "description": t.get("description", ""),
+                    "parameters": t.get("input_schema") or {"type": "object", "properties": {}},
+                },
+            })
+        return out
+
+    def _openai_response_to_anthropic(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        choice = (data.get("choices") or [{}])[0]
+        message = choice.get("message", {}) or {}
+        finish = choice.get("finish_reason")
+        blocks: List[Dict[str, Any]] = []
+        text = message.get("content")
+        if text:
+            blocks.append({"type": "text", "text": text})
+        tool_calls = message.get("tool_calls") or []
+        for idx, tc in enumerate(tool_calls):
+            fn = tc.get("function", {}) or {}
+            try:
+                args = json.loads(fn.get("arguments") or "{}")
+            except Exception:
+                args = {}
+            blocks.append({
+                "type": "tool_use",
+                "id": tc.get("id") or f"call_{idx}",
+                "name": fn.get("name"),
+                "input": args,
+            })
+        if tool_calls:
+            stop_reason = "tool_use"
+        elif finish == "length":
+            stop_reason = "max_tokens"
+        else:
+            stop_reason = "end_turn"
+        if not blocks:
+            blocks = [{"type": "text", "text": ""}]
+        usage = data.get("usage", {}) or {}
+        return {
+            "id": data.get("id", "openai-message"),
+            "type": "message",
+            "role": "assistant",
+            "content": blocks,
+            "stop_reason": stop_reason,
+            "usage": {
+                "input_tokens": usage.get("prompt_tokens", 0),
+                "output_tokens": usage.get("completion_tokens", 0),
+            },
+        }
+
+    async def _create_openai_message(
+        self,
+        *,
+        provider: str,
+        messages: List[Dict[str, Any]],
+        system: str,
+        tools: Optional[List[Dict[str, Any]]],
+        temperature: float,
+        max_tokens: int,
+        user_id: Optional[int],
+        model: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """create_message via an OpenAI-compatible endpoint, with tool calling."""
+        url, key, model_name = self._openai_config(provider, model)
+        body: Dict[str, Any] = {
+            "model": model_name,
+            "messages": self._anthropic_to_openai_messages(system, messages),
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        oai_tools = self._anthropic_tools_to_openai(tools)
+        if oai_tools:
+            body["tools"] = oai_tools
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                url,
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json=body,
+            )
+            if response.status_code != 200:
+                raise Exception(f"{provider} create_message Error {response.status_code}: {response.text}")
+            data = response.json()
+
+        result = self._openai_response_to_anthropic(data)
+        usage = result.get("usage", {})
+        self._record_token_usage(usage.get("input_tokens", 0) + usage.get("output_tokens", 0), user_id)
+        return result
+
     def _get_user_token_budget(self, user_id: Optional[int]) -> Dict[str, int]:
         """
         Get token budget and current usage for a user.
@@ -482,17 +635,30 @@ class LLMClient:
                 )
 
         # Fallback path (no Anthropic key or Anthropic call failed).
-        # Prefer DeepSeek when configured, else Hugging Face.
-        fallback_provider = "deepseek" if self.deepseek_key else "huggingface"
+        if self.deepseek_key:
+            # DeepSeek is OpenAI-compatible AND supports function/tool calling,
+            # so use the full adapter that preserves tools (Anthropic <-> OpenAI),
+            # not the text-only flatten fallback.
+            return await self._create_openai_message(
+                provider="deepseek",
+                messages=messages,
+                system=system,
+                tools=tools,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                user_id=user_id,
+                model=None,
+            )
+        # Hugging Face router: text-only fallback (tool calling not guaranteed).
         return await self._create_hf_fallback_message(
             messages=messages,
             system=system,
             temperature=temperature,
             max_tokens=max_tokens,
             user_id=user_id,
-            model=model if fallback_provider == "huggingface" else None,
+            model=model,
             tools=tools,
-            provider=fallback_provider,
+            provider="huggingface",
         )
 
     async def stream_message(

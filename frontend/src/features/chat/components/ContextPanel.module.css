@@ -275,3 +275,93 @@
 .addBtn:hover {
   text-decoration: underline;
 }
+
+/* Compose form (Add Note / Add Contact) */
+.composeForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-block-start: 6px;
+}
+
+.composeRow {
+  display: flex;
+  gap: 6px;
+}
+
+.composeSelect,
+.composeInput,
+.composeText {
+  font-family: var(--font-family);
+  font-size: 12px;
+  color: var(--text-color);
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.composeSelect {
+  flex: 1;
+  text-transform: capitalize;
+}
+
+.composeText {
+  min-block-size: 64px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.composeSelect:focus,
+.composeInput:focus,
+.composeText:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.composeActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.composeCancel,
+.composeSave {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.composeCancel {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.composeCancel:hover:not(:disabled) {
+  background: var(--bg-light);
+  color: var(--text-color);
+}
+
+.composeSave {
+  color: #fff;
+  background: var(--primary-color);
+}
+
+.composeSave:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.composeSave:disabled,
+.composeCancel:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

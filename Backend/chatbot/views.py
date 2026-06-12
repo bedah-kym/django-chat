@@ -287,24 +287,28 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
 
-@login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def invite_user(request):
     """
-    API View to invite a user to a room via email.
+    Invite a user to a room via email.
+
+    Accepts JSON or form-encoded { room_id, email }. Uses DRF token auth so the
+    SPA can call it with the standard Authorization: Token header.
 
     Security features:
     - Email format validation
     - Room ownership/membership check
     - Prevents self-invitations
     - Prevents duplicate adds
-    - Proper error messages
     """
-    if request.method != 'POST':
-        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
-
     try:
-        room_id = request.POST.get('room_id', '').strip()
-        email = request.POST.get('email', '').strip().lower()
+        room_id = str(request.data.get('room_id', '')).strip()
+        email = str(request.data.get('email', '')).strip().lower()
 
         # Input validation
         if not room_id or not email:

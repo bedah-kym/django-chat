@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import * as Accordion from '@radix-ui/react-accordion'
 import { motion } from 'framer-motion'
 import {
@@ -6,6 +7,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Room, Contact, Note, ActionReceipt } from '@/types/chat'
+import { addNote, createContact } from '@/api/chat'
 import { formatDate, formatDateTime } from '@/utils/format'
 import styles from './ContextPanel.module.css'
 
@@ -17,9 +19,57 @@ interface Props {
   summary?: string
   linkedRooms?: { id: number; name: string }[]
   onClose: () => void
+  onNotesChanged?: () => void
+  onContactsChanged?: () => void
 }
 
-export function ContextPanel({ room: _room, contacts, notes, actionReceipts, summary = '', linkedRooms = [], onClose }: Props) {
+const NOTE_TYPES = ['written', 'decision', 'action_item', 'insight', 'reminder'] as const
+const NOTE_PRIORITIES = ['low', 'medium', 'high'] as const
+
+export function ContextPanel({ room, contacts, notes, actionReceipts, summary = '', linkedRooms = [], onClose, onNotesChanged, onContactsChanged }: Props) {
+  const [composeNote, setComposeNote] = useState(false)
+  const [noteContent, setNoteContent] = useState('')
+  const [noteType, setNoteType] = useState<(typeof NOTE_TYPES)[number]>('written')
+  const [notePriority, setNotePriority] = useState<(typeof NOTE_PRIORITIES)[number]>('medium')
+  const [savingNote, setSavingNote] = useState(false)
+
+  const [composeContact, setComposeContact] = useState(false)
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [savingContact, setSavingContact] = useState(false)
+
+  const submitNote = async () => {
+    if (!noteContent.trim() || savingNote) return
+    setSavingNote(true)
+    try {
+      await addNote(room.id, { note_type: noteType, content: noteContent.trim(), priority: notePriority })
+      setNoteContent('')
+      setComposeNote(false)
+      toast.success('Note saved')
+      onNotesChanged?.()
+    } catch {
+      toast.error('Could not save note')
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
+  const submitContact = async () => {
+    if (!contactName.trim() || !contactEmail.trim() || savingContact) return
+    setSavingContact(true)
+    try {
+      await createContact({ name: contactName.trim(), email: contactEmail.trim() })
+      setContactName('')
+      setContactEmail('')
+      setComposeContact(false)
+      toast.success('Contact saved')
+      onContactsChanged?.()
+    } catch {
+      toast.error('Could not save contact')
+    } finally {
+      setSavingContact(false)
+    }
+  }
   return (
     <aside className={styles.panel}>
       <div className={styles.header}>
@@ -61,9 +111,36 @@ export function ContextPanel({ room: _room, contacts, notes, actionReceipts, sum
                   </div>
                 </motion.div>
               ))}
-              <button className={styles.addBtn} onClick={() => toast('Add contact form coming soon')}>
-                <Plus size={13} /> Add Contact
-              </button>
+              {composeContact ? (
+                <div className={styles.composeForm}>
+                  <input
+                    className={styles.composeInput}
+                    placeholder="Name"
+                    value={contactName}
+                    onChange={e => setContactName(e.target.value)}
+                    autoFocus
+                  />
+                  <input
+                    className={styles.composeInput}
+                    placeholder="Email"
+                    type="email"
+                    value={contactEmail}
+                    onChange={e => setContactEmail(e.target.value)}
+                  />
+                  <div className={styles.composeActions}>
+                    <button className={styles.composeCancel} onClick={() => { setComposeContact(false); setContactName(''); setContactEmail('') }} disabled={savingContact}>
+                      Cancel
+                    </button>
+                    <button className={styles.composeSave} onClick={submitContact} disabled={savingContact || !contactName.trim() || !contactEmail.trim()}>
+                      {savingContact ? 'Saving…' : 'Save contact'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className={styles.addBtn} onClick={() => setComposeContact(true)}>
+                  <Plus size={13} /> Add Contact
+                </button>
+              )}
             </div>
           </Accordion.Content>
         </Accordion.Item>
@@ -97,9 +174,45 @@ export function ContextPanel({ room: _room, contacts, notes, actionReceipts, sum
                   </span>
                 </motion.div>
               ))}
-              <button className={styles.addBtn} onClick={() => toast('Add note form coming soon')}>
-                <Plus size={13} /> Add Note
-              </button>
+              {composeNote ? (
+                <div className={styles.composeForm}>
+                  <div className={styles.composeRow}>
+                    <select
+                      className={styles.composeSelect}
+                      value={noteType}
+                      onChange={e => setNoteType(e.target.value as typeof noteType)}
+                    >
+                      {NOTE_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                    </select>
+                    <select
+                      className={styles.composeSelect}
+                      value={notePriority}
+                      onChange={e => setNotePriority(e.target.value as typeof notePriority)}
+                    >
+                      {NOTE_PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <textarea
+                    className={styles.composeText}
+                    placeholder="Write a note…"
+                    value={noteContent}
+                    onChange={e => setNoteContent(e.target.value)}
+                    autoFocus
+                  />
+                  <div className={styles.composeActions}>
+                    <button className={styles.composeCancel} onClick={() => { setComposeNote(false); setNoteContent('') }} disabled={savingNote}>
+                      Cancel
+                    </button>
+                    <button className={styles.composeSave} onClick={submitNote} disabled={savingNote || !noteContent.trim()}>
+                      {savingNote ? 'Saving…' : 'Save note'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className={styles.addBtn} onClick={() => setComposeNote(true)}>
+                  <Plus size={13} /> Add Note
+                </button>
+              )}
             </div>
           </Accordion.Content>
         </Accordion.Item>

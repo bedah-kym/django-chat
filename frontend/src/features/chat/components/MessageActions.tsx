@@ -3,23 +3,54 @@ import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Copy, Check, ThumbsUp, ThumbsDown, RefreshCw, Pin } from 'lucide-react'
 import { toast } from 'sonner'
+import { pinMessage, retryAiMessage } from '@/api/chat'
 import styles from './MessageActions.module.css'
 
 interface Props {
   content: string
   isAi: boolean
   visible: boolean
+  roomId?: number
+  messageId?: number
 }
 
-export function MessageActions({ content, isAi, visible }: Props) {
+export function MessageActions({ content, isAi, visible, roomId, messageId }: Props) {
   const [copied, setCopied] = useState(false)
   const [rated, setRated] = useState<'up' | 'down' | null>(null)
+  const [pinning, setPinning] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content)
     setCopied(true)
     toast.success('Copied to clipboard')
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handlePin = async () => {
+    if (!roomId || !messageId || pinning) return
+    setPinning(true)
+    try {
+      await pinMessage(roomId, messageId)
+      toast.success('Pinned to notes')
+    } catch {
+      toast.error('Could not pin message')
+    } finally {
+      setPinning(false)
+    }
+  }
+
+  const handleRetry = async () => {
+    if (!roomId || !messageId || retrying) return
+    setRetrying(true)
+    try {
+      await retryAiMessage(roomId, messageId)
+      toast('Regenerating response…')
+    } catch {
+      toast.error('Could not regenerate')
+    } finally {
+      setRetrying(false)
+    }
   }
 
   return (
@@ -52,7 +83,7 @@ export function MessageActions({ content, isAi, visible }: Props) {
         {/* Pin */}
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
-            <button className={styles.btn} onClick={() => toast.success('Pinned to notes')}>
+            <button className={styles.btn} onClick={handlePin} disabled={pinning || !roomId || !messageId}>
               <Pin size={14} />
             </button>
           </Tooltip.Trigger>
@@ -99,7 +130,7 @@ export function MessageActions({ content, isAi, visible }: Props) {
             {/* Retry */}
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
-                <button className={styles.btn} onClick={() => toast('Regenerating response...')}>
+                <button className={styles.btn} onClick={handleRetry} disabled={retrying || !roomId || !messageId}>
                   <RefreshCw size={14} />
                 </button>
               </Tooltip.Trigger>

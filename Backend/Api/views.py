@@ -342,24 +342,56 @@ def create_room(request):
     """Create a new chat room."""
     from chatbot.models import Chatroom, Member
 
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
     room = Chatroom.objects.create()
     member, _ = Member.objects.get_or_create(User=request.user)
     room.participants.add(member)
 
     name = request.data.get('name', f'room-{room.id}')
     domain = request.data.get('domain', 'ops')
+    room_type = (request.data.get('room_type') or 'general').lower()
     room.name = name
     room.domain = domain
     room.save()
+
+    # "general" rooms include the Mathia bot so the AI auto-replies; "private"
+    # rooms are solo (or human-only after invites) and require @mathia.
+    is_ai = False
+    participants_payload = [{
+        'username': request.user.username,
+        'displayName': request.user.get_full_name() or request.user.username,
+        'isOnline': True,
+    }]
+    if room_type == 'general':
+        try:
+            mathia_user, _ = User.objects.get_or_create(
+                username='mathia',
+                defaults={'first_name': 'Mathia'},
+            )
+            mathia_member, _ = Member.objects.get_or_create(User=mathia_user)
+            room.participants.add(mathia_member)
+            is_ai = True
+            participants_payload.append({
+                'username': 'mathia',
+                'displayName': 'Mathia',
+                'isOnline': True,
+            })
+        except Exception:
+            # If the bot account can't be created (e.g. unusual auth backend),
+            # fall back to a private room rather than failing the whole request.
+            is_ai = False
 
     return Response({
         'id': room.id,
         'name': name,
         'displayName': name.replace('-', ' ').replace('_', ' ').title(),
         'domain': domain,
+        'roomType': 'general' if is_ai else 'private',
         'lastMessage': '',
         'lastMessageTime': None,
         'unreadCount': 0,
-        'isAiRoom': True,
-        'participants': [{'username': request.user.username, 'displayName': request.user.get_full_name() or request.user.username, 'isOnline': True}],
+        'isAiRoom': is_ai,
+        'participants': participants_payload,
     }, status=201)

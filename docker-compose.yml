@@ -68,7 +68,7 @@ services:
 
   celery_worker:
     image: mathia-web:latest
-    command: sh -c "python /app/wait_for_db.py && sh /app/scripts/railway/celery_worker.sh"
+    command: sh -c "python /app/wait_for_db.py && cd /app/Backend && exec celery -A Backend worker -l info --pool prefork --concurrency 1 --max-tasks-per-child 200 --max-memory-per-child 250000"
     volumes:
       - .:/app
     env_file:
