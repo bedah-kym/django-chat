@@ -146,6 +146,50 @@
   margin-block-start: 2px;
 }
 
+.notifEmpty {
+  padding: 28px var(--space-md);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.notifRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.notifDismiss {
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  background: transparent;
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.notifItem:hover .notifDismiss {
+  opacity: 1;
+}
+
+.notifDismiss:hover {
+  color: var(--critical-color);
+  background: var(--bg-light);
+}
+
+.notifItem {
+  cursor: pointer;
+}
+
+.notifItem:hover {
+  background: var(--bg-light);
+}
+
 @media (max-width: 768px) {
   .topbar {
     padding-inline: var(--space-md);

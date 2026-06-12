@@ -3,12 +3,12 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Search, PanelRightOpen, PanelRightClose, ChevronDown, Download, UserPlus, X } from 'lucide-react'
-import { apiRequest } from '@/api/client'
 import { toast } from 'sonner'
 import { useChatStore } from '@/stores/chatStore'
 import { useChatSocket } from '@/hooks/useChatSocket'
-import { fetchContacts, fetchActionReceipts, fetchRoomContext, fetchLinkedRooms, markRoomRead } from '@/api/chat'
+import { fetchContacts, fetchActionReceipts, fetchRoomContext, fetchLinkedRooms, markRoomRead, inviteToRoom } from '@/api/chat'
 import type { Contact, ActionReceipt, Note } from '@/types/chat'
+import type { MemoryFact, MemoryEpisode } from '@/api/chat'
 import { ContextPanel } from './components/ContextPanel'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { ThinkingBlock } from './components/ThinkingBlock'
@@ -36,6 +36,10 @@ export function ChatPage() {
   const [notes, setNotes] = useState<Note[]>([])
   const [summary, setSummary] = useState('')
   const [linkedRooms, setLinkedRooms] = useState<{ id: number; name: string }[]>([])
+  const [linkableRooms, setLinkableRooms] = useState<{ id: number; name: string }[]>([])
+  const [memoryFacts, setMemoryFacts] = useState<MemoryFact[]>([])
+  const [memoryPreferences, setMemoryPreferences] = useState<MemoryFact[]>([])
+  const [memoryEpisodes, setMemoryEpisodes] = useState<MemoryEpisode[]>([])
   const [isThinking, setIsThinking] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -68,6 +72,10 @@ export function ChatPage() {
     setNotes([])
     setSummary('')
     setLinkedRooms([])
+    setLinkableRooms([])
+    setMemoryFacts([])
+    setMemoryPreferences([])
+    setMemoryEpisodes([])
   }, [roomId, setActiveRoom])
 
   useEffect(() => {
@@ -75,9 +83,20 @@ export function ChatPage() {
       fetchContacts().then(setContacts).catch(() => {})
       fetchActionReceipts(roomId).then(setActionReceipts).catch(() => {})
       fetchRoomContext(roomId)
-        .then(ctx => { setNotes(ctx.notes); setSummary(ctx.summary) })
+        .then(ctx => {
+          setNotes(ctx.notes)
+          setSummary(ctx.summary)
+          setMemoryFacts(ctx.memoryFacts)
+          setMemoryPreferences(ctx.memoryPreferences)
+          setMemoryEpisodes(ctx.memoryEpisodes)
+        })
         .catch(() => {})
-      fetchLinkedRooms(roomId).then(res => setLinkedRooms(res.linked ?? [])).catch(() => {})
+      fetchLinkedRooms(roomId)
+        .then(res => {
+          setLinkedRooms(res.linked ?? [])
+          setLinkableRooms(res.linkable ?? [])
+        })
+        .catch(() => {})
     }
   }, [roomId, isPanelOpen])
 
@@ -105,6 +124,22 @@ export function ChatPage() {
     setIsThinking(false)
     prevMsgCountRef.current = 0
   }, [roomId])
+
+  // Mirror the live messages from useChatSocket into the Zustand store so
+  // consumers that need them (e.g. message search, which filters from
+  // `messagesByRoom[activeRoomId]`) see real data. The hook keeps its own copy
+  // to avoid the WS-driven infinite render loop noted in the journal — this
+  // sync runs at commit time so it doesn't reintroduce that cycle.
+  useEffect(() => {
+    if (!roomId) return
+    useChatStore.setState(s => ({
+      messagesByRoom: { ...s.messagesByRoom, [roomId]: allMessages },
+    }))
+    // Re-run the active search query so results stay fresh as messages stream
+    // in, instead of being stuck on the snapshot from when the user last typed.
+    const q = useChatStore.getState().searchQuery
+    if (q) useChatStore.getState().setSearchQuery(q)
+  }, [roomId, allMessages])
 
   // Show "Mathia is thinking…" only when the user sends a message that targets
   // the AI, and clear it the instant an AI message/chunk arrives. Driven off
@@ -142,10 +177,7 @@ export function ChatPage() {
     if (!email || inviting) return
     setInviting(true)
     try {
-      const res = await apiRequest<{ status: string; message?: string }>('/chatbot/invite/', {
-        method: 'POST',
-        body: JSON.stringify({ room_id: roomId, email }),
-      })
+      const res = await inviteToRoom(roomId, email)
       if (res.status === 'success') {
         toast.success(res.message || 'Invited')
         setInviteEmail('')
@@ -411,14 +443,32 @@ export function ChatPage() {
                 actionReceipts={actionReceipts}
                 summary={summary}
                 linkedRooms={linkedRooms}
+                linkableRooms={linkableRooms}
+                memoryFacts={memoryFacts}
+                memoryPreferences={memoryPreferences}
+                memoryEpisodes={memoryEpisodes}
                 onClose={() => setIsPanelOpen(false)}
                 onNotesChanged={() => {
                   fetchRoomContext(roomId)
-                    .then(ctx => { setNotes(ctx.notes); setSummary(ctx.summary) })
+                    .then(ctx => {
+                      setNotes(ctx.notes)
+                      setSummary(ctx.summary)
+                      setMemoryFacts(ctx.memoryFacts)
+                      setMemoryPreferences(ctx.memoryPreferences)
+                      setMemoryEpisodes(ctx.memoryEpisodes)
+                    })
                     .catch(() => {})
                 }}
                 onContactsChanged={() => {
                   fetchContacts().then(setContacts).catch(() => {})
+                }}
+                onLinksChanged={() => {
+                  fetchLinkedRooms(roomId)
+                    .then(res => {
+                      setLinkedRooms(res.linked ?? [])
+                      setLinkableRooms(res.linkable ?? [])
+                    })
+                    .catch(() => {})
                 }}
               />
             </motion.div>

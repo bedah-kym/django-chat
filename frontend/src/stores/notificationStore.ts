@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import type { Notification } from '@/types/notifications'
-import { fetchNotifications, markAllRead as apiMarkAllRead, markRead as apiMarkRead } from '@/api/notifications'
+import {
+  fetchNotifications, markAllRead as apiMarkAllRead, markRead as apiMarkRead,
+  dismissNotification as apiDismiss, fetchCounts as apiFetchCounts,
+} from '@/api/notifications'
 
 function mapEventType(eventType: string): Notification['type'] {
   if (eventType === 'message.unread' || eventType === 'message.mention') return 'message'
@@ -21,6 +24,8 @@ interface NotificationState {
   fetchNotifications: (page?: number) => Promise<void>
   markAllRead: () => Promise<void>
   markRead: (id: number) => Promise<void>
+  dismiss: (id: number) => Promise<void>
+  refreshCounts: () => Promise<void>
 }
 
 export const useNotificationStore = create<NotificationState>((set) => ({
@@ -101,6 +106,28 @@ export const useNotificationStore = create<NotificationState>((set) => ({
         ),
         unreadCount: Math.max(0, s.unreadCount - 1),
       }))
+    } catch {
+    }
+  },
+
+  dismiss: async (id: number) => {
+    try {
+      await apiDismiss(id)
+      set(s => {
+        const wasUnread = s.notifications.find(n => n.id === id && !n.isRead)
+        return {
+          notifications: s.notifications.filter(n => n.id !== id),
+          unreadCount: wasUnread ? Math.max(0, s.unreadCount - 1) : s.unreadCount,
+        }
+      })
+    } catch {
+    }
+  },
+
+  refreshCounts: async () => {
+    try {
+      const counts = await apiFetchCounts()
+      set({ unreadCount: counts.unread })
     } catch {
     }
   },

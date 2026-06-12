@@ -48,3 +48,32 @@ export async function markRead(id: number): Promise<void> {
   })
   if (!res.ok) throw new Error(`Mark read error: ${res.status}`)
 }
+
+export async function dismissNotification(id: number): Promise<void> {
+  const res = await fetch(`/notifications/api/${id}/dismiss/`, {
+    method: 'POST',
+    headers: authHeaders(),
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error(`Dismiss error: ${res.status}`)
+}
+
+export interface NotificationCounts {
+  unread: number
+  unreadRooms: number
+  pendingReminders: number
+}
+
+export async function fetchCounts(): Promise<NotificationCounts> {
+  const res = await fetch('/notifications/api/counts/', {
+    headers: authHeaders(),
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error(`Counts error: ${res.status}`)
+  const data = await res.json() as { unread_notifications?: number; unread_rooms?: number; pending_reminders?: number }
+  return {
+    unread: data.unread_notifications ?? 0,
+    unreadRooms: data.unread_rooms ?? 0,
+    pendingReminders: data.pending_reminders ?? 0,
+  }
+}

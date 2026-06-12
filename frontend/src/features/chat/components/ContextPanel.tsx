@@ -2,12 +2,13 @@ import { useState } from 'react'
 import * as Accordion from '@radix-ui/react-accordion'
 import { motion } from 'framer-motion'
 import {
-  X, ChevronDown, Users, StickyNote, Zap, Link2, Brain,
-  Plus, Pin,
+  X, ChevronDown, Users, StickyNote, Zap, Link2, Brain, Sparkles,
+  Plus, Pin, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Room, Contact, Note, ActionReceipt } from '@/types/chat'
-import { addNote, createContact } from '@/api/chat'
+import type { MemoryFact, MemoryEpisode } from '@/api/chat'
+import { addNote, createContact, linkRoom, unlinkRoom } from '@/api/chat'
 import { formatDate, formatDateTime } from '@/utils/format'
 import styles from './ContextPanel.module.css'
 
@@ -18,15 +19,25 @@ interface Props {
   actionReceipts: ActionReceipt[]
   summary?: string
   linkedRooms?: { id: number; name: string }[]
+  linkableRooms?: { id: number; name: string }[]
+  memoryFacts?: MemoryFact[]
+  memoryPreferences?: MemoryFact[]
+  memoryEpisodes?: MemoryEpisode[]
   onClose: () => void
   onNotesChanged?: () => void
   onContactsChanged?: () => void
+  onLinksChanged?: () => void
 }
 
 const NOTE_TYPES = ['written', 'decision', 'action_item', 'insight', 'reminder'] as const
 const NOTE_PRIORITIES = ['low', 'medium', 'high'] as const
 
-export function ContextPanel({ room, contacts, notes, actionReceipts, summary = '', linkedRooms = [], onClose, onNotesChanged, onContactsChanged }: Props) {
+export function ContextPanel({
+  room, contacts, notes, actionReceipts, summary = '',
+  linkedRooms = [], linkableRooms = [],
+  memoryFacts = [], memoryPreferences = [], memoryEpisodes = [],
+  onClose, onNotesChanged, onContactsChanged, onLinksChanged,
+}: Props) {
   const [composeNote, setComposeNote] = useState(false)
   const [noteContent, setNoteContent] = useState('')
   const [noteType, setNoteType] = useState<(typeof NOTE_TYPES)[number]>('written')
@@ -37,6 +48,10 @@ export function ContextPanel({ room, contacts, notes, actionReceipts, summary = 
   const [contactName, setContactName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [savingContact, setSavingContact] = useState(false)
+
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false)
+  const [linkTarget, setLinkTarget] = useState<number | ''>('')
+  const [linking, setLinking] = useState(false)
 
   const submitNote = async () => {
     if (!noteContent.trim() || savingNote) return
@@ -51,6 +66,32 @@ export function ContextPanel({ room, contacts, notes, actionReceipts, summary = 
       toast.error('Could not save note')
     } finally {
       setSavingNote(false)
+    }
+  }
+
+  const submitLink = async () => {
+    if (!linkTarget || linking) return
+    setLinking(true)
+    try {
+      await linkRoom(room.id, Number(linkTarget))
+      setLinkTarget('')
+      setLinkPickerOpen(false)
+      toast.success('Room linked')
+      onLinksChanged?.()
+    } catch {
+      toast.error('Could not link room')
+    } finally {
+      setLinking(false)
+    }
+  }
+
+  const removeLink = async (targetRoomId: number) => {
+    try {
+      await unlinkRoom(room.id, targetRoomId)
+      toast('Link removed')
+      onLinksChanged?.()
+    } catch {
+      toast.error('Could not unlink')
     }
   }
 
@@ -262,12 +303,103 @@ export function ContextPanel({ room, contacts, notes, actionReceipts, summary = 
               {linkedRooms.map((linkedRoom) => (
                 <div key={linkedRoom.id} className={styles.linkedRoom}>
                   <Link2 size={13} />
-                  <span>{linkedRoom.name}</span>
+                  <span style={{ flex: 1 }}>{linkedRoom.name}</span>
+                  <button
+                    className={styles.linkRemove}
+                    onClick={() => removeLink(linkedRoom.id)}
+                    aria-label={`Unlink ${linkedRoom.name}`}
+                    title="Unlink"
+                  >
+                    <Trash2 size={11} />
+                  </button>
                 </div>
               ))}
-              <button className={styles.addBtn} onClick={() => toast('Link room coming soon')}>
-                <Plus size={13} /> Link Room
-              </button>
+              {linkPickerOpen ? (
+                <div className={styles.composeForm}>
+                  <select
+                    className={styles.composeSelect}
+                    value={linkTarget}
+                    onChange={e => setLinkTarget(e.target.value ? Number(e.target.value) : '')}
+                    autoFocus
+                  >
+                    <option value="">Choose a room…</option>
+                    {linkableRooms.length === 0 && <option disabled>No linkable rooms</option>}
+                    {linkableRooms.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                  <div className={styles.composeActions}>
+                    <button className={styles.composeCancel} onClick={() => { setLinkPickerOpen(false); setLinkTarget('') }} disabled={linking}>
+                      Cancel
+                    </button>
+                    <button className={styles.composeSave} onClick={submitLink} disabled={linking || !linkTarget}>
+                      {linking ? 'Linking…' : 'Link'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className={styles.addBtn}
+                  onClick={() => setLinkPickerOpen(true)}
+                  disabled={linkableRooms.length === 0}
+                  title={linkableRooms.length === 0 ? 'No other rooms to link' : 'Link a room'}
+                >
+                  <Plus size={13} /> Link Room
+                </button>
+              )}
+            </div>
+          </Accordion.Content>
+        </Accordion.Item>
+
+        <Accordion.Item value="memory" className={styles.section}>
+          <Accordion.Trigger className={styles.sectionHeader}>
+            <div className={styles.sectionLabel}>
+              <Sparkles size={15} />
+              <span>AI Memory ({memoryFacts.length + memoryPreferences.length + memoryEpisodes.length})</span>
+            </div>
+            <ChevronDown size={14} className={styles.chevron} />
+          </Accordion.Trigger>
+          <Accordion.Content className={styles.sectionContent}>
+            <div className={styles.sectionBody}>
+              {(memoryFacts.length + memoryPreferences.length + memoryEpisodes.length) === 0 ? (
+                <p className={styles.summaryEmpty}>Nothing memorised yet — Mathia learns durable facts and preferences from your conversations.</p>
+              ) : (
+                <>
+                  {memoryFacts.length > 0 && (
+                    <div>
+                      <div className={styles.memoryHeading}>Facts</div>
+                      {memoryFacts.map((f, i) => (
+                        <div key={`fact-${i}`} className={styles.memoryItem}>
+                          <span className={styles.memoryKey}>{f.key}</span>
+                          <span className={styles.memoryValue}>{f.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {memoryPreferences.length > 0 && (
+                    <div>
+                      <div className={styles.memoryHeading}>Preferences</div>
+                      {memoryPreferences.map((p, i) => (
+                        <div key={`pref-${i}`} className={styles.memoryItem}>
+                          <span className={styles.memoryKey}>{p.key}</span>
+                          <span className={styles.memoryValue}>{p.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {memoryEpisodes.length > 0 && (
+                    <div>
+                      <div className={styles.memoryHeading}>Episodes</div>
+                      {memoryEpisodes.map((e, i) => (
+                        <div key={`ep-${i}`} className={styles.memoryItem}>
+                          <span className={styles.memoryValue}>{e.summary}</span>
+                          {e.date && <span className={styles.memoryDate}>{e.date}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </Accordion.Content>
         </Accordion.Item>

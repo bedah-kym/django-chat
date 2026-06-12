@@ -23,7 +23,9 @@ export default defineConfig({
       // Use 127.0.0.1 (IPv4) not localhost: on Windows + Docker Desktop, Node
       // resolves localhost to IPv6 ::1, whose wslrelay forwarder hangs.
       '/api': 'http://127.0.0.1:8000',
-      '/chatbot/api': 'http://127.0.0.1:8000',
+      // Proxy the whole /chatbot/ namespace, not just /chatbot/api/, so
+      // /chatbot/invite/ and /chatbot/rooms/:id/export/ also reach the backend.
+      '/chatbot': 'http://127.0.0.1:8000',
       '/accounts': 'http://127.0.0.1:8000',
       '/auth': 'http://127.0.0.1:8000',
       '/notifications': 'http://127.0.0.1:8000',

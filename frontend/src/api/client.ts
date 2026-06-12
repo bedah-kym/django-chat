@@ -101,3 +101,41 @@ export async function accountsRequest<T = unknown>(
 
   return res.json()
 }
+
+// Hits the chatbot URL group directly (Django mounts chatbot at /chatbot/, NOT
+// /api/chatbot/). Mirrors apiRequest but with the right base — using apiRequest
+// would produce /api/chatbot/api/... which 404s. Pass paths beginning with "/".
+export async function chatbotApiRequest<T = unknown>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  }
+  if (authToken) {
+    headers['Authorization'] = `Token ${authToken}`
+  }
+  const res = await fetch(`/chatbot${path}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  })
+
+  if (res.status === 302 || res.redirected) {
+    authToken = null
+    throw new Error('Unauthorized — redirect to login')
+  }
+  if (res.status === 401) {
+    authToken = null
+    throw new Error('Unauthorized')
+  }
+  if (res.status === 204) {
+    return undefined as unknown as T
+  }
+  if (!res.ok) {
+    throw new Error(`Chatbot API error: ${res.status} ${res.statusText}`)
+  }
+  const text = await res.text()
+  return (text ? JSON.parse(text) : undefined) as T
+}
