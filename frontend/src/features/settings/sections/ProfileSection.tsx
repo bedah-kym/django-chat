@@ -21,9 +21,10 @@ const COMPANY_SIZES = [
 
 export function ProfileSection({ user }: Props) {
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl)
+  const displayParts = (user.displayName ?? '').trim().split(/\s+/).filter(Boolean)
   const [form, setForm] = useState({
-    firstName: user.firstName ?? user.displayName.split(' ')[0] ?? '',
-    lastName: user.lastName ?? user.displayName.split(' ').slice(1).join(' ') ?? '',
+    firstName: user.firstName ?? displayParts[0] ?? '',
+    lastName: user.lastName ?? displayParts.slice(1).join(' '),
     bio: user.bio ?? '',
     location: user.location ?? '',
     website: user.website ?? '',
@@ -57,7 +58,7 @@ export function ProfileSection({ user }: Props) {
     <div className={styles.tabContent}>
       {/* Avatar */}
       <AvatarUpload
-        displayName={user.displayName}
+        displayName={user.displayName ?? user.email ?? 'User'}
         avatarUrl={avatarUrl}
         onUploaded={setAvatarUrl}
       />
@@ -75,7 +76,7 @@ export function ProfileSection({ user }: Props) {
           </label>
           <label className={`${styles.field} ${styles.fieldFull}`}>
             <span className={styles.fieldLabel}>Email</span>
-            <input className={styles.input} value={user.email} readOnly type="email" />
+            <input className={styles.input} value={user.email ?? ''} readOnly type="email" />
           </label>
           <label className={`${styles.field} ${styles.fieldFull}`}>
             <span className={styles.fieldLabel}>Bio</span>

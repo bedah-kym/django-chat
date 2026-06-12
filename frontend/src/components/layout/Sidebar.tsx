@@ -120,10 +120,13 @@ export function Sidebar({ collapsible = true }: Props) {
                 align="start"
               >
                 <div className={styles.userMenuHeader}>
-                  <span className={styles.userMenuName}>{currentUser?.displayName || 'User'}</span>
-                  {currentUser?.email ? (
-                    <span className={styles.userMenuEmail}>{currentUser.email}</span>
-                  ) : null}
+                  <span className={styles.userMenuAvatar}>{userInitial}</span>
+                  <div className={styles.userMenuIdentity}>
+                    <span className={styles.userMenuName}>{currentUser?.displayName || 'User'}</span>
+                    {currentUser?.email ? (
+                      <span className={styles.userMenuEmail}>{currentUser.email}</span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className={styles.userMenuList}>
                   {personalNavItems.map((item) => {
