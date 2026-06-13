@@ -42,6 +42,14 @@ class Itinerary(models.Model):
     is_shared = models.BooleanField(default=False)
     shared_with = models.ManyToManyField(User, blank=True, related_name='shared_itineraries')
 
+    # Per-trip Mathia chatroom (lazily created when the trip chat panel is opened).
+    chatroom = models.OneToOneField(
+        'chatbot.Chatroom',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='itinerary',
+    )
+
     # LLM-generated metadata (JSON)
     metadata = models.JSONField(default=dict, blank=True)  # {summary, highlights, risk_factors, etc.}
 

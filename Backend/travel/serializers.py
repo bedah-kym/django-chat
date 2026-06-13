@@ -4,7 +4,21 @@ from django.contrib.auth.models import User
 from .models import Itinerary, ItineraryItem, Event, SearchCache, BookingReference
 
 
+class BookingReferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BookingReference
+        fields = [
+            'id', 'provider', 'provider_booking_id', 'booking_reference',
+            'confirmation_code', 'status', 'booking_url', 'confirmation_email',
+            'metadata', 'booked_at', 'confirmed_at'
+        ]
+        read_only_fields = ['id', 'booked_at', 'confirmed_at']
+
+
 class ItineraryItemSerializer(serializers.ModelSerializer):
+    booking = serializers.SerializerMethodField()
+    booking_link = serializers.SerializerMethodField()
+
     class Meta:
         model = ItineraryItem
         fields = [
@@ -13,20 +27,22 @@ class ItineraryItemSerializer(serializers.ModelSerializer):
             'location_name', 'location_latitude', 'location_longitude',
             'provider', 'provider_id', 'price_ksh', 'price_currency',
             'booking_url', 'status', 'metadata', 'sort_order',
+            'booking', 'booking_link',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def get_booking(self, obj):
+        booking = getattr(obj, 'booking_reference', None)
+        if booking is None:
+            return None
+        return BookingReferenceSerializer(booking).data
 
-class BookingReferenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BookingReference
-        fields = [
-            'id', 'provider', 'provider_booking_id', 'status',
-            'booking_url', 'confirmation_email', 'metadata',
-            'booked_at', 'confirmed_at'
-        ]
-        read_only_fields = ['id', 'booked_at', 'confirmed_at']
+    def get_booking_link(self, obj):
+        """A ready-to-use provider deep link to complete this booking."""
+        from .booking_links import build_booking_link
+        url, provider = build_booking_link(obj)
+        return {'url': url, 'provider': provider}
 
 
 class ItinerarySerializer(serializers.ModelSerializer):

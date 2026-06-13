@@ -20,5 +20,7 @@ urlpatterns = [
     path('api/itinerary/', views.itinerary_list_api, name='itinerary_list'),
     path('api/itinerary/<int:itinerary_id>/', views.itinerary_detail, name='itinerary_detail'),
     path('api/itinerary/<int:itinerary_id>/items/', views.itinerary_items, name='itinerary_items'),
+    path('api/itinerary/<int:itinerary_id>/chatroom/', views.itinerary_chatroom, name='itinerary_chatroom'),
+    path('api/items/<int:item_id>/book/', views.book_itinerary_item, name='book_itinerary_item'),
     path('api/events/', views.search_events, name='search_events'),
 ]
