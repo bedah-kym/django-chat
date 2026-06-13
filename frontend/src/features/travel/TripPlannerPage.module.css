@@ -220,14 +220,15 @@
   box-shadow: 0 0 0 3px var(--tv-accent-soft);
 }
 
-/* The whole wrapper is the trigger now — hide the native picker icon so
-   nothing fights our Lucide Calendar visually. */
+/* Hide the visible native indicator so our Lucide Calendar doesn't fight
+   it, but keep its native click behaviour (clicking the input still opens
+   the picker). The wrapper's onClick is a backup for clicks on the icon
+   or empty space. Note: DO NOT make this indicator position:absolute —
+   the input is position:static, so an absolute child anchors to the
+   nearest positioned ancestor instead of the input and ends up
+   overlapping a sibling input (the bug that broke the end-date field). */
 .dateInput::-webkit-calendar-picker-indicator {
   opacity: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  position: absolute;
-  inset: 0;
   cursor: pointer;
 }
 
