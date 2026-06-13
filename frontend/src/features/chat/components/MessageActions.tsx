@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Copy, Check, ThumbsUp, ThumbsDown, RefreshCw, Pin } from 'lucide-react'
+import { Copy, Check, ThumbsUp, ThumbsDown, RefreshCw, Pin, CornerUpLeft } from 'lucide-react'
 import { toast } from 'sonner'
-import { pinMessage, retryAiMessage } from '@/api/chat'
+import { pinMessage } from '@/api/chat'
 import styles from './MessageActions.module.css'
 
 interface Props {
@@ -12,9 +12,11 @@ interface Props {
   visible: boolean
   roomId?: number
   messageId?: number
+  onReply?: () => void
+  onRegenerate?: () => void
 }
 
-export function MessageActions({ content, isAi, visible, roomId, messageId }: Props) {
+export function MessageActions({ content, isAi, visible, roomId, messageId, onReply, onRegenerate }: Props) {
   const [copied, setCopied] = useState(false)
   const [rated, setRated] = useState<'up' | 'down' | null>(null)
   const [pinning, setPinning] = useState(false)
@@ -40,22 +42,35 @@ export function MessageActions({ content, isAi, visible, roomId, messageId }: Pr
     }
   }
 
-  const handleRetry = async () => {
-    if (!roomId || !messageId || retrying) return
+  const handleRetry = () => {
+    if (!onRegenerate || retrying) return
     setRetrying(true)
     try {
-      await retryAiMessage(roomId, messageId)
+      onRegenerate()
       toast('Regenerating response…')
-    } catch {
-      toast.error('Could not regenerate')
     } finally {
-      setRetrying(false)
+      // brief guard so double-clicks don't fire two regenerations
+      setTimeout(() => setRetrying(false), 800)
     }
   }
 
   return (
     <Tooltip.Provider delayDuration={300}>
       <div className={`${styles.actions} ${visible ? styles.visible : ''}`}>
+        {/* Reply */}
+        {onReply ? (
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button className={styles.btn} onClick={onReply} aria-label="Reply">
+                <CornerUpLeft size={14} />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content className={styles.tooltip} sideOffset={4}>Reply</Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        ) : null}
+
         {/* Copy */}
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
@@ -127,17 +142,19 @@ export function MessageActions({ content, isAi, visible, roomId, messageId }: Pr
               </Tooltip.Portal>
             </Tooltip.Root>
 
-            {/* Retry */}
-            <Tooltip.Root>
-              <Tooltip.Trigger asChild>
-                <button className={styles.btn} onClick={handleRetry} disabled={retrying || !roomId || !messageId}>
-                  <RefreshCw size={14} />
-                </button>
-              </Tooltip.Trigger>
-              <Tooltip.Portal>
-                <Tooltip.Content className={styles.tooltip} sideOffset={4}>Regenerate</Tooltip.Content>
-              </Tooltip.Portal>
-            </Tooltip.Root>
+            {/* Regenerate */}
+            {onRegenerate ? (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button className={styles.btn} onClick={handleRetry} disabled={retrying}>
+                    <RefreshCw size={14} />
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content className={styles.tooltip} sideOffset={4}>Regenerate</Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            ) : null}
           </>
         )}
       </div>
