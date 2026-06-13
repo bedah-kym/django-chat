@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Copy, Check, ThumbsUp, ThumbsDown, RefreshCw, Pin, CornerUpLeft, Volume2, Pencil, Trash2 } from 'lucide-react'
+import { Copy, Check, ThumbsUp, ThumbsDown, RefreshCw, Pin, CornerUpLeft, Volume2, VolumeX, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { pinMessage, submitMessageFeedback } from '@/api/chat'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
@@ -25,7 +25,7 @@ export function MessageActions({ content, isAi, visible, roomId, messageId, onRe
   const [feedbackLocked, setFeedbackLocked] = useState(false)
   const [pinning, setPinning] = useState(false)
   const [retrying, setRetrying] = useState(false)
-  const { isSupported: ttsSupported, speak } = useSpeechSynthesis()
+  const { isSupported: ttsSupported, speak, stop: stopTts, speaking } = useSpeechSynthesis()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content)
@@ -163,12 +163,16 @@ export function MessageActions({ content, isAi, visible, roomId, messageId, onRe
             {ttsSupported && content ? (
               <Tooltip.Root>
                 <Tooltip.Trigger asChild>
-                  <button className={styles.btn} onClick={() => { speak(content) }} aria-label="Read aloud">
-                    <Volume2 size={14} />
+                  <button
+                    className={`${styles.btn} ${speaking ? styles.ratedUp : ''}`}
+                    onClick={() => (speaking ? stopTts() : speak(content))}
+                    aria-label={speaking ? 'Stop reading' : 'Read aloud'}
+                  >
+                    {speaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
                   </button>
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
-                  <Tooltip.Content className={styles.tooltip} sideOffset={4}>Read aloud</Tooltip.Content>
+                  <Tooltip.Content className={styles.tooltip} sideOffset={4}>{speaking ? 'Stop' : 'Read aloud'}</Tooltip.Content>
                 </Tooltip.Portal>
               </Tooltip.Root>
             ) : null}

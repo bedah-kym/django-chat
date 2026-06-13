@@ -1,37 +1,41 @@
-import { useRef, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 interface UseSpeechSynthesisReturn {
   isSupported: boolean
   speak: (text: string) => void
   stop: () => void
-  isSpeaking: () => boolean
+  /** Reactive — true while an utterance from this hook is playing. */
+  speaking: boolean
 }
 
 export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
-  const synthRef = useRef<SpeechSynthesis | null>(null)
-
+  const [speaking, setSpeaking] = useState(false)
   const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window
 
   const speak = useCallback((text: string) => {
-    if (!isSupported) return
+    if (!isSupported || !text) return
     const synth = window.speechSynthesis
-    synth.cancel()
+    synth.cancel() // stop anything already playing
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 1
     utterance.pitch = 1
     utterance.volume = 1
+    utterance.onend = () => setSpeaking(false)
+    utterance.onerror = () => setSpeaking(false)
+    setSpeaking(true)
     synth.speak(utterance)
-    synthRef.current = synth
   }, [isSupported])
 
   const stop = useCallback(() => {
     if (!isSupported) return
     window.speechSynthesis.cancel()
+    setSpeaking(false)
   }, [isSupported])
 
-  const isSpeaking = useCallback(() => {
-    return isSupported && window.speechSynthesis.speaking
+  // Cancel any in-flight speech if the component unmounts.
+  useEffect(() => {
+    return () => { if (isSupported) window.speechSynthesis.cancel() }
   }, [isSupported])
 
-  return { isSupported, speak, stop, isSpeaking }
+  return { isSupported, speak, stop, speaking }
 }

@@ -24,8 +24,12 @@ export default defineConfig({
           if (id.includes('node_modules/framer-motion')) return 'framer'
           if (id.includes('node_modules/@radix-ui')) return 'radix'
           if (id.includes('node_modules/d3')) return 'd3'
-          if (id.includes('node_modules/emoji-mart')) return 'emoji'
+          // matches both `emoji-mart` and the heavy `@emoji-mart/data` package
+          if (id.includes('emoji-mart')) return 'emoji'
           if (id.includes('node_modules/wavesurfer')) return 'wavesurfer'
+          // react-markdown + the unified/remark/micromark/hast/mdast stack — large
+          // and only needed where markdown renders; was being hoisted into ChatInput.
+          if (/node_modules\/(react-markdown|remark|micromark|mdast|mdast-util|hast|hast-util|hastscript|unified|unist|unist-util|vfile|devlop|decode-named-character-reference|character-entities|property-information|space-separated-tokens|comma-separated-tokens|trim-lines|trough|bail|is-plain-obj|html-url-attributes|estree-util|zwitch|longest-streak|markdown-table|ccount|escape-string-regexp)/.test(id)) return 'markdown'
         },
       },
     },
