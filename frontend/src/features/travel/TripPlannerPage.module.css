@@ -208,11 +208,27 @@
   border: 1px solid var(--tv-line);
   background: var(--tv-canvas);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: pointer;
+}
+
+.dateInputWrap:hover {
+  border-color: color-mix(in srgb, var(--tv-accent) 40%, var(--tv-line));
 }
 
 .dateInputWrap:focus-within {
   border-color: var(--tv-accent);
   box-shadow: 0 0 0 3px var(--tv-accent-soft);
+}
+
+/* The whole wrapper is the trigger now — hide the native picker icon so
+   nothing fights our Lucide Calendar visually. */
+.dateInput::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
 }
 
 .dateIcon {

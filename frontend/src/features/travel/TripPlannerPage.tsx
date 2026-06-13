@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Sparkles, Users, MapPin, Calendar, Check } from 'lucide-react'
@@ -19,6 +19,20 @@ interface Form {
   notes: string
 }
 
+// Map a free-text destination to one of the backend's region choices
+// (kenya | east_africa | africa | worldwide). Heuristic — wrong fallbacks
+// always land on worldwide so the request can't reject on this field alone.
+function detectRegion(dest: string): 'kenya' | 'east_africa' | 'africa' | 'worldwide' {
+  const d = dest.toLowerCase()
+  const KENYA = ['kenya', 'nairobi', 'mombasa', 'kisumu', 'nakuru', 'eldoret', 'malindi', 'naivasha']
+  const EAC = ['uganda', 'tanzania', 'rwanda', 'burundi', 'south sudan', 'kampala', 'kigali', 'dar es salaam', 'zanzibar', 'arusha', 'entebbe']
+  const AFRICA = ['ethiopia', 'nigeria', 'ghana', 'morocco', 'egypt', 'south africa', 'senegal', 'cairo', 'lagos', 'cape town', 'addis ababa', 'algiers', 'tunis']
+  if (KENYA.some((k) => d.includes(k))) return 'kenya'
+  if (EAC.some((k) => d.includes(k))) return 'east_africa'
+  if (AFRICA.some((k) => d.includes(k))) return 'africa'
+  return 'worldwide'
+}
+
 export function TripPlannerPage() {
   const navigate = useNavigate()
   const refresh = useTravelStore((s) => s.fetchItineraries)
@@ -33,6 +47,23 @@ export function TripPlannerPage() {
     travellers: 1,
     notes: '',
   })
+
+  // Refs so the whole date field is clickable — the native <input type="date">
+  // only opens its picker from the tiny indicator on its right edge, and our
+  // decorative Lucide icon was eating clicks without doing anything.
+  const startDateRef = useRef<HTMLInputElement>(null)
+  const endDateRef = useRef<HTMLInputElement>(null)
+
+  const openPicker = (ref: React.RefObject<HTMLInputElement | null>) => {
+    const el = ref.current
+    if (!el) return
+    el.focus()
+    type PickerInput = HTMLInputElement & { showPicker?: () => void }
+    const withPicker = el as PickerInput
+    if (typeof withPicker.showPicker === 'function') {
+      try { withPicker.showPicker() } catch { /* picker already open or unsupported */ }
+    }
+  }
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -62,7 +93,7 @@ export function TripPlannerPage() {
     try {
       const created = await createItinerary({
         title: form.destination.trim(),
-        region: form.destination.trim(),
+        region: detectRegion(form.destination),
         start_date: form.startDate,
         end_date: form.endDate,
         description: form.notes.trim() || undefined,
@@ -151,11 +182,17 @@ export function TripPlannerPage() {
 
               {step === 1 && (
                 <div className={styles.dateGrid}>
-                  <label className={styles.dateField}>
+                  <div className={styles.dateField}>
                     <span className={styles.dateLabel}>From</span>
-                    <div className={styles.dateInputWrap}>
+                    <div
+                      className={styles.dateInputWrap}
+                      onClick={() => openPicker(startDateRef)}
+                      role="button"
+                      tabIndex={-1}
+                    >
                       <Calendar size={16} className={styles.dateIcon} />
                       <input
+                        ref={startDateRef}
                         type="date"
                         className={styles.dateInput}
                         min={today}
@@ -163,12 +200,18 @@ export function TripPlannerPage() {
                         onChange={(e) => set('startDate', e.target.value)}
                       />
                     </div>
-                  </label>
-                  <label className={styles.dateField}>
+                  </div>
+                  <div className={styles.dateField}>
                     <span className={styles.dateLabel}>To</span>
-                    <div className={styles.dateInputWrap}>
+                    <div
+                      className={styles.dateInputWrap}
+                      onClick={() => openPicker(endDateRef)}
+                      role="button"
+                      tabIndex={-1}
+                    >
                       <Calendar size={16} className={styles.dateIcon} />
                       <input
+                        ref={endDateRef}
                         type="date"
                         className={styles.dateInput}
                         min={form.startDate || today}
@@ -176,7 +219,7 @@ export function TripPlannerPage() {
                         onChange={(e) => set('endDate', e.target.value)}
                       />
                     </div>
-                  </label>
+                  </div>
                   {days > 0 ? (
                     <div className={styles.daysHint}>
                       {days} {days === 1 ? 'day' : 'days'} in {form.destination || 'destination'}
