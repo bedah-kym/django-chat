@@ -131,9 +131,16 @@
 /* ---------------- body ---------------- */
 .body {
   display: grid;
-  grid-template-columns: 280px 1fr;
   gap: 22px;
   align-items: flex-start;
+}
+
+.bodyChatOpen {
+  grid-template-columns: 260px minmax(0, 1fr) 340px;
+}
+
+.bodyChatCollapsed {
+  grid-template-columns: 260px minmax(0, 1fr) 48px;
 }
 
 /* ---------------- day rail ---------------- */
@@ -362,6 +369,68 @@
   gap: 8px;
 }
 
+.itemActions {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.itemRemoveBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 8px;
+  color: var(--tv-text-faint);
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.itemCard:hover .itemRemoveBtn,
+.itemRemoveBtn:focus-visible {
+  opacity: 1;
+}
+
+.itemRemoveBtn:hover {
+  background: rgba(190, 70, 60, 0.12);
+  color: #b6463c;
+}
+
+.itemRemoveConfirm {
+  padding: 3px 10px;
+  border-radius: var(--tv-radius-pill);
+  background: #b6463c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  transition: opacity var(--transition-fast);
+}
+
+.itemRemoveConfirm:hover {
+  opacity: 0.92;
+}
+
+.itemRemoveConfirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.itemRemoveCancel {
+  padding: 3px 10px;
+  border-radius: var(--tv-radius-pill);
+  color: var(--tv-text-soft);
+  font-size: 11px;
+  font-weight: 600;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.itemRemoveCancel:hover {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+}
+
 .itemType {
   font-size: 10px;
   font-weight: 600;
@@ -429,11 +498,174 @@
   font-variant-numeric: tabular-nums;
 }
 
+.bookBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-inline-start: auto;
+  padding: 5px 12px;
+  border-radius: var(--tv-radius-pill);
+  background: var(--tv-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  transition: opacity var(--transition-fast);
+}
+
+.bookBtn:hover {
+  opacity: 0.92;
+}
+
 .itemDetails {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.55;
   color: var(--tv-text-soft);
+}
+
+/* ---------------- collapsible item details ---------------- */
+.itemExpandBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 8px;
+  color: var(--tv-text-faint);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.itemExpandBtn:hover {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+}
+
+.itemExpandBtn svg {
+  transition: transform var(--transition-fast);
+}
+
+.chevUp {
+  transform: rotate(180deg);
+}
+
+.itemNameBtn {
+  display: block;
+  text-align: start;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  inline-size: 100%;
+}
+
+.itemDetailsPanel {
+  overflow: hidden;
+  margin-block-start: 10px;
+  border-block-start: 1px solid var(--tv-line);
+  padding-block-start: 12px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 0;
+}
+
+.detailField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.detailLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tv-text-faint);
+}
+
+.detailValue {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tv-text);
+  overflow-wrap: anywhere;
+}
+
+.detailValue code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  background: var(--tv-surface-soft);
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+
+.bookingBox {
+  margin-block-start: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--tv-surface-soft);
+  border: 1px solid var(--tv-line);
+}
+
+.bookingHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-block-end: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tv-text-soft);
+}
+
+.bookingHead svg {
+  color: var(--tv-accent);
+}
+
+.bookingStatus {
+  margin-inline-start: auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--tv-radius-pill);
+  background: var(--tv-surface);
+  color: var(--tv-text-soft);
+}
+
+.status_confirmed {
+  background: rgba(47, 111, 79, 0.12);
+  color: var(--tv-today);
+}
+
+.status_failed {
+  background: rgba(190, 70, 60, 0.12);
+  color: #b6463c;
+}
+
+.status_planned,
+.status_completed {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text-soft);
+}
+
+.bookingLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-block-start: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tv-accent);
+}
+
+.bookingLink:hover {
+  text-decoration: underline;
 }
 
 /* ---------------- focus empty state ---------------- */
@@ -481,9 +713,246 @@
   font-weight: 600;
 }
 
+/* ---------------- add booking modal ---------------- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 16, 12, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.modal {
+  inline-size: 100%;
+  max-inline-size: 480px;
+  max-block-size: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius-lg);
+  box-shadow: var(--tv-shadow-lift);
+  overflow: hidden;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-block-end: 1px solid var(--tv-line);
+}
+
+.modalTitle {
+  margin: 0;
+  font-family: var(--tv-display);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--tv-text);
+}
+
+.modalClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: var(--tv-radius-pill);
+  color: var(--tv-text-soft);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.modalClose:hover {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.typeChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--tv-line);
+  background: var(--tv-surface);
+  color: var(--tv-text-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.typeChip:hover {
+  border-color: color-mix(in srgb, var(--tv-accent) 30%, var(--tv-line));
+  color: var(--tv-text);
+}
+
+.typeChipActive {
+  border-color: var(--tv-accent);
+  background: var(--tv-accent-soft);
+  color: var(--tv-accent);
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-inline-size: 0;
+}
+
+.modalRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modalLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--tv-text-soft);
+}
+
+.modalOptional {
+  font-weight: 400;
+  color: var(--tv-text-faint);
+}
+
+.modalInput {
+  inline-size: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--tv-line);
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+  font-size: 14px;
+  font-family: var(--tv-body);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.modalInput:focus {
+  outline: none;
+  border-color: var(--tv-accent);
+  background: var(--tv-surface);
+}
+
+.modalInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--tv-line);
+  background: var(--tv-surface-soft);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.modalInputWrap:focus-within {
+  border-color: var(--tv-accent);
+  background: var(--tv-surface);
+}
+
+.modalInputIcon {
+  color: var(--tv-text-faint);
+  flex-shrink: 0;
+}
+
+.modalInputBare {
+  inline-size: 100%;
+  border: none;
+  background: transparent;
+  color: var(--tv-text);
+  font-size: 14px;
+  font-family: var(--tv-body);
+}
+
+.modalInputBare:focus {
+  outline: none;
+}
+
+.modalFoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  border-block-start: 1px solid var(--tv-line);
+}
+
+.modalCancel {
+  padding: 9px 16px;
+  border-radius: var(--tv-radius-pill);
+  background: transparent;
+  color: var(--tv-text-soft);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.modalCancel:hover {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+}
+
+.modalSubmit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: var(--tv-radius-pill);
+  background: var(--tv-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity var(--transition-fast);
+}
+
+.modalSubmit:hover {
+  opacity: 0.92;
+}
+
+.modalSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ---------------- responsive ---------------- */
+@media (max-width: 1080px) {
+  .bodyChatOpen {
+    grid-template-columns: 240px minmax(0, 1fr) 300px;
+  }
+  .bodyChatCollapsed {
+    grid-template-columns: 240px minmax(0, 1fr) 48px;
+  }
+}
+
 @media (max-width: 920px) {
-  .body {
+  .body,
+  .bodyChatOpen,
+  .bodyChatCollapsed {
     grid-template-columns: 1fr;
   }
 

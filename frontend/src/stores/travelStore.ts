@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Itinerary, ItineraryItem } from '@/types/travel'
-import { fetchItineraries } from '@/api/travel'
-import type { ItineraryResponse } from '@/api/travel'
+import { fetchItineraries, createItineraryItem, deleteItineraryItem, bookItineraryItem } from '@/api/travel'
+import type { ItineraryResponse, CreateItineraryItemInput } from '@/api/travel'
 
 function mapStatus(status: string): Itinerary['status'] {
   switch (status) {
@@ -16,17 +16,36 @@ function mapStatus(status: string): Itinerary['status'] {
 function mapItem(item: ItineraryResponse['items'][0]): ItineraryItem {
   const date = item.start_datetime ? item.start_datetime.slice(0, 10) : ''
   const time = item.start_datetime ? item.start_datetime.slice(11, 16) : undefined
+  const endTime = item.end_datetime ? item.end_datetime.slice(11, 16) : undefined
+  const b = item.booking
   return {
     id: item.id,
     type: item.item_type as ItineraryItem['type'],
     name: item.title,
     date,
     time,
+    endTime,
     location: item.location_name ?? '',
     cost: item.price_ksh ? Number(item.price_ksh) : 0,
     currency: item.price_currency ?? 'KES',
     status: item.status as ItineraryItem['status'],
     details: item.description ?? undefined,
+    provider: item.provider ?? undefined,
+    bookingUrl: item.booking_url ?? undefined,
+    bookingLink: item.booking_link ?? undefined,
+    booking: b
+      ? {
+          provider: b.provider,
+          providerBookingId: b.provider_booking_id,
+          bookingReference: b.booking_reference,
+          confirmationCode: b.confirmation_code,
+          status: b.status,
+          bookingUrl: b.booking_url,
+          confirmationEmail: b.confirmation_email,
+          bookedAt: b.booked_at,
+          confirmedAt: b.confirmed_at,
+        }
+      : null,
   }
 }
 
@@ -49,6 +68,9 @@ interface TravelState {
   isLoading: boolean
   initialize: () => Promise<void>
   fetchItineraries: () => Promise<void>
+  addItem: (itineraryId: number, input: CreateItineraryItemInput) => Promise<void>
+  removeItem: (itineraryId: number, itemId: number) => Promise<void>
+  bookItem: (itineraryId: number, itemId: number) => Promise<void>
 }
 
 export const useTravelStore = create<TravelState>((set) => ({
@@ -79,5 +101,52 @@ export const useTravelStore = create<TravelState>((set) => ({
     } catch {
       set({ isLoading: false })
     }
+  },
+
+  addItem: async (itineraryId, input) => {
+    const created = await createItineraryItem(itineraryId, input)
+    // Splice the new item into the matching itinerary so the day rail and
+    // focus column reflect it immediately, without refetching the whole list.
+    set((state) => ({
+      itineraries: state.itineraries.map((it) =>
+        it.id === itineraryId
+          ? {
+              ...it,
+              items: [...it.items, mapItem(created)],
+              totalCost: it.totalCost + (Number(created.price_ksh) || 0),
+            }
+          : it,
+      ),
+    }))
+  },
+
+  bookItem: async (itineraryId, itemId) => {
+    const updated = await bookItineraryItem(itemId)
+    const mapped = mapItem(updated)
+    set((state) => ({
+      itineraries: state.itineraries.map((it) =>
+        it.id === itineraryId
+          ? { ...it, items: it.items.map((i) => (i.id === itemId ? mapped : i)) }
+          : it,
+      ),
+    }))
+  },
+
+  removeItem: async (itineraryId, itemId) => {
+    await deleteItineraryItem(itemId)
+    // Drop the item locally so the day rail + focus column update immediately.
+    set((state) => ({
+      itineraries: state.itineraries.map((it) =>
+        it.id === itineraryId
+          ? {
+              ...it,
+              items: it.items.filter((item) => item.id !== itemId),
+              totalCost: it.items
+                .filter((item) => item.id !== itemId)
+                .reduce((sum, item) => sum + (item.cost || 0), 0),
+            }
+          : it,
+      ),
+    }))
   },
 }))
