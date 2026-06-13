@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Paperclip, Mic, SendHorizontal, Smile } from 'lucide-react'
-import { toast } from 'sonner'
 import { useChatStore } from '@/stores/chatStore'
+import { getChatSocket } from '@/api/chatSocket'
 import { useAutoResize } from '@/hooks/useAutoResize'
 import { useMentionAutocomplete } from '@/hooks/useMentionAutocomplete'
 import type { Participant } from '@/types/chat'
@@ -42,11 +42,20 @@ export function ChatInput({ roomId, participants }: Props) {
   // Quick prompts: show when input ends with @mathia (no text after)
   const showQuickPrompts = /(?:^|\s)@mathia\s*$/i.test(inputValue)
 
+  // Throttle typing pings so we emit at most one every couple of seconds.
+  const lastTypingRef = useRef(0)
+  const emitTyping = () => {
+    const now = Date.now()
+    if (now - lastTypingRef.current > 2000) {
+      lastTypingRef.current = now
+      getChatSocket().sendTyping()
+    }
+  }
+
   const handleSend = () => {
     if (!inputValue.trim()) return
     sendMessage(roomId, inputValue.trim(), replyingTo?.id)
     setInputValue('')
-    toast.success('Message sent')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -72,7 +81,6 @@ export function ChatInput({ roomId, participants }: Props) {
       const prompt = action.buildPrompt({})
       sendMessage(roomId, prompt)
       setInputValue('')
-      toast.success('Message sent')
     } else {
       setPromptAction(action)
     }
@@ -81,7 +89,6 @@ export function ChatInput({ roomId, participants }: Props) {
   const handlePromptSubmit = (prompt: string) => {
     sendMessage(roomId, prompt)
     setInputValue('')
-    toast.success('Message sent')
   }
 
   if (isRecording) {
@@ -162,7 +169,7 @@ export function ChatInput({ roomId, participants }: Props) {
             placeholder="Type a message... (@mention to tag)"
             value={inputValue}
             rows={1}
-            onChange={e => setInputValue(e.target.value)}
+            onChange={e => { setInputValue(e.target.value); emitTyping() }}
             onKeyDown={handleKeyDown}
           />
 

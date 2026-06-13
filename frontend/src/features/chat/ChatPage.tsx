@@ -5,6 +5,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { Search, PanelRightOpen, PanelRightClose, ChevronDown, Download, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useChatStore } from '@/stores/chatStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useChatSocket } from '@/hooks/useChatSocket'
 import { fetchContacts, fetchActionReceipts, fetchRoomContext, fetchLinkedRooms, markRoomRead, inviteToRoom } from '@/api/chat'
 import type { Contact, ActionReceipt, Note } from '@/types/chat'
@@ -50,6 +51,8 @@ export function ChatPage() {
 
   const rooms = useChatStore((s) => s.rooms)
   const setActiveRoom = useChatStore((s) => s.setActiveRoom)
+  const setReplyingTo = useChatStore((s) => s.setReplyingTo)
+  const sendMessage = useChatStore((s) => s.sendMessage)
   const searchOpen = useChatStore((s) => s.searchOpen)
   const setSearchOpen = useChatStore((s) => s.setSearchOpen)
   const searchResults = useChatStore((s) => s.searchResults)
@@ -57,8 +60,21 @@ export function ChatPage() {
   const activeResultId = searchResults[searchActiveIndex] ?? null
   const resultSet = new Set(searchResults)
 
+  const username = useAuthStore((s) => s.username)
   const room = rooms.find((candidate) => candidate.id === roomId)
-  const allMessages = useChatSocket(roomId)
+  const { messages: allMessages, loadOlder, hasMore, loadingOlder, typingUsers } = useChatSocket(roomId)
+
+  // Preserve scroll position when older messages are prepended.
+  const prevScrollHeightRef = useRef(0)
+  const restoringScrollRef = useRef(false)
+  const handleLoadOlder = () => {
+    const el = messageAreaRef.current
+    if (el) {
+      prevScrollHeightRef.current = el.scrollHeight
+      restoringScrollRef.current = true
+    }
+    loadOlder()
+  }
 
   useEffect(() => {
     if (roomId) {
@@ -112,6 +128,15 @@ export function ChatPage() {
     if (!nearBottomRef.current) return
     element.scrollTop = element.scrollHeight
   }, [allMessages.length, lastContentLen, lastIsStreaming])
+
+  // After prepending older messages, keep the previously-visible message put
+  // (otherwise the viewport jumps to the top of the freshly-loaded batch).
+  useLayoutEffect(() => {
+    const el = messageAreaRef.current
+    if (!el || !restoringScrollRef.current) return
+    el.scrollTop = el.scrollHeight - prevScrollHeightRef.current
+    restoringScrollRef.current = false
+  }, [allMessages.length])
 
   // Scroll the active search match into view as the user steps through results
   useEffect(() => {
@@ -207,6 +232,9 @@ export function ChatPage() {
   }
 
   const onlineCount = room.participants.filter((participant) => participant.isOnline).length
+  const typingNames = typingUsers.map(
+    (u) => room.participants.find((p) => p.username === u)?.displayName || u,
+  )
 
   return (
     <section className={styles.chatPage} aria-label={`${room.displayName} chat workspace`}>
@@ -335,7 +363,7 @@ export function ChatPage() {
             setShowScrollBtn(distance > 200)
           }}
         >
-          <HistoryLoader isLoading={false} hasMore={false} onLoadMore={() => {}} />
+          <HistoryLoader isLoading={loadingOlder} hasMore={hasMore} onLoadMore={handleLoadOlder} />
 
           {allMessages.length === 0 && (
             <div className={styles.emptyMessages}>
@@ -348,7 +376,7 @@ export function ChatPage() {
               index === 0 ||
               new Date(msg.timestamp).toDateString() !== new Date(allMessages[index - 1]!.timestamp).toDateString()
             const firstInGroup = isFirstInGroup(index)
-            const isOwn = msg.member === 'alex'
+            const isOwn = msg.member === username
             const parentMsg = getParentMessage(msg.parentId)
 
             return (
@@ -409,7 +437,20 @@ export function ChatPage() {
                     {msg.isStreaming ? <span className={styles.streamingCursor} /> : null}
 
                     {hoveredMsg === msg.id && !msg.isStreaming ? (
-                      <div className={styles.msgActions}><MessageActions content={msg.content} isAi={msg.isAi} visible={true} roomId={roomId} messageId={msg.id} /></div>
+                      <div className={styles.msgActions}><MessageActions
+                        content={msg.content}
+                        isAi={msg.isAi}
+                        visible={true}
+                        roomId={roomId}
+                        messageId={msg.id}
+                        onReply={() => setReplyingTo(msg)}
+                        onRegenerate={msg.isAi ? () => {
+                          // Re-ask the user prompt that preceded this AI answer.
+                          for (let i = index - 1; i >= 0; i--) {
+                            if (!allMessages[i]!.isAi) { sendMessage(roomId, allMessages[i]!.content); break }
+                          }
+                        } : undefined}
+                      /></div>
                     ) : null}
                   </div>
 
@@ -419,7 +460,7 @@ export function ChatPage() {
             )
           })}
 
-          <TypingIndicator isThinking={isThinking} />
+          <TypingIndicator isThinking={isThinking} typingUsers={typingNames} />
         </div>
 
         {showScrollBtn ? (

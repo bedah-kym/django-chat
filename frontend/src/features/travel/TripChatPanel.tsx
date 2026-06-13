@@ -13,7 +13,7 @@ import styles from './TripChatPanel.module.css'
 /** Live message thread — only mounted once we have a room id so the socket
  *  hook never connects to an invalid room. */
 function TripChatThread({ roomId, participants }: { roomId: number; participants: Participant[] }) {
-  const messages = useChatSocket(roomId)
+  const { messages } = useChatSocket(roomId)
   const username = useAuthStore((s) => s.username) || ''
   const scrollRef = useRef<HTMLDivElement>(null)
 

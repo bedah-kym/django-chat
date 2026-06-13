@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { getChatSocket } from '@/api/chatSocket'
 import { useAuthStore } from '@/stores/authStore'
 import type { WsMessage, WsMessageData } from '@/api/chatSocket'
@@ -19,37 +19,90 @@ function wsMessageToFrontend(m: WsMessageData): Message {
   }
 }
 
-export function useChatSocket(roomId: number) {
+export interface ChatSocketState {
+  messages: Message[]
+  loadOlder: () => void
+  hasMore: boolean
+  loadingOlder: boolean
+  /** Usernames (excluding self) currently typing in this room. */
+  typingUsers: string[]
+}
+
+const TYPING_TTL_MS = 3500
+
+export function useChatSocket(roomId: number): ChatSocketState {
   const [messages, setMessages] = useState<Message[]>([])
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [typingUsers, setTypingUsers] = useState<string[]>([])
+
+  // Refs that must survive re-renders without re-subscribing the socket.
+  const oldestIdRef = useRef<number | null>(null)
+  const pendingOlderRef = useRef(false)
+  const typingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  const loadOlder = useCallback(() => {
+    if (pendingOlderRef.current || !oldestIdRef.current) return
+    pendingOlderRef.current = true
+    setLoadingOlder(true)
+    getChatSocket().fetchMessages(oldestIdRef.current)
+  }, [])
 
   useEffect(() => {
     setMessages([])
+    setHasMore(false)
+    setLoadingOlder(false)
+    setTypingUsers([])
+    oldestIdRef.current = null
+    pendingOlderRef.current = false
+    const timers = typingTimersRef.current
     const socket = getChatSocket()
+    const selfName = (useAuthStore.getState().username || '').toLowerCase()
 
-    const addMessages = (msgs: WsMessageData[]) => {
-      const mapped = msgs.map(wsMessageToFrontend)
-      // Backend returns newest-first; reverse to oldest-first for display
-      setMessages(mapped.reverse())
+    const ingestBatch = (msgs: WsMessageData[], hasMoreResp: boolean, oldestId: number | null) => {
+      const mapped = msgs.map(wsMessageToFrontend).reverse() // backend is newest-first
+      setHasMore(Boolean(hasMoreResp))
+      if (oldestId != null) oldestIdRef.current = oldestId
+
+      if (pendingOlderRef.current) {
+        // Paginated "load older" — prepend, de-duping by id.
+        pendingOlderRef.current = false
+        setLoadingOlder(false)
+        setMessages((prev) => {
+          const known = new Set(prev.map((m) => m.id))
+          const fresh = mapped.filter((m) => !known.has(m.id))
+          return [...fresh, ...prev]
+        })
+      } else {
+        setMessages(mapped)
+      }
+    }
+
+    const clearTyping = (user: string) => {
+      setTypingUsers((prev) => prev.filter((u) => u !== user))
+      if (timers[user]) {
+        clearTimeout(timers[user])
+        delete timers[user]
+      }
     }
 
     const appendMessage = (m?: WsMessageData) => {
       if (!m) return
       const next = wsMessageToFrontend(m)
-      setMessages(prev => {
-        if (prev.some(msg => msg.id === next.id)) return prev
-
+      if (!next.isAi) clearTyping(next.member) // a sent message ends their "typing"
+      setMessages((prev) => {
+        if (prev.some((msg) => msg.id === next.id)) return prev
         const last = prev[prev.length - 1]
         if ((last?.isStreaming || last?.isTemp) && next.isAi) {
           return [...prev.slice(0, -1), next]
         }
-
         return [...prev, next]
       })
     }
 
     const appendStreamChunk = (chunk?: string, isFinal = false) => {
       if (!chunk && !isFinal) return
-      setMessages(prev => {
+      setMessages((prev) => {
         const last = prev[prev.length - 1]
         if (last && last.isStreaming) {
           const updated: Message = {
@@ -60,11 +113,7 @@ export function useChatSocket(roomId: number) {
           }
           return [...prev.slice(0, -1), updated]
         }
-
-        if (isFinal && !chunk) {
-          return prev
-        }
-
+        if (isFinal && !chunk) return prev
         const streamMsg: Message = {
           id: Date.now(),
           member: 'mathia',
@@ -75,16 +124,23 @@ export function useChatSocket(roomId: number) {
           isStreaming: !isFinal,
           isTemp: true,
         }
-
         return [...prev, streamMsg]
       })
+    }
+
+    const handleTyping = (from?: string) => {
+      if (!from) return
+      if (from.toLowerCase() === selfName) return // ignore our own echo
+      setTypingUsers((prev) => (prev.includes(from) ? prev : [...prev, from]))
+      if (timers[from]) clearTimeout(timers[from])
+      timers[from] = setTimeout(() => clearTyping(from), TYPING_TTL_MS)
     }
 
     const unsub1 = socket.on('connected', () => socket.fetchMessages())
     const unsub2 = socket.on('*', (msg: WsMessage) => {
       if (msg.command === 'messages') {
-        const msgs = msg.messages as WsMessageData[] | undefined
-        if (msgs?.length) addMessages(msgs)
+        const msgs = (msg.messages as WsMessageData[] | undefined) ?? []
+        ingestBatch(msgs, Boolean(msg.has_more), (msg.oldest_id as number | null) ?? null)
       }
       if (msg.command === 'new_message' || msg.command === 'ai_message' || msg.command === 'ai_message_saved') {
         appendMessage(msg.message as WsMessageData | undefined)
@@ -92,13 +148,22 @@ export function useChatSocket(roomId: number) {
       if (msg.command === 'ai_stream') {
         appendStreamChunk(msg.chunk as string | undefined, Boolean(msg.is_final))
       }
+      if (msg.command === 'typing') {
+        handleTyping(msg.from as string | undefined)
+      }
     })
 
     const username = useAuthStore.getState().username || 'alex'
     socket.connect(roomId, username)
 
-    return () => { unsub1(); unsub2(); socket.disconnect() }
+    return () => {
+      unsub1()
+      unsub2()
+      Object.values(timers).forEach(clearTimeout)
+      typingTimersRef.current = {}
+      socket.disconnect()
+    }
   }, [roomId])
 
-  return messages
+  return { messages, loadOlder, hasMore, loadingOlder, typingUsers }
 }
