@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Message, Room } from '@/types/chat'
 import { fetchRooms, fetchMessages } from '@/api/rooms'
 import { getChatSocket } from '@/api/chatSocket'
+import { useAuthStore } from './authStore'
 
 interface HistoryState {
   hasMore: boolean
@@ -47,6 +48,8 @@ interface ChatState {
   setActiveRoom: (roomId: number) => void
   addRoom: (room: Room) => void
   sendMessage: (roomId: number, content: string, parentId?: number | null) => void
+  editMessage: (roomId: number, messageId: number, content: string) => void
+  deleteMessage: (roomId: number, messageId: number) => void
   addMessage: (roomId: number, msg: Message) => void
   setMessages: (roomId: number, msgs: Message[], hasMore: boolean, oldestId: number | null) => void
   updateStreamingMessage: (roomId: number, chunk: string, isFinal: boolean) => void
@@ -166,8 +169,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sendMessage: (_roomId, content, parentId) => {
     const socket = getChatSocket()
     if (socket.isConnected()) {
+      const pendingId = -(Date.now())
+      const username = useAuthStore.getState().username || 'alex'
+      const msg: Message = {
+        id: pendingId,
+        member: username,
+        content,
+        timestamp: new Date().toISOString(),
+        parentId: parentId ?? null,
+        isAi: false,
+        isPending: true,
+      }
+      set(s => ({
+        messagesByRoom: {
+          ...s.messagesByRoom,
+          [_roomId]: [...(s.messagesByRoom[_roomId] ?? []), msg],
+        },
+        replyingTo: null,
+      }))
       socket.sendMessage(content, parentId)
-      set({ replyingTo: null })
+    }
+  },
+  editMessage: (_roomId, messageId, content) => {
+    const socket = getChatSocket()
+    if (socket.isConnected()) {
+      socket.editMessage(messageId, content)
+    }
+  },
+  deleteMessage: (_roomId, messageId) => {
+    const socket = getChatSocket()
+    if (socket.isConnected()) {
+      socket.deleteMessage(messageId)
     }
   },
   addMessage: (roomId, msg) => set(s => {

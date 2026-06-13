@@ -106,6 +106,17 @@ export async function retryAiMessage(roomId: number, messageId: number): Promise
   await chatbotApiRequest(`/api/rooms/${roomId}/messages/${messageId}/retry/`, { method: 'POST' })
 }
 
+export async function submitMessageFeedback(
+  roomId: number,
+  messageId: number,
+  rating: 'up' | 'down' | null,
+): Promise<{ status: string; rating?: string }> {
+  return chatbotApiRequest(`/api/rooms/${roomId}/messages/${messageId}/feedback/`, {
+    method: 'POST',
+    body: JSON.stringify({ rating }),
+  })
+}
+
 export async function linkRoom(roomId: number, targetRoomId: number): Promise<void> {
   await chatbotApiRequest(`/api/rooms/${roomId}/linked/`, {
     method: 'POST',
@@ -122,4 +133,34 @@ export async function inviteToRoom(roomId: number, email: string): Promise<{ sta
     method: 'POST',
     body: JSON.stringify({ room_id: roomId, email }),
   })
+}
+
+export interface UploadQuota {
+  used: number
+  limit: number
+}
+
+export async function fetchUploadQuota(roomId: number): Promise<UploadQuota> {
+  return chatbotApiRequest<UploadQuota>(`/api/rooms/${roomId}/documents/quota/`)
+}
+
+export async function uploadDocument(roomId: number, file: File): Promise<{ id: number; name: string; url: string; type: string; size: number }> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const token = (await import('@/api/client')).getAuthToken()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Token ${token}`
+
+  const res = await fetch(`/chatbot/api/rooms/${roomId}/documents/upload/`, {
+    method: 'POST',
+    headers,
+    body: formData,
+    credentials: 'include',
+  })
+
+  if (res.status === 429) throw new Error('QUOTA_EXCEEDED')
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+
+  return res.json()
 }

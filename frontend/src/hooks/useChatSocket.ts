@@ -16,6 +16,8 @@ function wsMessageToFrontend(m: WsMessageData): Message {
     timestamp: m.timestamp,
     parentId: m.parent_id ?? null,
     isAi: isMathiaMessage(m.member),
+    editedAt: m.edited_at ?? null,
+    isDeleted: m.is_deleted ?? false,
   }
 }
 
@@ -150,6 +152,23 @@ export function useChatSocket(roomId: number): ChatSocketState {
       }
       if (msg.command === 'typing') {
         handleTyping(msg.from as string | undefined)
+      }
+      if (msg.command === 'message_edited') {
+        const edited = msg.message as WsMessageData | WsMessage | undefined
+        if (edited && typeof (edited as WsMessageData).id === 'number') {
+          const m = edited as WsMessageData
+          setMessages((prev) => prev.map(p =>
+            p.id === m.id ? { ...p, content: m.content, editedAt: m.edited_at ?? null } : p,
+          ))
+        }
+      }
+      if (msg.command === 'message_deleted') {
+        const mid = msg.message_id as number | undefined
+        if (mid) {
+          setMessages((prev) => prev.map(p =>
+            p.id === mid ? { ...p, isDeleted: true, content: '' } : p,
+          ))
+        }
       }
     })
 

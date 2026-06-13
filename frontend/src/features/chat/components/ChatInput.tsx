@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Paperclip, Mic, SendHorizontal, Smile } from 'lucide-react'
+import { Paperclip, Mic, SendHorizontal, Smile, MicOff } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 import { getChatSocket } from '@/api/chatSocket'
 import { useAutoResize } from '@/hooks/useAutoResize'
 import { useMentionAutocomplete } from '@/hooks/useMentionAutocomplete'
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import type { Participant } from '@/types/chat'
 import type { QuickPromptAction } from '@/utils/quickPrompts'
 import { ReplyBar } from './ReplyBar'
@@ -28,6 +29,8 @@ export function ChatInput({ roomId, participants }: Props) {
   const [showUpload, setShowUpload] = useState(false)
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [promptAction, setPromptAction] = useState<QuickPromptAction | null>(null)
+  const [dictating, setDictating] = useState(false)
+  const dictationBufferRef = useRef('')
   const textareaRef = useAutoResize(inputValue)
   const replyingTo = useChatStore(s => s.replyingTo)
   const setReplyingTo = useChatStore(s => s.setReplyingTo)
@@ -91,12 +94,60 @@ export function ChatInput({ roomId, participants }: Props) {
     setInputValue('')
   }
 
+  const sttResult = useCallback((result: { transcript: string; isFinal: boolean }) => {
+    if (result.isFinal) {
+      dictationBufferRef.current = result.transcript
+      setInputValue(v => {
+        const prefix = v ? `${v} ` : ''
+        return prefix + result.transcript
+      })
+    }
+  }, [])
+
+  const { isSupported: sttSupported, isListening: sttListening, start: startDictation, stop: stopDictation } =
+    useSpeechRecognition({ onResult: sttResult, onEnd: () => setDictating(false) })
+
+  const handleMicClick = () => {
+    if (sttSupported) {
+      if (sttListening) {
+        stopDictation()
+        setDictating(false)
+      } else {
+        dictationBufferRef.current = ''
+        startDictation()
+        setDictating(true)
+      }
+    } else {
+      setIsRecording(true)
+    }
+  }
+
+  const handleVoiceStop = async (audioBlob: Blob) => {
+    setIsRecording(false)
+    try {
+      const formData = new FormData()
+      formData.append('audio', audioBlob, 'voice.webm')
+      const token = localStorage.getItem('mathia-auth-token')
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Token ${token}`
+      const res = await fetch(`/chatbot/api/rooms/${roomId}/voice/upload/`, {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      })
+      if (res.ok) void res.json()
+    } catch {
+      // Silently fail — the message shows as [Voice Message] regardless
+    }
+  }
+
   if (isRecording) {
     return (
       <div className={styles.inputArea}>
         <AnimatePresence>
           <VoiceRecorder
-            onStop={() => setIsRecording(false)}
+            onStop={handleVoiceStop}
             onCancel={() => setIsRecording(false)}
           />
         </AnimatePresence>
@@ -134,10 +185,16 @@ export function ChatInput({ roomId, participants }: Props) {
       )}
 
       {/* File upload dialog */}
-      <FileUploadDialog open={showUpload} onClose={() => setShowUpload(false)} />
+      <FileUploadDialog open={showUpload} onClose={() => setShowUpload(false)} roomId={roomId} />
 
       {/* Input row */}
       <div className={styles.inputWrapper}>
+        {dictating ? (
+          <div className={styles.dictatingBar}>
+            <span className={styles.dictatingDot} />
+            <span>Listening… speak now</span>
+          </div>
+        ) : null}
         <AnimatePresence>
           {mention.isOpen && (
             <MentionDropdown
@@ -184,11 +241,17 @@ export function ChatInput({ roomId, participants }: Props) {
           <Tooltip.Provider delayDuration={300}>
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
-                <button className={styles.inputBtn} onClick={() => setIsRecording(true)}>
-                  <Mic size={18} />
+                <button
+                  className={`${styles.inputBtn} ${dictating ? styles.dictatingBtn : ''}`}
+                  onClick={handleMicClick}
+                  aria-label={sttSupported ? (sttListening ? 'Stop dictation' : 'Start dictation') : 'Voice message'}
+                >
+                  {dictating ? <MicOff size={18} /> : <Mic size={18} />}
                 </button>
               </Tooltip.Trigger>
-              <Tooltip.Portal><Tooltip.Content className={styles.tooltip} sideOffset={6}>Voice message</Tooltip.Content></Tooltip.Portal>
+              <Tooltip.Portal><Tooltip.Content className={styles.tooltip} sideOffset={6}>
+                {sttSupported ? (sttListening ? 'Stop dictation' : 'Voice dictation') : 'Voice message'}
+              </Tooltip.Content></Tooltip.Portal>
             </Tooltip.Root>
           </Tooltip.Provider>
 

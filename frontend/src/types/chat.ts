@@ -37,6 +37,9 @@ export interface Message {
   toolCalls?: ToolCall[]
   isStreaming?: boolean
   isTemp?: boolean
+  isPending?: boolean
+  editedAt?: string | null
+  isDeleted?: boolean
 }
 
 export interface ToolCall {

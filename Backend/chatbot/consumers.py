@@ -537,6 +537,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send_quotas()
             elif command == "voice_message":
                 await self.voice_message(data)
+            elif command == "edit_message":
+                await self.edit_message(data)
+            elif command == "delete_message":
+                await self.delete_message(data)
             else:
                 await self.send_message({
                     'member': 'system',
@@ -2150,6 +2154,73 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': str(timezone.now())
             })
 
+    async def edit_message(self, data):
+        try:
+            message_id = data.get('message_id')
+            new_content = (data.get('content') or '').strip()
+            if not message_id or not new_content or len(new_content) > 5000:
+                return
+
+            get_msg = sync_to_async(lambda: Message.objects.filter(id=message_id).select_related('member__User').first())
+            message = await get_msg()
+            if not message:
+                return
+
+            username = await sync_to_async(lambda: message.member.User.username)()
+            if username != self.scope["user"].username or message.is_deleted:
+                return
+
+            encrypted = await self.encrypt_message({
+                'content': new_content,
+                'timestamp': str(message.timestamp),
+            })
+            if not encrypted:
+                return
+
+            payload = json.dumps({'data': encrypted['data'], 'nonce': encrypted['nonce']})
+            now = timezone.now()
+
+            await sync_to_async(lambda: Message.objects.filter(id=message_id).update(
+                content=payload, edited_at=now,
+            ))()
+            broadcast_msg = {
+                'id': message_id,
+                'member': username,
+                'content': new_content,
+                'timestamp': str(message.timestamp),
+                'parent_id': message.parent_id,
+                'edited_at': str(now),
+            }
+            await self.send_chat_message({
+                "command": "message_edited",
+                "message": broadcast_msg,
+            })
+        except Exception as e:
+            logger.error(f"Error in edit_message: {e}")
+
+    async def delete_message(self, data):
+        try:
+            message_id = data.get('message_id')
+            if not message_id:
+                return
+
+            get_msg = sync_to_async(lambda: Message.objects.filter(id=message_id).select_related('member__User').first())
+            message = await get_msg()
+            if not message:
+                return
+
+            username = await sync_to_async(lambda: message.member.User.username)()
+            if username != self.scope["user"].username:
+                return
+
+            await sync_to_async(lambda: Message.objects.filter(id=message_id).update(is_deleted=True))()
+            await self.send_chat_message({
+                "command": "message_deleted",
+                "message_id": message_id,
+            })
+        except Exception as e:
+            logger.error(f"Error in delete_message: {e}")
+
     async def typing_message(self, event):
         # fan out typing to all group members
         await self.send(text_data=json.dumps({
@@ -2377,7 +2448,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'member': username,
                 'content': final_content,
                 'timestamp': str(message.timestamp),
-                'parent_id': message.parent_id
+                'parent_id': message.parent_id,
+                'edited_at': str(message.edited_at) if message.edited_at else None,
+                'is_deleted': message.is_deleted,
             }
         except Exception as e:
             logger.error(f"Error in message_to_json: {e}")

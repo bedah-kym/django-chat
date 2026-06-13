@@ -28,6 +28,10 @@ class Message(models.Model):
     voice_transcript = models.TextField(blank=True, null=True)
     has_ai_voice = models.BooleanField(default=False)  # For AI-synthesized responses
 
+    # Edit / delete
+    edited_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.member}: {self.content[:30]}..."
 

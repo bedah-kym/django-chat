@@ -6,7 +6,7 @@ import { formatDuration } from '@/utils/time'
 import styles from './VoiceRecorder.module.css'
 
 interface Props {
-  onStop: () => void
+  onStop: (audioBlob: Blob) => void
   onCancel: () => void
 }
 
@@ -16,11 +16,15 @@ export function VoiceRecorder({ onStop, onCancel }: Props) {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const chunksRef = useRef<Blob[]>([])
   const [duration, setDuration] = useState(0)
 
   const cleanup = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current)
-    mediaRecorderRef.current?.stop()
+    // Guard against a double-stop (handleStop + unmount) which throws InvalidStateError.
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
     streamRef.current?.getTracks().forEach(t => t.stop())
   }, [])
 
@@ -32,7 +36,14 @@ export function VoiceRecorder({ onStop, onCancel }: Props) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         streamRef.current = stream
         mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-        mediaRecorderRef.current.start()
+        const recorder = mediaRecorderRef.current
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+        recorder.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          chunksRef.current = []
+          onStop(blob)
+        }
+        recorder.start()
 
         audioCtx = new AudioContext()
         const source = audioCtx.createMediaStreamSource(stream)
@@ -95,9 +106,11 @@ export function VoiceRecorder({ onStop, onCancel }: Props) {
   }, [])
 
   const handleStop = () => {
+    // cleanup() stops the recorder, whose onstop handler builds the blob and
+    // calls onStop(blob). Don't call onStop here — it would fire a second time
+    // with no audio.
     cleanup()
     toast.success('Voice message recorded')
-    onStop()
   }
 
   return (

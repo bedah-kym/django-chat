@@ -1,13 +1,15 @@
-import { useState, useRef, type DragEvent } from 'react'
+import { useState, useEffect, useRef, type DragEvent } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { motion } from 'framer-motion'
 import { X, Upload, FileText, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { fetchUploadQuota, type UploadQuota } from '@/api/chat'
 import styles from './FileUploadDialog.module.css'
 
 interface Props {
   open: boolean
   onClose: () => void
+  roomId: number | null
 }
 
 const VALID_TYPES: Record<string, string> = {
@@ -17,12 +19,25 @@ const VALID_TYPES: Record<string, string> = {
 }
 const MAX_SIZES = { pdf: 10 * 1024 * 1024, image: 5 * 1024 * 1024 }
 
-export function FileUploadDialog({ open, onClose }: Props) {
+export function FileUploadDialog({ open, onClose, roomId }: Props) {
   const [file, setFile] = useState<File | null>(null)
   const [progress, setProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [quota, setQuota] = useState<UploadQuota | null>(null)
+  const [quotaLoading, setQuotaLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const xhrRef = useRef<XMLHttpRequest | null>(null)
+
+  useEffect(() => {
+    if (open && roomId) {
+      setQuotaLoading(true)
+      fetchUploadQuota(roomId)
+        .then(setQuota)
+        .catch(() => toast.error('Could not load upload quota'))
+        .finally(() => setQuotaLoading(false))
+    }
+  }, [open, roomId])
 
   const validate = (f: File): boolean => {
     const category = VALID_TYPES[f.type]
@@ -43,24 +58,62 @@ export function FileUploadDialog({ open, onClose }: Props) {
   }
 
   const handleUpload = () => {
-    if (!file) return
+    if (!file || !roomId) return
     setUploading(true); setProgress(0)
-    const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 90) { clearInterval(interval); return p }
-        return p + 10
-      })
-    }, 100)
-    setTimeout(() => {
-      clearInterval(interval); setProgress(100)
-      setTimeout(() => {
-        toast.success('Document uploaded! Mathia is indexing it now.')
-        setFile(null); setProgress(0); setUploading(false); onClose()
-      }, 400)
-    }, 1200)
+
+    const xhr = new XMLHttpRequest()
+    xhrRef.current = xhr
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100))
+    })
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 429) {
+        toast.error('Upload quota exceeded. Remove some documents first.')
+        setUploading(false)
+        return
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setProgress(100)
+        setTimeout(() => {
+          toast.success('Document uploaded! Mathia is indexing it now.')
+          setFile(null); setProgress(0); setUploading(false)
+          if (quota) setQuota({ used: quota.used + 1, limit: quota.limit })
+          onClose()
+        }, 400)
+      } else {
+        toast.error('Upload failed. Please try again.')
+        setUploading(false)
+      }
+    })
+
+    xhr.addEventListener('error', () => {
+      toast.error('Upload failed. Please try again.')
+      setUploading(false)
+    })
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const token = localStorage.getItem('mathia-auth-token')
+    xhr.open('POST', `/chatbot/api/rooms/${roomId}/documents/upload/`)
+    if (token) xhr.setRequestHeader('Authorization', `Token ${token}`)
+
+    xhr.send(formData)
   }
 
-  const reset = () => { setFile(null); setProgress(0); setUploading(false) }
+  const handleCancel = () => {
+    if (xhrRef.current) xhrRef.current.abort()
+    setFile(null); setProgress(0); setUploading(false)
+  }
+
+  const reset = () => {
+    if (xhrRef.current) xhrRef.current.abort()
+    setFile(null); setProgress(0); setUploading(false)
+  }
+
+  const remaining = quota ? quota.limit - quota.used : 0
 
   return (
     <Dialog.Root open={open} onOpenChange={o => { if (!o) { reset(); onClose() } }}>
@@ -75,10 +128,16 @@ export function FileUploadDialog({ open, onClose }: Props) {
               <Dialog.Close asChild><button className={styles.closeBtn}><X size={16} /></button></Dialog.Close>
             </div>
 
-            <div className={styles.quota}>Uploads remaining: <strong>3 / 5</strong></div>
+            <div className={styles.quota}>
+              {quotaLoading ? 'Loading quota…' : `Uploads remaining: ${remaining} / ${quota?.limit ?? 5}`}
+            </div>
             <div className={styles.restrictions}>Supported: PDFs (max 10MB) and Images (max 5MB)</div>
 
-            {!file ? (
+            {remaining === 0 && quota ? (
+              <div className={styles.dropzone} style={{ borderColor: 'var(--critical-color)', opacity: 0.7 }}>
+                <p className={styles.dropText}>No uploads remaining. Remove documents to free up quota.</p>
+              </div>
+            ) : !file ? (
               <div
                 className={`${styles.dropzone} ${dragOver ? styles.dragOver : ''}`}
                 onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -98,12 +157,17 @@ export function FileUploadDialog({ open, onClose }: Props) {
                     <div className={styles.fileName}>{file.name}</div>
                     <div className={styles.fileSize}>{(file.size / 1024).toFixed(1)} KB</div>
                   </div>
-                  {!uploading && <button className={styles.removeBtn} onClick={reset}><X size={14} /></button>}
+                  {!uploading && <button className={styles.removeBtn} onClick={handleCancel}><X size={14} /></button>}
                 </div>
                 {uploading && (
-                  <div className={styles.progressBar}>
-                    <motion.div className={styles.progressFill} animate={{ width: `${progress}%` }} transition={{ duration: 0.1 }} />
-                  </div>
+                  <>
+                    <div className={styles.progressBar}>
+                      <motion.div className={styles.progressFill} animate={{ width: `${progress}%` }} transition={{ duration: 0.1 }} />
+                    </div>
+                    <button className={styles.uploadBtn} onClick={handleCancel} style={{ background: 'var(--text-muted)' }}>
+                      Cancel
+                    </button>
+                  </>
                 )}
                 {!uploading && (
                   <button className={styles.uploadBtn} onClick={handleUpload}>Upload</button>

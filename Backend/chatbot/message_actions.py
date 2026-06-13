@@ -15,6 +15,10 @@ from chatbot.models import Chatroom, Message, RoomContext, RoomNote, DocumentUpl
 from chatbot.context_manager import ContextManager
 from orchestration.models import ActionReceipt
 from orchestration.action_receipts import format_receipt_summary
+from users.models import CorrectionSignal
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
@@ -392,3 +396,51 @@ def get_upload_quota(request, room_id):
             {"error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_message_feedback(request, room_id, message_id):
+    """Persist a thumbs up/down on an AI message as a CorrectionSignal.
+
+    Idempotent toggle: same rating again (or null) removes it; a different
+    rating updates in place.
+    """
+    try:
+        chatroom = get_object_or_404(Chatroom, id=room_id)
+        if not chatroom.chats.filter(id=message_id).exists():
+            return Response({"error": "Message not in this room"}, status=status.HTTP_404_NOT_FOUND)
+
+        rating = request.data.get('rating')
+        if rating not in ('up', 'down', None):
+            return Response({"error": "rating must be 'up', 'down', or null"}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing = CorrectionSignal.objects.filter(
+            user=request.user,
+            intent_action='ai_response',
+            correction_type='result_selection',
+            data__message_id=message_id,
+        ).first()
+
+        if rating is None or (existing and existing.data.get('rating') == rating):
+            if existing:
+                existing.delete()
+                return Response({"status": "removed"}, status=status.HTTP_200_OK)
+            return Response({"status": "unchanged"}, status=status.HTTP_200_OK)
+
+        if existing:
+            existing.data['rating'] = rating
+            existing.save(update_fields=['data', 'updated_at'])
+            return Response({"status": "updated", "rating": rating}, status=status.HTTP_200_OK)
+
+        CorrectionSignal.objects.create(
+            user=request.user,
+            intent_action='ai_response',
+            correction_type='result_selection',
+            data={'rating': rating, 'message_id': message_id},
+        )
+        return Response({"status": "created", "rating": rating}, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        logger.error(f"Error saving message feedback: {e}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

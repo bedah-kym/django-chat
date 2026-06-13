@@ -9,6 +9,8 @@ export interface WsMessageData {
   content: string
   timestamp: string
   parent_id: number | null
+  edited_at?: string | null
+  is_deleted?: boolean
 }
 
 type MessageHandler = (data: WsMessage) => void
@@ -134,6 +136,23 @@ export class ChatSocket {
 
   sendTyping() {
     this.send('typing', { from: this.username })
+  }
+
+  editMessage(messageId: number, content: string) {
+    this.send('edit_message', {
+      from: this.username,
+      chatid: String(this.roomId),
+      message_id: messageId,
+      content,
+    })
+  }
+
+  deleteMessage(messageId: number) {
+    this.send('delete_message', {
+      from: this.username,
+      chatid: String(this.roomId),
+      message_id: messageId,
+    })
   }
 
   request<T = unknown>(command: string, payload: Record<string, unknown> = {}): Promise<T> {

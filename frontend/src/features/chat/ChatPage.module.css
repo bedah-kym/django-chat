@@ -211,6 +211,10 @@
   align-items: flex-end;
 }
 
+.pendingContent {
+  opacity: 0.55;
+}
+
 .searchHit {
   box-shadow: 0 0 0 1px var(--focus-color);
   transition: box-shadow var(--transition-fast);
@@ -279,6 +283,135 @@
   animation: blink 0.8s step-end infinite;
 }
 
+.attachmentChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block-end: 4px;
+}
+
+.attachmentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-decoration: none;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.attachmentChip:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.attachmentSize {
+  color: var(--text-subtle);
+  font-size: 10px;
+}
+
+.editArea {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  inline-size: 100%;
+}
+
+.editInput {
+  font-family: var(--font-family);
+  font-size: var(--chat-font-size);
+  line-height: 1.55;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-color);
+  resize: vertical;
+  outline: none;
+}
+
+.editInput:focus {
+  border-color: var(--primary-color);
+}
+
+.editActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.editCancel, .editSave {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.editCancel {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.editCancel:hover {
+  background: var(--bg-light);
+}
+
+.editSave {
+  color: #fff;
+  background: var(--primary-color);
+}
+
+.editSave:hover {
+  background: var(--primary-hover);
+}
+
+.editedTag {
+  font-size: 10px;
+  color: var(--text-subtle);
+  font-style: italic;
+}
+
+.deletedTombstone {
+  font-size: var(--chat-font-size);
+  font-style: italic;
+  color: var(--text-subtle);
+  opacity: 0.6;
+}
+
+.deleteConfirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.deleteConfirmBtn, .deleteCancelBtn {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.deleteConfirmBtn {
+  color: #fff;
+  background: var(--critical-color);
+}
+
+.deleteCancelBtn {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.deleteCancelBtn:hover {
+  background: var(--bg-light);
+}
+
 .scrollBtn {
   position: absolute;
   inset-block-end: var(--space-md);
@@ -305,6 +438,13 @@
 
   50% {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streamingCursor {
+    animation: none;
+    opacity: 1;
   }
 }
 

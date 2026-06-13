@@ -1,8 +1,8 @@
 import { useParams } from 'react-router-dom'
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Search, PanelRightOpen, PanelRightClose, ChevronDown, Download, UserPlus, X } from 'lucide-react'
+import { Search, PanelRightOpen, PanelRightClose, ChevronDown, Download, UserPlus, X, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useChatStore } from '@/stores/chatStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -45,6 +45,9 @@ export function ChatPage() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
+  const [editingMsgId, setEditingMsgId] = useState<number | null>(null)
+  const [editDraft, setEditDraft] = useState('')
+  const [deletingMsgId, setDeletingMsgId] = useState<number | null>(null)
   const prevMsgCountRef = useRef(0)
   const nearBottomRef = useRef(true)
   const messageAreaRef = useRef<HTMLDivElement>(null)
@@ -53,16 +56,41 @@ export function ChatPage() {
   const setActiveRoom = useChatStore((s) => s.setActiveRoom)
   const setReplyingTo = useChatStore((s) => s.setReplyingTo)
   const sendMessage = useChatStore((s) => s.sendMessage)
+  const editMessage = useChatStore((s) => s.editMessage)
+  const deleteMessage = useChatStore((s) => s.deleteMessage)
   const searchOpen = useChatStore((s) => s.searchOpen)
   const setSearchOpen = useChatStore((s) => s.setSearchOpen)
   const searchResults = useChatStore((s) => s.searchResults)
   const searchActiveIndex = useChatStore((s) => s.searchActiveIndex)
   const activeResultId = searchResults[searchActiveIndex] ?? null
-  const resultSet = new Set(searchResults)
+  const resultSet = useMemo(() => new Set(searchResults), [searchResults])
 
   const username = useAuthStore((s) => s.username)
-  const room = rooms.find((candidate) => candidate.id === roomId)
+  const room = useMemo(() => rooms.find((candidate) => candidate.id === roomId), [rooms, roomId])
   const { messages: allMessages, loadOlder, hasMore, loadingOlder, typingUsers } = useChatSocket(roomId)
+
+  // Optimistic pending bubbles are inserted into the store by sendMessage; merge
+  // them in for display until the WS echoes the real (server-id'd) message back.
+  const roomMessages = useChatStore((s) => s.messagesByRoom[roomId])
+  const displayMessages = useMemo(() => {
+    const pending = (roomMessages ?? []).filter((m) => m.isPending)
+    if (!pending.length) return allMessages
+    const echoed = new Set(allMessages.map((m) => `${m.member}|${m.content}`))
+    const fresh = pending.filter((m) => !echoed.has(`${m.member}|${m.content}`))
+    return fresh.length ? [...allMessages, ...fresh] : allMessages
+  }, [allMessages, roomMessages])
+
+  const typingNames = useMemo(() =>
+    typingUsers
+      .filter(u => u !== username)
+      .map(u => room?.participants.find(p => p.username === u)?.displayName || u),
+    [typingUsers, username, room],
+  )
+
+  const getParentMessage = useCallback((parentId: number | null) => {
+    if (!parentId) return undefined
+    return allMessages.find(m => m.id === parentId)
+  }, [allMessages])
 
   // Preserve scroll position when older messages are prepended.
   const prevScrollHeightRef = useRef(0)
@@ -119,7 +147,7 @@ export function ChatPage() {
   // Auto-follow new content. Reacts to message-count change *and* to the
   // streaming message's content extending, so the view tracks the AI's reply
   // as it types. Skips when the user has scrolled up — never yanks them back.
-  const lastMsg = allMessages[allMessages.length - 1]
+  const lastMsg = displayMessages[displayMessages.length - 1]
   const lastContentLen = lastMsg?.content?.length ?? 0
   const lastIsStreaming = Boolean(lastMsg?.isStreaming)
   useLayoutEffect(() => {
@@ -127,7 +155,7 @@ export function ChatPage() {
     if (!element) return
     if (!nearBottomRef.current) return
     element.scrollTop = element.scrollHeight
-  }, [allMessages.length, lastContentLen, lastIsStreaming])
+  }, [displayMessages.length, lastContentLen, lastIsStreaming])
 
   // After prepending older messages, keep the previously-visible message put
   // (otherwise the viewport jumps to the top of the freshly-loaded batch).
@@ -157,11 +185,14 @@ export function ChatPage() {
   // sync runs at commit time so it doesn't reintroduce that cycle.
   useEffect(() => {
     if (!roomId) return
-    useChatStore.setState(s => ({
-      messagesByRoom: { ...s.messagesByRoom, [roomId]: allMessages },
-    }))
-    // Re-run the active search query so results stay fresh as messages stream
-    // in, instead of being stuck on the snapshot from when the user last typed.
+    useChatStore.setState(s => {
+      const storeMsgs = s.messagesByRoom[roomId] ?? []
+      const pending = storeMsgs.filter(m =>
+        m.isPending && !allMessages.some(rm => rm.content === m.content && rm.member === m.member),
+      )
+      const merged = [...allMessages, ...pending]
+      return { messagesByRoom: { ...s.messagesByRoom, [roomId]: merged } }
+    })
     const q = useChatStore.getState().searchQuery
     if (q) useChatStore.getState().setSearchQuery(q)
   }, [roomId, allMessages])
@@ -217,11 +248,38 @@ export function ChatPage() {
     }
   }
 
-  const isFirstInGroup = (index: number) =>
-    index === 0 || allMessages[index - 1]!.member !== allMessages[index]!.member
+  const handleEditMessage = (msgId: number, currentContent: string) => {
+    setEditingMsgId(msgId)
+    setEditDraft(currentContent)
+  }
 
-  const getParentMessage = (parentId: number | null) =>
-    parentId ? allMessages.find((message) => message.id === parentId) : undefined
+  const handleSaveEdit = () => {
+    if (!editingMsgId || !editDraft.trim()) return
+    editMessage(roomId, editingMsgId, editDraft.trim())
+    setEditingMsgId(null)
+    setEditDraft('')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMsgId(null)
+    setEditDraft('')
+  }
+
+  const handleDeleteMessage = (msgId: number) => {
+    if (deletingMsgId === msgId) {
+      deleteMessage(roomId, msgId)
+      setDeletingMsgId(null)
+    } else {
+      setDeletingMsgId(msgId)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setDeletingMsgId(null)
+  }
+
+  const isFirstInGroup = (index: number) =>
+    index === 0 || displayMessages[index - 1]!.member !== displayMessages[index]!.member
 
   if (!room) {
     return (
@@ -232,9 +290,6 @@ export function ChatPage() {
   }
 
   const onlineCount = room.participants.filter((participant) => participant.isOnline).length
-  const typingNames = typingUsers.map(
-    (u) => room.participants.find((p) => p.username === u)?.displayName || u,
-  )
 
   return (
     <section className={styles.chatPage} aria-label={`${room.displayName} chat workspace`}>
@@ -356,6 +411,9 @@ export function ChatPage() {
         <div
           className={styles.messageArea}
           ref={messageAreaRef}
+          role="log"
+          aria-live="polite"
+          aria-atomic="false"
           onScroll={(event) => {
             const element = event.currentTarget
             const distance = element.scrollHeight - element.scrollTop - element.clientHeight
@@ -371,10 +429,10 @@ export function ChatPage() {
             </div>
           )}
 
-          {allMessages.map((msg, index) => {
+          {displayMessages.map((msg, index) => {
             const showDate =
               index === 0 ||
-              new Date(msg.timestamp).toDateString() !== new Date(allMessages[index - 1]!.timestamp).toDateString()
+              new Date(msg.timestamp).toDateString() !== new Date(displayMessages[index - 1]!.timestamp).toDateString()
             const firstInGroup = isFirstInGroup(index)
             const isOwn = msg.member === username
             const parentMsg = getParentMessage(msg.parentId)
@@ -408,7 +466,7 @@ export function ChatPage() {
                     <div className={styles.avatarCol} />
                   )}
 
-                  <div className={`${styles.msgContent} ${isOwn ? styles.ownContent : ''} ${resultSet.has(msg.id) ? styles.searchHit : ''} ${activeResultId === msg.id ? styles.searchActiveHit : ''}`}>
+                  <div className={`${styles.msgContent} ${isOwn ? styles.ownContent : ''} ${msg.isPending ? styles.pendingContent : ''} ${resultSet.has(msg.id) ? styles.searchHit : ''} ${activeResultId === msg.id ? styles.searchActiveHit : ''}`}>
                     {firstInGroup && !isOwn ? (
                       <div className={styles.msgHeader}>
                         <span className={styles.senderName}>
@@ -424,8 +482,46 @@ export function ChatPage() {
                     {msg.thinking ? <ThinkingBlock content={msg.thinking} durationMs={msg.thinkingDurationMs} isActive={msg.isStreaming} /> : null}
                     {msg.toolCalls?.map((tc, i) => <ToolCallDisplay key={i} toolName={tc.name} status={tc.status} result={tc.result} />)}
 
+                    {msg.attachments?.length ? (
+                      <div className={styles.attachmentChips}>
+                        {msg.attachments.map(a => (
+                          <a
+                            key={a.id}
+                            href={a.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.attachmentChip}
+                          >
+                            <FileText size={12} />
+                            <span>{a.name}</span>
+                            <span className={styles.attachmentSize}>{(a.size / 1024).toFixed(0)}KB</span>
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+
                     {msg.audioUrl ? (
                       <VoiceMessage audioUrl={msg.audioUrl} transcript={msg.voiceTranscript} />
+                    ) : editingMsgId === msg.id ? (
+                      <div className={styles.editArea}>
+                        <textarea
+                          className={styles.editInput}
+                          value={editDraft}
+                          onChange={e => setEditDraft(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit() }
+                            if (e.key === 'Escape') handleCancelEdit()
+                          }}
+                          autoFocus
+                          rows={2}
+                        />
+                        <div className={styles.editActions}>
+                          <button className={styles.editCancel} onClick={handleCancelEdit}>Cancel</button>
+                          <button className={styles.editSave} onClick={handleSaveEdit}>Save</button>
+                        </div>
+                      </div>
+                    ) : msg.isDeleted ? (
+                      <span className={styles.deletedTombstone}>This message was deleted</span>
                     ) : msg.content ? (
                       msg.isAi ? (
                         <MarkdownRenderer content={msg.content} />
@@ -434,9 +530,21 @@ export function ChatPage() {
                       )
                     ) : null}
 
+                    {msg.editedAt && !msg.isDeleted ? (
+                      <span className={styles.editedTag}>edited</span>
+                    ) : null}
+
                     {msg.isStreaming ? <span className={styles.streamingCursor} /> : null}
 
-                    {hoveredMsg === msg.id && !msg.isStreaming ? (
+                    {deletingMsgId === msg.id ? (
+                      <div className={styles.deleteConfirm}>
+                        <span>Delete this message?</span>
+                        <button className={styles.deleteConfirmBtn} onClick={() => handleDeleteMessage(msg.id)}>Delete</button>
+                        <button className={styles.deleteCancelBtn} onClick={handleCancelDelete}>Cancel</button>
+                      </div>
+                    ) : null}
+
+                    {hoveredMsg === msg.id && !msg.isStreaming && editingMsgId !== msg.id && deletingMsgId !== msg.id ? (
                       <div className={styles.msgActions}><MessageActions
                         content={msg.content}
                         isAi={msg.isAi}
@@ -444,8 +552,9 @@ export function ChatPage() {
                         roomId={roomId}
                         messageId={msg.id}
                         onReply={() => setReplyingTo(msg)}
+                        onEdit={!msg.isAi ? () => handleEditMessage(msg.id, msg.content) : undefined}
+                        onDelete={!msg.isAi ? () => handleDeleteMessage(msg.id) : undefined}
                         onRegenerate={msg.isAi ? () => {
-                          // Re-ask the user prompt that preceded this AI answer.
                           for (let i = index - 1; i >= 0; i--) {
                             if (!allMessages[i]!.isAi) { sendMessage(roomId, allMessages[i]!.content); break }
                           }
