@@ -55,16 +55,24 @@ interface BugBountyState {
   reports: BugBountyReport[]
   drafts: ReportDraft[]
   isLoading: boolean
+  initialized: boolean
+  lastFetched: number
   initialize: () => Promise<void>
 }
 
-export const useBugBountyStore = create<BugBountyState>((set) => ({
+const BB_STALE_MS = 30_000
+
+export const useBugBountyStore = create<BugBountyState>((set, get) => ({
   programs: [],
   reports: [],
   drafts: [],
   isLoading: false,
+  initialized: false,
+  lastFetched: 0,
 
   initialize: async () => {
+    const { initialized, lastFetched } = get()
+    if (initialized && Date.now() - lastFetched < BB_STALE_MS) return
     set({ isLoading: true })
     try {
       const [programs, reports, drafts] = await Promise.all([
@@ -77,9 +85,11 @@ export const useBugBountyStore = create<BugBountyState>((set) => ({
         reports: reports.map(mapReport),
         drafts: drafts.map(mapDraft),
         isLoading: false,
+        initialized: true,
+        lastFetched: Date.now(),
       })
     } catch {
-      set({ isLoading: false })
+      set({ isLoading: false, initialized: true, lastFetched: Date.now() })
     }
   },
 }))

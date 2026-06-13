@@ -25,17 +25,25 @@ interface PaymentState {
   wallet: Wallet | null
   transactions: Transaction[]
   isLoading: boolean
+  initialized: boolean
+  lastFetched: number
   initialize: () => Promise<void>
   fetchBalance: () => Promise<void>
   fetchTransactions: () => Promise<void>
 }
 
-export const usePaymentStore = create<PaymentState>((set) => ({
+const PAY_STALE_MS = 30_000
+
+export const usePaymentStore = create<PaymentState>((set, get) => ({
   wallet: null,
   transactions: [],
   isLoading: false,
+  initialized: false,
+  lastFetched: 0,
 
   initialize: async () => {
+    const { initialized, lastFetched } = get()
+    if (initialized && Date.now() - lastFetched < PAY_STALE_MS) return
     set({ isLoading: true })
     try {
       const [balanceData, txData] = await Promise.all([
@@ -50,9 +58,11 @@ export const usePaymentStore = create<PaymentState>((set) => ({
         },
         transactions: txData.transactions.map((t, i) => mapTransaction(t, i + 1)),
         isLoading: false,
+        initialized: true,
+        lastFetched: Date.now(),
       })
     } catch {
-      set({ isLoading: false })
+      set({ isLoading: false, initialized: true, lastFetched: Date.now() })
     }
   },
 

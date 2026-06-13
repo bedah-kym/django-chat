@@ -66,6 +66,8 @@ function mapItinerary(i: ItineraryResponse): Itinerary {
 interface TravelState {
   itineraries: Itinerary[]
   isLoading: boolean
+  initialized: boolean
+  lastFetched: number
   initialize: () => Promise<void>
   fetchItineraries: () => Promise<void>
   addItem: (itineraryId: number, input: CreateItineraryItemInput) => Promise<void>
@@ -73,20 +75,28 @@ interface TravelState {
   bookItem: (itineraryId: number, itemId: number) => Promise<void>
 }
 
-export const useTravelStore = create<TravelState>((set) => ({
+const TRAVEL_STALE_MS = 30_000
+
+export const useTravelStore = create<TravelState>((set, get) => ({
   itineraries: [],
   isLoading: false,
+  initialized: false,
+  lastFetched: 0,
 
   initialize: async () => {
+    const { initialized, lastFetched } = get()
+    if (initialized && Date.now() - lastFetched < TRAVEL_STALE_MS) return
     set({ isLoading: true })
     try {
       const data = await fetchItineraries()
       set({
         itineraries: data.map(mapItinerary),
         isLoading: false,
+        initialized: true,
+        lastFetched: Date.now(),
       })
     } catch {
-      set({ isLoading: false })
+      set({ isLoading: false, initialized: true, lastFetched: Date.now() })
     }
   },
 

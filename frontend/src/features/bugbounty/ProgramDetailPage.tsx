@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
@@ -12,6 +12,10 @@ export function ProgramDetailPage() {
   const programs = useBugBountyStore((s) => s.programs)
   const allReports = useBugBountyStore((s) => s.reports)
   const drafts = useBugBountyStore((s) => s.drafts)
+  const initialize = useBugBountyStore((s) => s.initialize)
+
+  useEffect(() => { initialize() }, [initialize])
+
   const fallbackProgram = programs[0]
   if (!fallbackProgram) return null
   const program = programs.find(item => item.id === programId) ?? fallbackProgram

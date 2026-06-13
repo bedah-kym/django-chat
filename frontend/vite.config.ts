@@ -16,6 +16,19 @@ export default defineConfig({
   build: {
     outDir: '../Backend/staticfiles/spa',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id: string) => {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/jsx') || (id.includes('node_modules/react/') && !id.includes('node_modules/react-dom'))) return 'react'
+          if (id.includes('node_modules/react-router') || id.includes('node_modules/@remix-run')) return 'router'
+          if (id.includes('node_modules/framer-motion')) return 'framer'
+          if (id.includes('node_modules/@radix-ui')) return 'radix'
+          if (id.includes('node_modules/d3')) return 'd3'
+          if (id.includes('node_modules/emoji-mart')) return 'emoji'
+          if (id.includes('node_modules/wavesurfer')) return 'wavesurfer'
+        },
+      },
+    },
   },
   server: {
     port: 5173,

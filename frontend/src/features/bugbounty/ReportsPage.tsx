@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { formatCurrency } from '@/utils/format'
 import { ReportDraftModal } from './components/ReportDraftModal'
@@ -9,6 +9,9 @@ export function ReportsPage() {
   const [showDraft, setShowDraft] = useState(false)
   const reports = useBugBountyStore((s) => s.reports)
   const drafts = useBugBountyStore((s) => s.drafts)
+  const initialize = useBugBountyStore((s) => s.initialize)
+
+  useEffect(() => { initialize() }, [initialize])
 
   return (
     <div className={reportStyles.page}>

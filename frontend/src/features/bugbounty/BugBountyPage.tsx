@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { BanknoteArrowDown, FileText, ShieldCheck, RefreshCcw } from 'lucide-react'
@@ -7,6 +7,8 @@ import { ProgramCard } from './components/ProgramCard'
 import { BountyTracker } from './components/BountyTracker'
 import { ReportDraftModal } from './components/ReportDraftModal'
 import { formatCurrency, formatNumber } from '@/utils/format'
+import { RouteSkeleton } from '@/components/ui/RouteSkeleton'
+import { useDelayedFlag } from '@/hooks/useDelayedFlag'
 import styles from './BugBountyPage.module.css'
 
 const FILTERS = ['All', 'HackerOne', 'Bugcrowd', 'Intigriti'] as const
@@ -17,6 +19,13 @@ export function BugBountyPage() {
   const programs = useBugBountyStore((s) => s.programs)
   const reports = useBugBountyStore((s) => s.reports)
   const drafts = useBugBountyStore((s) => s.drafts)
+  const isLoading = useBugBountyStore((s) => s.isLoading)
+  const initialize = useBugBountyStore((s) => s.initialize)
+  const showSkeleton = useDelayedFlag(isLoading && programs.length === 0)
+
+  useEffect(() => { initialize() }, [initialize])
+
+  if (showSkeleton) return <RouteSkeleton />
 
   const filteredPrograms = filter === 'All'
     ? programs

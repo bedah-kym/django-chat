@@ -52,6 +52,7 @@ export function ContextPanel({
   const [linkPickerOpen, setLinkPickerOpen] = useState(false)
   const [linkTarget, setLinkTarget] = useState<number | ''>('')
   const [linking, setLinking] = useState(false)
+  const [unlinking, setUnlinking] = useState<number | null>(null)
 
   const submitNote = async () => {
     if (!noteContent.trim() || savingNote) return
@@ -86,12 +87,16 @@ export function ContextPanel({
   }
 
   const removeLink = async (targetRoomId: number) => {
+    if (unlinking === targetRoomId) return
+    setUnlinking(targetRoomId)
     try {
       await unlinkRoom(room.id, targetRoomId)
       toast('Link removed')
       onLinksChanged?.()
     } catch {
       toast.error('Could not unlink')
+    } finally {
+      setUnlinking(null)
     }
   }
 
@@ -300,20 +305,24 @@ export function ContextPanel({
           </Accordion.Trigger>
           <Accordion.Content className={styles.sectionContent}>
             <div className={styles.sectionBody}>
-              {linkedRooms.map((linkedRoom) => (
+              {linkedRooms.map((linkedRoom) => {
+                const isUnlinking = unlinking === linkedRoom.id
+                return (
                 <div key={linkedRoom.id} className={styles.linkedRoom}>
                   <Link2 size={13} />
                   <span style={{ flex: 1 }}>{linkedRoom.name}</span>
                   <button
                     className={styles.linkRemove}
                     onClick={() => removeLink(linkedRoom.id)}
+                    disabled={isUnlinking}
                     aria-label={`Unlink ${linkedRoom.name}`}
+                    aria-busy={isUnlinking}
                     title="Unlink"
                   >
                     <Trash2 size={11} />
                   </button>
                 </div>
-              ))}
+              )})}
               {linkPickerOpen ? (
                 <div className={styles.composeForm}>
                   <select

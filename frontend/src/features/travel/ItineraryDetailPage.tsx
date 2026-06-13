@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -417,6 +417,12 @@ export function ItineraryDetailPage() {
   const trip = useTravelStore((s) => s.itineraries.find((it) => it.id === Number(id)))
   const removeItem = useTravelStore((s) => s.removeItem)
   const bookItem = useTravelStore((s) => s.bookItem)
+  const itineraries = useTravelStore((s) => s.itineraries)
+  const initialize = useTravelStore((s) => s.initialize)
+
+  useEffect(() => {
+    if (itineraries.length === 0) initialize()
+  }, [itineraries.length, initialize])
 
   const groups = useMemo(() => trip ? groupItemsByDate(trip.items) : [], [trip])
   const allDays = useMemo(() => {

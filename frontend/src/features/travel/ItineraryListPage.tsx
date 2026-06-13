@@ -1,8 +1,11 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Plane, Plus, MapPin, Calendar, Compass } from 'lucide-react'
 import { useTravelStore } from '@/stores/travelStore'
 import { formatCurrency } from '@/utils/format'
+import { useDelayedFlag } from '@/hooks/useDelayedFlag'
+import { ItineraryListSkeleton } from '@/components/ui/ItineraryListSkeleton'
 import type { Itinerary } from '@/types/travel'
 import {
   tone, isActive, isUpcoming, isPast,
@@ -54,6 +57,10 @@ function TripCard({ trip, lifted = false }: { trip: Itinerary; lifted?: boolean 
 export function ItineraryListPage() {
   const itineraries = useTravelStore((s) => s.itineraries)
   const isLoading = useTravelStore((s) => s.isLoading)
+  const initialize = useTravelStore((s) => s.initialize)
+  const showSkeleton = useDelayedFlag(isLoading && itineraries.length === 0)
+
+  useEffect(() => { initialize() }, [initialize])
 
   const active = itineraries.filter(isActive)
   const upcoming = itineraries.filter(isUpcoming).sort((a, b) => a.startDate.localeCompare(b.startDate))
@@ -79,7 +86,7 @@ export function ItineraryListPage() {
         </header>
 
         {isLoading && itineraries.length === 0 ? (
-          <div className={styles.loading}>Loading your trips…</div>
+          showSkeleton ? <ItineraryListSkeleton /> : null
         ) : itineraries.length === 0 ? (
           <div className={styles.empty}>
             <div className={styles.emptyIcon}>

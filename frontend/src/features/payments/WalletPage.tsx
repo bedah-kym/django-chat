@@ -1,11 +1,21 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDownLeft, ArrowUpRight, ReceiptText, WalletCards } from 'lucide-react'
 import { usePaymentStore } from '@/stores/paymentStore'
 import { formatCurrency } from '@/utils/format'
+import { useDelayedFlag } from '@/hooks/useDelayedFlag'
+import { WalletSkeleton } from '@/components/ui/WalletSkeleton'
 import styles from './PaymentPages.module.css'
 
 export function WalletPage() {
   const { wallet, transactions } = usePaymentStore()
+  const isLoading = usePaymentStore((s) => s.isLoading)
+  const initialize = usePaymentStore((s) => s.initialize)
+  const showSkeleton = useDelayedFlag(isLoading && !wallet)
+
+  useEffect(() => { initialize() }, [initialize])
+
+  if (showSkeleton) return <WalletSkeleton />
 
   return (
     <div className={styles.workspacePage}>
