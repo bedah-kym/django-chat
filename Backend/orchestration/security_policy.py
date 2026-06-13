@@ -24,6 +24,7 @@ SENSITIVE_ACTIONS = {
     "check_availability",
     "book_travel_item",
     "add_to_itinerary",
+    "remove_from_itinerary",
     "create_itinerary",
     "create_workflow",
 }

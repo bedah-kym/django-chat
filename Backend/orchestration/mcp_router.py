@@ -67,7 +67,7 @@ class MCPRouter:
         "search_buses", "search_hotels", "search_flights",
         "search_transfers", "search_events",
         "create_itinerary", "add_to_itinerary", "view_itinerary",
-        "book_travel_item",
+        "remove_from_itinerary", "book_travel_item",
     }
     DEFAULT_CAPABILITY_PREFS = {
         "capability_mode": "custom",
