@@ -1,0 +1,426 @@
+.page {
+  max-inline-size: 680px;
+  margin: 0 auto;
+  padding: 56px 32px 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: var(--tv-body);
+  color: var(--tv-text);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tv-text-soft);
+  padding: 6px 10px 6px 6px;
+  border-radius: var(--tv-radius-pill);
+  margin-inline-start: -6px;
+  margin-block-end: 8px;
+}
+
+.back:hover {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tv-accent);
+}
+
+.title {
+  margin: 6px 0 8px;
+  font-family: var(--tv-display);
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  font-variation-settings: "opsz" 64, "SOFT" 40;
+  color: var(--tv-text);
+}
+
+.subtitle {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--tv-text-soft);
+  max-inline-size: 520px;
+}
+
+/* ---------------- stepper ---------------- */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 14px 18px;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  box-shadow: var(--tv-shadow-card);
+}
+
+.stepperItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  color: var(--tv-text-faint);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.stepperItem:disabled {
+  cursor: default;
+}
+
+.stepperBubble {
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tv-surface-soft);
+  color: var(--tv-text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.stepperActive {
+  color: var(--tv-text);
+}
+
+.stepperActive .stepperBubble {
+  background: var(--tv-accent);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(224, 120, 86, 0.32);
+}
+
+.stepperDone {
+  color: var(--tv-text-soft);
+}
+
+.stepperDone .stepperBubble {
+  background: var(--tv-today);
+  color: #fff;
+}
+
+.stepperLabel {
+  letter-spacing: -0.005em;
+}
+
+/* ---------------- step body shell ---------------- */
+.stepShell {
+  min-block-size: 220px;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.stepBody {
+  inline-size: 100%;
+}
+
+/* ---------------- step 1: destination ---------------- */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 24px;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  box-shadow: var(--tv-shadow-card);
+}
+
+.field:focus-within {
+  border-color: var(--tv-accent);
+  box-shadow: 0 0 0 4px var(--tv-accent-soft), var(--tv-shadow-card);
+}
+
+.fieldIcon {
+  color: var(--tv-accent);
+  flex-shrink: 0;
+}
+
+.bigInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--tv-display);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  font-variation-settings: "opsz" 32, "SOFT" 40;
+  color: var(--tv-text);
+}
+
+.bigInput::placeholder {
+  color: var(--tv-text-faint);
+}
+
+/* ---------------- step 2: dates ---------------- */
+.dateGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 24px;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  box-shadow: var(--tv-shadow-card);
+}
+
+.dateField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dateLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tv-text-faint);
+}
+
+.dateInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--tv-radius);
+  border: 1px solid var(--tv-line);
+  background: var(--tv-canvas);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.dateInputWrap:focus-within {
+  border-color: var(--tv-accent);
+  box-shadow: 0 0 0 3px var(--tv-accent-soft);
+}
+
+.dateIcon {
+  color: var(--tv-text-soft);
+  flex-shrink: 0;
+}
+
+.dateInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--tv-body);
+  font-size: 15px;
+  color: var(--tv-text);
+  color-scheme: light dark;
+}
+
+.daysHint {
+  grid-column: 1 / -1;
+  margin-block-start: 6px;
+  font-size: 13px;
+  color: var(--tv-accent);
+  font-weight: 500;
+  text-align: center;
+}
+
+/* ---------------- step 3: details ---------------- */
+.detailsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.travellersField {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  box-shadow: var(--tv-shadow-card);
+}
+
+.fieldIconSmall {
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tv-accent-soft);
+  color: var(--tv-accent);
+}
+
+.travellersLabel {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--tv-text);
+}
+
+.stepperCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepperCountBtn {
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--tv-line);
+  background: var(--tv-canvas);
+  color: var(--tv-text);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.stepperCountBtn:hover {
+  border-color: var(--tv-accent);
+  color: var(--tv-accent);
+}
+
+.stepperCountValue {
+  min-inline-size: 24px;
+  text-align: center;
+  font-family: var(--tv-display);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.notesField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 22px 20px;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  box-shadow: var(--tv-shadow-card);
+}
+
+.notesInput {
+  border: 1px solid var(--tv-line);
+  background: var(--tv-canvas);
+  border-radius: var(--tv-radius);
+  padding: 12px 14px;
+  font-family: var(--tv-body);
+  font-size: 14px;
+  color: var(--tv-text);
+  resize: vertical;
+  line-height: 1.55;
+  min-block-size: 80px;
+}
+
+.notesInput:focus {
+  outline: none;
+  border-color: var(--tv-accent);
+  box-shadow: 0 0 0 3px var(--tv-accent-soft);
+}
+
+/* ---------------- nav buttons ---------------- */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block-start: 8px;
+}
+
+.navBack,
+.navNext {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 18px;
+  border-radius: var(--tv-radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.navBack {
+  background: transparent;
+  color: var(--tv-text-soft);
+}
+
+.navBack:hover:not(:disabled) {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+}
+
+.navBack:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.navNext {
+  background: var(--tv-accent);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(224, 120, 86, 0.28);
+  margin-inline-start: auto;
+}
+
+.navNext:hover:not(:disabled) {
+  background: var(--tv-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(224, 120, 86, 0.34);
+}
+
+.navNext:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------------- responsive ---------------- */
+@media (max-width: 640px) {
+  .page {
+    padding: 32px 18px 80px;
+  }
+
+  .title {
+    font-size: 32px;
+  }
+
+  .stepper {
+    gap: 12px;
+    padding: 10px 12px;
+    overflow-x: auto;
+  }
+
+  .stepperLabel {
+    display: none;
+  }
+
+  .dateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .bigInput {
+    font-size: 22px;
+  }
+}

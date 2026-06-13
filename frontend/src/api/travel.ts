@@ -65,3 +65,24 @@ export async function fetchItinerary(id: number): Promise<ItineraryResponse> {
   if (!res.ok) throw new Error(`Travel API error: ${res.status}`)
   return res.json()
 }
+
+export interface CreateItineraryInput {
+  title: string
+  region: string
+  start_date: string
+  end_date: string
+  description?: string
+  travellers?: number
+  budget_ksh?: string
+}
+
+export async function createItinerary(input: CreateItineraryInput): Promise<ItineraryResponse> {
+  const res = await fetch('/travel/api/itinerary/', {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) throw new Error(`Travel API error: ${res.status}`)
+  return res.json()
+}
