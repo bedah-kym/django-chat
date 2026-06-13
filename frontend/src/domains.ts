@@ -122,8 +122,8 @@ export const sidebarSections: NavSection[] = [
 
 // Personal — lives in the avatar/user menu at the bottom of the sidebar.
 export const personalNavItems: GlobalNavItem[] = [
-  { label: 'Travel', path: '/app/ops/travel/itineraries', icon: Plane },
-  { label: 'Payments', path: '/app/ops/wallet', icon: CircleDollarSign },
+  { label: 'Travel', path: '/app/travel/itineraries', icon: Plane },
+  { label: 'Payments', path: '/app/payments/wallet', icon: CircleDollarSign },
   { label: 'Settings', path: '/app/settings', icon: Settings },
 ]
 

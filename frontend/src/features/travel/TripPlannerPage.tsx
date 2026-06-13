@@ -70,7 +70,7 @@ export function TripPlannerPage() {
       })
       await refresh().catch(() => {})
       toast.success('Trip created — Mathia will start filling it in.')
-      navigate(`/app/ops/travel/${created.id}`)
+      navigate(`/app/travel/${created.id}`)
     } catch {
       toast.error('Could not create trip')
     } finally {
@@ -84,7 +84,7 @@ export function TripPlannerPage() {
   return (
     <div className="tv">
       <div className={styles.page}>
-        <Link to="/app/ops/travel/itineraries" className={styles.back}>
+        <Link to="/app/travel/itineraries" className={styles.back}>
           <ChevronLeft size={16} />
           Trips
         </Link>

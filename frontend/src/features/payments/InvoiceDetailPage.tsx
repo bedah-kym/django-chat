@@ -10,7 +10,7 @@ export function InvoiceDetailPage() {
 
   return (
     <div className={styles.payments}>
-      <Link to="/app/ops/wallet" className={styles.backLink}>Back to wallet</Link>
+      <Link to="/app/payments/wallet" className={styles.backLink}>Back to wallet</Link>
       <div className={styles.invoiceDetail}>
         <div className={styles.invoiceDetailHeader}>
           <div>

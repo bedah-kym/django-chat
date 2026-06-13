@@ -108,7 +108,7 @@ export function ItineraryDetailPage() {
       <div className="tv">
         <div className={styles.notFound}>
           <p className={styles.notFoundCopy}>Trip not found.</p>
-          <Link to="/app/ops/travel/itineraries" className={styles.notFoundLink}>← Back to trips</Link>
+          <Link to="/app/travel/itineraries" className={styles.notFoundLink}>← Back to trips</Link>
         </div>
       </div>
     )
@@ -123,7 +123,7 @@ export function ItineraryDetailPage() {
   return (
     <div className="tv">
       <div className={styles.page} data-tone={t}>
-        <Link to="/app/ops/travel/itineraries" className={styles.back}>
+        <Link to="/app/travel/itineraries" className={styles.back}>
           <ChevronLeft size={16} />
           Trips
         </Link>

@@ -22,7 +22,7 @@ function TripCard({ trip, lifted = false }: { trip: Itinerary; lifted?: boolean 
       className={`${styles.card} ${lifted ? styles.cardLifted : ''}`}
       data-tone={t}
     >
-      <Link to={`/app/ops/travel/${trip.id}`} className={styles.cardLink}>
+      <Link to={`/app/travel/${trip.id}`} className={styles.cardLink}>
         <div className={styles.cardHero} aria-hidden>
           <div className={styles.cardHeroMesh} />
         </div>
@@ -72,7 +72,7 @@ export function ItineraryListPage() {
                 : `${itineraries.length} ${itineraries.length === 1 ? 'trip' : 'trips'} on the books.`}
             </p>
           </div>
-          <Link to="/app/ops/travel/plan" className={styles.planBtn}>
+          <Link to="/app/travel/plan" className={styles.planBtn}>
             <Plus size={16} />
             Plan a trip
           </Link>
@@ -90,7 +90,7 @@ export function ItineraryListPage() {
               Tell Mathia a destination and a date. She'll search flights, stays,
               and things worth doing — and lay them out as a single itinerary.
             </p>
-            <Link to="/app/ops/travel/plan" className={styles.planBtn}>
+            <Link to="/app/travel/plan" className={styles.planBtn}>
               <Plus size={16} />
               Plan a trip
             </Link>

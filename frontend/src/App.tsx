@@ -89,14 +89,19 @@ export function App() {
             <Route index element={<OpsDomainPage />} />
             <Route path="chat/:roomId" element={<ChatPage />} />
             <Route path="reminders" element={<RemindersPage />} />
-            <Route path="travel/plan" element={<TripPlannerPage />} />
-            <Route path="travel/itineraries" element={<ItineraryListPage />} />
-            <Route path="travel/:id" element={<ItineraryDetailPage />} />
-            <Route path="wallet" element={<WalletPage />} />
-            <Route path="wallet/transactions" element={<WalletPage />} />
-            <Route path="invoices/new" element={<InvoiceCreatePage />} />
-            <Route path="invoices/:ref" element={<InvoiceDetailPage />} />
           </Route>
+          {/* Travel and Payments live at the top level (no DomainLayout chrome)
+              because they're Personal surfaces accessed via the user menu, not
+              workspace domains with rooms. */}
+          <Route path="travel" element={<Navigate to="/app/travel/itineraries" replace />} />
+          <Route path="travel/plan" element={<TripPlannerPage />} />
+          <Route path="travel/itineraries" element={<ItineraryListPage />} />
+          <Route path="travel/:id" element={<ItineraryDetailPage />} />
+          <Route path="payments" element={<Navigate to="/app/payments/wallet" replace />} />
+          <Route path="payments/wallet" element={<WalletPage />} />
+          <Route path="payments/wallet/transactions" element={<WalletPage />} />
+          <Route path="payments/invoices/new" element={<InvoiceCreatePage />} />
+          <Route path="payments/invoices/:ref" element={<InvoiceDetailPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/app/home" replace />} />
       </Routes>
