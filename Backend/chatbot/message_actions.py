@@ -484,6 +484,26 @@ def upload_chat_attachment(request, room_id):
         message=message, file=f, kind=kind, name=f.name[:255], size=f.size, mime=mime,
     )
 
+    # Also feed PDFs/images to Mathia so she can read the document content. The
+    # file is already stored by the attachment; reuse its path. Non-blocking.
+    ai_doc_type = 'pdf' if mime == 'application/pdf' else ('image' if kind == 'image' else None)
+    if ai_doc_type:
+        try:
+            from chatbot.models import DocumentUpload
+            from chatbot.tasks import process_document_task
+            doc = DocumentUpload.objects.create(
+                user=request.user,
+                chatroom=chatroom,
+                file_type=ai_doc_type,
+                file_path=att.file.name,
+                file_size=f.size,
+                status='pending',
+                quota_window_start=timezone.now(),
+            )
+            process_document_task.delay(doc.id)
+        except Exception as e:
+            logger.warning(f"AI document processing skipped for attachment {att.id}: {e}")
+
     message_json = {
         'id': message.id,
         'member': request.user.username,
