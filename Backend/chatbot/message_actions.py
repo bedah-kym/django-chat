@@ -516,6 +516,7 @@ def upload_chat_attachment(request, room_id):
         'attachments': [{
             'id': att.id, 'name': att.name, 'url': att.file_url,
             'type': att.kind, 'size': att.size, 'mime': att.mime,
+            'ai_readable': bool(ai_doc_type),
         }],
     }
 

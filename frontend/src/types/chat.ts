@@ -55,6 +55,7 @@ export interface Attachment {
   type: 'image' | 'video' | 'audio' | 'file' | 'document'
   size: number
   mime?: string
+  aiReadable?: boolean
 }
 
 export interface Contact {

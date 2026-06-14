@@ -2486,6 +2486,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'type': a.kind,   # image | video | audio | file
                         'size': a.size or 0,
                         'mime': a.mime or '',
+                        'ai_readable': a.kind == 'image' or a.mime == 'application/pdf',
                     }
                     for a in message.attachments.all()
                 ]

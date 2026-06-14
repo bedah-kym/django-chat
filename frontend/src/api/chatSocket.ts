@@ -10,6 +10,7 @@ export interface WsAttachmentData {
   type: 'image' | 'video' | 'audio' | 'file' | 'document'
   size: number
   mime?: string
+  ai_readable?: boolean
 }
 
 export interface WsMessageData {
