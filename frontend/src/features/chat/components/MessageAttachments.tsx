@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { FileText, Download, X, Sparkles, Check } from 'lucide-react'
+import { FileText, Download, X, Sparkles, Check, AlertCircle } from 'lucide-react'
 import { VoiceMessage } from './VoiceMessage'
+import { fetchDocumentStatus, type DocStatus } from '@/api/chat'
 import type { Attachment } from '@/types/chat'
 import styles from './MessageAttachments.module.css'
 
@@ -17,18 +18,45 @@ function ext(name: string): string {
   return e.length <= 4 ? e.toUpperCase() : 'FILE'
 }
 
-/** Subtle "Mathia is reading this…" hint that settles to "read" once she's
- *  had a moment to ingest the document (processing completes in seconds). */
-function AiReadingHint() {
-  const [done, setDone] = useState(false)
+/** "Mathia is reading this…" hint backed by the real document-ingestion status
+ *  — settles to "read" on completion, or "couldn't read" on failure. */
+function AiReadingHint({ documentId }: { documentId?: number | null }) {
+  const [status, setStatus] = useState<DocStatus>('processing')
   useEffect(() => {
-    const t = setTimeout(() => setDone(true), 5000)
-    return () => clearTimeout(t)
-  }, [])
+    if (!documentId) { setStatus('completed'); return }
+    let active = true
+    let tries = 0
+    const poll = async () => {
+      try {
+        const s = await fetchDocumentStatus(documentId)
+        if (!active) return
+        setStatus(s)
+        if (s === 'completed' || s === 'failed' || s === 'unknown') return
+      } catch { /* transient — keep polling */ }
+      tries += 1
+      if (active && tries < 20) setTimeout(poll, 1500)
+    }
+    poll()
+    return () => { active = false }
+  }, [documentId])
+
+  if (status === 'failed') {
+    return (
+      <div className={`${styles.aiHint} ${styles.aiHintFail}`}>
+        <AlertCircle size={11} /><span>Mathia couldn't read this</span>
+      </div>
+    )
+  }
+  if (status === 'completed' || status === 'unknown') {
+    return (
+      <div className={`${styles.aiHint} ${styles.aiHintDone}`}>
+        <Check size={11} /><span>Mathia read this</span>
+      </div>
+    )
+  }
   return (
-    <div className={`${styles.aiHint} ${done ? styles.aiHintDone : ''}`}>
-      {done ? <Check size={11} /> : <Sparkles size={11} className={styles.aiSparkle} />}
-      <span>{done ? 'Mathia read this' : 'Mathia is reading this…'}</span>
+    <div className={styles.aiHint}>
+      <Sparkles size={11} className={styles.aiSparkle} /><span>Mathia is reading this…</span>
     </div>
   )
 }
@@ -54,7 +82,7 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
               <button type="button" className={styles.imageWrap} onClick={() => setLightbox(a.url)}>
                 <img src={a.url} alt={a.name} className={styles.image} loading="lazy" />
               </button>
-              {a.aiReadable ? <AiReadingHint /> : null}
+              {a.aiReadable ? <AiReadingHint documentId={a.aiDocumentId} /> : null}
             </div>
           )
         }
@@ -78,7 +106,7 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
               </span>
               <Download size={16} className={styles.fileDownload} />
             </a>
-            {a.aiReadable ? <AiReadingHint /> : null}
+            {a.aiReadable ? <AiReadingHint documentId={a.aiDocumentId} /> : null}
           </div>
         )
       })}

@@ -34,20 +34,12 @@ def upload_voice_note(request, room_id):
 
         audio_file = request.FILES['audio']
 
-        # Create directory if missing
-        voice_dir = os.path.join(settings.MEDIA_ROOT, 'voice_notes', str(room_id))
-        os.makedirs(voice_dir, exist_ok=True)
-
-        # Save file
-        file_name = f"voice_{request.user.username}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.webm"
-        file_path = os.path.join(voice_dir, file_name)
-
-        with open(file_path, 'wb+') as destination:
-            for chunk in audio_file.chunks():
-                destination.write(chunk)
-
-        # Construct relative URL for the audio
-        audio_url = os.path.join('voice_notes', str(room_id), file_name)
+        # Save via storage so the URL is correctly MEDIA-prefixed (/uploads/...).
+        from django.core.files.storage import default_storage
+        import uuid as _uuid
+        ext = os.path.splitext(audio_file.name)[1] or '.webm'
+        stored_path = default_storage.save(f"voice_notes/{room_id}/{_uuid.uuid4().hex}{ext}", audio_file)
+        audio_url = default_storage.url(stored_path)
 
         # Create a pending voice message
         member, _ = Member.objects.get_or_create(User=request.user)
@@ -63,6 +55,31 @@ def upload_voice_note(request, room_id):
 
         # Trigger transcription task
         transcribe_voice_note.delay(message.id)
+
+        # Broadcast so the note appears live in the room (the REST path isn't a
+        # WS consumer, so we push it to the channel group).
+        message_json = {
+            'id': message.id,
+            'member': request.user.username,
+            'content': "[Voice Message]",
+            'timestamp': str(message.timestamp),
+            'parent_id': None,
+            'edited_at': None,
+            'is_deleted': False,
+            'is_voice': True,
+            'audio_url': audio_url,
+            'voice_transcript': "Transcribing…",
+            'attachments': [],
+        }
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            async_to_sync(get_channel_layer().group_send)(
+                f"chat_{room_id}",
+                {'type': 'broadcast_message', 'command': 'new_message', 'message': message_json},
+            )
+        except Exception as e:
+            logger.warning(f"Voice note broadcast skipped: {e}")
 
         return Response({
             "success": True,

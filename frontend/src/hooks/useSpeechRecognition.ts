@@ -8,6 +8,7 @@ interface SpeechRecognitionResult {
 interface UseSpeechRecognitionOptions {
   onResult?: (result: SpeechRecognitionResult) => void
   onEnd?: () => void
+  onError?: (error: string) => void
 }
 
 interface UseSpeechRecognitionReturn {
@@ -42,7 +43,7 @@ declare global {
   }
 }
 
-export function useSpeechRecognition({ onResult, onEnd }: UseSpeechRecognitionOptions = {}): UseSpeechRecognitionReturn {
+export function useSpeechRecognition({ onResult, onEnd, onError }: UseSpeechRecognitionOptions = {}): UseSpeechRecognitionReturn {
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const isSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -81,14 +82,15 @@ export function useSpeechRecognition({ onResult, onEnd }: UseSpeechRecognitionOp
       onEnd?.()
     }
 
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
       setIsListening(false)
+      onError?.(event?.error || 'unknown')
     }
 
     recognitionRef.current = recognition
     recognition.start()
     setIsListening(true)
-  }, [isSupported, onResult, onEnd])
+  }, [isSupported, onResult, onEnd, onError])
 
   useEffect(() => {
     return () => {

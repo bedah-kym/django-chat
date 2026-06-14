@@ -484,9 +484,16 @@ def upload_chat_attachment(request, room_id):
         message=message, file=f, kind=kind, name=f.name[:255], size=f.size, mime=mime,
     )
 
-    # Also feed PDFs/images to Mathia so she can read the document content. The
-    # file is already stored by the attachment; reuse its path. Non-blocking.
-    ai_doc_type = 'pdf' if mime == 'application/pdf' else ('image' if kind == 'image' else None)
+    # Only feed PDFs/images to Mathia when she's actually a participant of this
+    # room — otherwise it's a human-to-human chat and there's nothing to ingest.
+    mathia_present = Chatroom.objects.filter(
+        id=room_id, participants__User__username='mathia'
+    ).exists()
+    ai_doc_type = None
+    if mathia_present:
+        ai_doc_type = 'pdf' if mime == 'application/pdf' else ('image' if kind == 'image' else None)
+
+    ai_document_id = None
     if ai_doc_type:
         try:
             from chatbot.models import DocumentUpload
@@ -500,6 +507,9 @@ def upload_chat_attachment(request, room_id):
                 status='pending',
                 quota_window_start=timezone.now(),
             )
+            ai_document_id = doc.id
+            att.ai_document_id = doc.id
+            att.save(update_fields=['ai_document_id'])
             process_document_task.delay(doc.id)
         except Exception as e:
             logger.warning(f"AI document processing skipped for attachment {att.id}: {e}")
@@ -516,7 +526,8 @@ def upload_chat_attachment(request, room_id):
         'attachments': [{
             'id': att.id, 'name': att.name, 'url': att.file_url,
             'type': att.kind, 'size': att.size, 'mime': att.mime,
-            'ai_readable': bool(ai_doc_type),
+            'ai_readable': bool(ai_document_id),
+            'ai_document_id': ai_document_id,
         }],
     }
 
@@ -530,3 +541,15 @@ def upload_chat_attachment(request, room_id):
         logger.warning(f"Attachment broadcast skipped: {e}")
 
     return Response(message_json, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def document_status(request, document_id):
+    """Real ingestion status of a document Mathia is reading
+    (pending | processing | completed | failed)."""
+    from chatbot.models import DocumentUpload
+    doc = DocumentUpload.objects.filter(id=document_id, user=request.user).first()
+    if not doc:
+        return Response({"status": "unknown"}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"status": doc.status})

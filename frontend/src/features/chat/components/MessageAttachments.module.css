@@ -180,6 +180,11 @@
   font-style: normal;
 }
 
+.aiHintFail {
+  color: #d6443c;
+  font-style: normal;
+}
+
 .aiSparkle {
   animation: aiPulse 1.4s ease-in-out infinite;
 }

@@ -7,6 +7,7 @@ import { getChatSocket } from '@/api/chatSocket'
 import { useAutoResize } from '@/hooks/useAutoResize'
 import { useMentionAutocomplete } from '@/hooks/useMentionAutocomplete'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
+import { toast } from 'sonner'
 import type { Participant } from '@/types/chat'
 import type { QuickPromptAction } from '@/utils/quickPrompts'
 import { ReplyBar } from './ReplyBar'
@@ -104,8 +105,20 @@ export function ChatInput({ roomId, participants }: Props) {
     }
   }, [])
 
+  const sttError = useCallback((error: string) => {
+    setDictating(false)
+    const msg =
+      error === 'not-allowed' || error === 'service-not-allowed' ? 'Microphone access is blocked — allow it in your browser.'
+        : error === 'no-speech' ? "Didn't catch that — try again."
+          : error === 'audio-capture' ? 'No microphone found.'
+            : error === 'network' ? 'Speech service unavailable right now.'
+              : error === 'aborted' ? '' // user stopped — no toast
+                : 'Voice input failed. Please try again.'
+    if (msg) toast.error(msg)
+  }, [])
+
   const { isSupported: sttSupported, isListening: sttListening, start: startDictation, stop: stopDictation } =
-    useSpeechRecognition({ onResult: sttResult, onEnd: () => setDictating(false) })
+    useSpeechRecognition({ onResult: sttResult, onEnd: () => setDictating(false), onError: sttError })
 
   const handleMicClick = () => {
     if (sttSupported) {
@@ -136,9 +149,13 @@ export function ChatInput({ roomId, participants }: Props) {
         body: formData,
         credentials: 'include',
       })
-      if (res.ok) void res.json()
+      if (!res.ok) {
+        toast.error("Couldn't send voice note. Please try again.")
+        return
+      }
+      void res.json()
     } catch {
-      // Silently fail — the message shows as [Voice Message] regardless
+      toast.error("Couldn't send voice note — check your connection.")
     }
   }
 

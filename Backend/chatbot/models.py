@@ -50,6 +50,9 @@ class MessageAttachment(models.Model):
     name = models.CharField(max_length=255)
     size = models.PositiveIntegerField(default=0)
     mime = models.CharField(max_length=120, blank=True, default='')
+    # DocumentUpload id when this attachment was fed to Mathia (PDF/image in an
+    # AI room) — lets the UI poll real ingestion status. Null = not ingested.
+    ai_document_id = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property

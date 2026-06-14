@@ -164,3 +164,10 @@ export async function uploadDocument(roomId: number, file: File): Promise<{ id: 
 
   return res.json()
 }
+
+export type DocStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'unknown'
+
+export async function fetchDocumentStatus(documentId: number): Promise<DocStatus> {
+  const data = await chatbotApiRequest<{ status: DocStatus }>(`/api/documents/${documentId}/status/`)
+  return data.status
+}

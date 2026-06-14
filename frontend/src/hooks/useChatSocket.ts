@@ -28,6 +28,7 @@ function wsMessageToFrontend(m: WsMessageData): Message {
       size: a.size,
       mime: a.mime,
       aiReadable: a.ai_readable,
+      aiDocumentId: a.ai_document_id ?? null,
     })),
   }
 }

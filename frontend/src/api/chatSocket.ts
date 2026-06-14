@@ -11,6 +11,7 @@ export interface WsAttachmentData {
   size: number
   mime?: string
   ai_readable?: boolean
+  ai_document_id?: number | null
 }
 
 export interface WsMessageData {

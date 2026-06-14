@@ -56,6 +56,7 @@ export interface Attachment {
   size: number
   mime?: string
   aiReadable?: boolean
+  aiDocumentId?: number | null
 }
 
 export interface Contact {
