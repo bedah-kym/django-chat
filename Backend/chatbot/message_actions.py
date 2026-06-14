@@ -444,3 +444,68 @@ def submit_message_feedback(request, room_id, message_id):
     except Exception as e:
         logger.error(f"Error saving message feedback: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_chat_attachment(request, room_id):
+    """Upload a media file (image/video/audio/file) as a chat message and
+    broadcast it to the room over WebSocket so it appears inline."""
+    from chatbot.models import Member, MessageAttachment
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+
+    chatroom = get_object_or_404(Chatroom, id=room_id)
+    if not Chatroom.objects.filter(id=room_id, participants__User=request.user).exists():
+        return Response({"error": "You don't have access to this room"}, status=status.HTTP_403_FORBIDDEN)
+
+    f = request.FILES.get('file')
+    if not f:
+        return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+    if f.size > 50 * 1024 * 1024:
+        return Response({"error": "File too large (max 50MB)"}, status=status.HTTP_400_BAD_REQUEST)
+
+    mime = (getattr(f, 'content_type', '') or '').lower()
+    if mime.startswith('image/'):
+        kind = 'image'
+    elif mime.startswith('video/'):
+        kind = 'video'
+    elif mime.startswith('audio/'):
+        kind = 'audio'
+    else:
+        kind = 'file'
+
+    caption = (request.data.get('caption') or '').strip()
+    member, _ = Member.objects.get_or_create(User=request.user)
+
+    message = Message.objects.create(member=member, content=caption, timestamp=timezone.now())
+    chatroom.chats.add(message)
+    att = MessageAttachment.objects.create(
+        message=message, file=f, kind=kind, name=f.name[:255], size=f.size, mime=mime,
+    )
+
+    message_json = {
+        'id': message.id,
+        'member': request.user.username,
+        'content': caption,
+        'timestamp': str(message.timestamp),
+        'parent_id': None,
+        'edited_at': None,
+        'is_deleted': False,
+        'is_voice': False,
+        'attachments': [{
+            'id': att.id, 'name': att.name, 'url': att.file_url,
+            'type': att.kind, 'size': att.size, 'mime': att.mime,
+        }],
+    }
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat_{room_id}",
+            {'type': 'broadcast_message', 'command': 'new_message', 'message': message_json},
+        )
+    except Exception as e:
+        logger.warning(f"Attachment broadcast skipped: {e}")
+
+    return Response(message_json, status=status.HTTP_201_CREATED)

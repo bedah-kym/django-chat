@@ -18,6 +18,16 @@ function wsMessageToFrontend(m: WsMessageData): Message {
     isAi: isMathiaMessage(m.member),
     editedAt: m.edited_at ?? null,
     isDeleted: m.is_deleted ?? false,
+    audioUrl: m.audio_url ?? undefined,
+    voiceTranscript: m.voice_transcript ?? undefined,
+    attachments: m.attachments?.map((a) => ({
+      id: a.id,
+      name: a.name,
+      url: a.url,
+      type: a.type,
+      size: a.size,
+      mime: a.mime,
+    })),
   }
 }
 

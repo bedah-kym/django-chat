@@ -36,6 +36,33 @@ class Message(models.Model):
         return f"{self.member}: {self.content[:30]}..."
 
 
+class MessageAttachment(models.Model):
+    """A media file attached to a chat message (image / video / audio / file)."""
+    KIND_CHOICES = [
+        ('image', 'Image'),
+        ('video', 'Video'),
+        ('audio', 'Audio'),
+        ('file', 'File'),
+    ]
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='attachments/%Y/%m/')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default='file')
+    name = models.CharField(max_length=255)
+    size = models.PositiveIntegerField(default=0)
+    mime = models.CharField(max_length=120, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def file_url(self):
+        try:
+            return self.file.url
+        except Exception:
+            return ''
+
+    def __str__(self):
+        return f"{self.kind}: {self.name}"
+
+
 class Chatroom(models.Model):
     participants = models.ManyToManyField(Member)
     chats = models.ManyToManyField(Message, blank=True)

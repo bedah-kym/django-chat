@@ -3,6 +3,15 @@ export interface WsMessage {
   [key: string]: unknown
 }
 
+export interface WsAttachmentData {
+  id: number
+  name: string
+  url: string
+  type: 'image' | 'video' | 'audio' | 'file' | 'document'
+  size: number
+  mime?: string
+}
+
 export interface WsMessageData {
   id: number
   member: string
@@ -11,6 +20,11 @@ export interface WsMessageData {
   parent_id: number | null
   edited_at?: string | null
   is_deleted?: boolean
+  is_voice?: boolean
+  audio_url?: string | null
+  voice_transcript?: string | null
+  has_ai_voice?: boolean
+  attachments?: WsAttachmentData[]
 }
 
 type MessageHandler = (data: WsMessage) => void

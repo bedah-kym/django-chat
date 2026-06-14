@@ -2252,6 +2252,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """Helper to send message to group"""
         await self.send(text_data=json.dumps(message))
 
+    async def broadcast_message(self, event):
+        """Group handler: forward a message broadcast (e.g. a REST-uploaded
+        attachment) to this connected client."""
+        await self.send(text_data=json.dumps({
+            'command': event.get('command', 'new_message'),
+            'message': event.get('message'),
+        }))
+
     async def ai_response_message(self, event):
         """
         Handler for AI bot responses sent via channel layer
@@ -2451,6 +2459,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'parent_id': message.parent_id,
                 'edited_at': str(message.edited_at) if message.edited_at else None,
                 'is_deleted': message.is_deleted,
+                'is_voice': message.is_voice,
+                'audio_url': message.audio_url or None,
+                'voice_transcript': message.voice_transcript or None,
+                'has_ai_voice': message.has_ai_voice,
+                'attachments': await self._serialize_attachments(message),
             }
         except Exception as e:
             logger.error(f"Error in message_to_json: {e}")
@@ -2459,6 +2472,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'content': 'Error processing message',
                 'timestamp': str(timezone.now())
             }
+
+    async def _serialize_attachments(self, message):
+        """Serialize a message's media attachments. Returns [] gracefully if the
+        attachment model/relation isn't present yet."""
+        try:
+            def _get():
+                return [
+                    {
+                        'id': a.id,
+                        'name': a.name,
+                        'url': a.file_url,
+                        'type': a.kind,   # image | video | audio | file
+                        'size': a.size or 0,
+                        'mime': a.mime or '',
+                    }
+                    for a in message.attachments.all()
+                ]
+            return await sync_to_async(_get)()
+        except Exception:
+            return []
 
     async def get_history_as_text(self, room_id, limit=5):
         "Fetches last N messages and formats them as plain text history."

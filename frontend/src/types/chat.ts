@@ -52,8 +52,9 @@ export interface Attachment {
   id: number
   name: string
   url: string
-  type: 'image' | 'document' | 'audio'
+  type: 'image' | 'video' | 'audio' | 'file' | 'document'
   size: number
+  mime?: string
 }
 
 export interface Contact {

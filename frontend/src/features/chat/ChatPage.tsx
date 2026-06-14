@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Search, PanelRightOpen, PanelRightClose, ChevronDown, Download, UserPlus, X, FileText } from 'lucide-react'
+import { Search, PanelRightOpen, PanelRightClose, ChevronDown, Download, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useChatStore } from '@/stores/chatStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -22,6 +22,7 @@ import { HistoryLoader } from './components/HistoryLoader'
 import { ChatInput } from './components/ChatInput'
 import { MessageSearch } from './components/MessageSearch'
 import { VoiceMessage } from './components/VoiceMessage'
+import { MessageAttachments } from './components/MessageAttachments'
 import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
 import { formatDate, formatTime } from '@/utils/format'
 import styles from './ChatPage.module.css'
@@ -483,21 +484,7 @@ export function ChatPage() {
                     {msg.toolCalls?.map((tc, i) => <ToolCallDisplay key={i} toolName={tc.name} status={tc.status} result={tc.result} />)}
 
                     {msg.attachments?.length ? (
-                      <div className={styles.attachmentChips}>
-                        {msg.attachments.map(a => (
-                          <a
-                            key={a.id}
-                            href={a.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={styles.attachmentChip}
-                          >
-                            <FileText size={12} />
-                            <span>{a.name}</span>
-                            <span className={styles.attachmentSize}>{(a.size / 1024).toFixed(0)}KB</span>
-                          </a>
-                        ))}
-                      </div>
+                      <MessageAttachments attachments={msg.attachments} />
                     ) : null}
 
                     {msg.audioUrl ? (
