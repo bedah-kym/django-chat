@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react'
 import type { SignetNode, SignetEdge } from './types'
-import { nodeColor, getConnections, edgeColor } from './utils'
+import { nodeColor, getConnections, edgeColor, timeSeries } from './utils'
 import { SG } from './tokens'
 import { KeyValue, TagRow } from './components/Primitives'
+import { Sparkline } from './components/Sparkline'
+import { fetchTimeseries } from '@/api/signet'
 import s from './SignetDetailPanel.module.css'
 
 interface SignetDetailPanelProps {
@@ -14,6 +17,21 @@ interface SignetDetailPanelProps {
 
 export function SignetDetailPanel({ selected, onClose, onNavigate, nodes, edges }: SignetDetailPanelProps) {
   const findNodeById = (id: string) => nodes.find(n => n.id === id)
+  const [series, setSeries] = useState<number[]>([])
+  const [seriesLoaded, setSeriesLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!selected) return
+    const days = selected.type === 'account' ? 30 : 14
+    fetchTimeseries(selected.id, days)
+      .then(s => { setSeries(s); setSeriesLoaded(true) })
+      .catch(() => setSeriesLoaded(false))
+  }, [selected?.id])
+
+  const getSeries = (): number[] => {
+    if (seriesLoaded && series.length > 0) return series
+    return selected ? timeSeries(selected, selected.type === 'account' ? 30 : 14) : []
+  }
   return (
     <div className={`${s.panel} ${selected ? s.panelOpen : ''}`}>
       {selected && (
@@ -59,6 +77,13 @@ export function SignetDetailPanel({ selected, onClose, onNavigate, nodes, edges 
                   color={selected.velocity === 'peak' ? SG.high : SG.med} />
               </>
             )}
+          </div>
+
+          <div className={s.section}>
+            <div className={s.sectionLabel}>
+              CADENCE · {selected.type === 'account' ? '30d' : '14d'}
+            </div>
+            <Sparkline data={getSeries()} color={nodeColor(selected)} height={42} lineWidth={1.4} />
           </div>
 
           {selected.tags?.length > 0 && (

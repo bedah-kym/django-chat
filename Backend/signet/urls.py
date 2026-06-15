@@ -13,6 +13,10 @@ urlpatterns = [
     path('reviews/<int:pk>/decide/', views.decide_review, name='decide_review'),
     path('accounts/<int:pk>/mute/', views.mute_account, name='mute_account'),
 
+    # Timeseries
+    path('timeseries/', views.timeseries_bulk, name='timeseries_bulk'),
+    path('<str:node_id>/timeseries/', views.node_timeseries, name='node_timeseries'),
+
     # Collection control
     path('collection/start/', views.collection_start, name='collection_start'),
     path('collection/stop/', views.collection_stop, name='collection_stop'),

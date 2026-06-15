@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { SignetNode } from './types'
 import { threatScore, threatBand, nodeColor, timeSeries } from './utils'
 import { SG } from './tokens'
 import { SectionLabel, ThreatMeter, TagRow } from './components/Primitives'
 import { Sparkline, Sparkbars } from './components/Sparkline'
-import { muteAccount } from '@/api/signet'
+import { muteAccount, fetchTimeseriesBulk } from '@/api/signet'
 import s from './FeedView.module.css'
 
 interface FeedViewProps {
@@ -29,6 +29,16 @@ const TABS = [
 export function FeedView({ search, nodes: NODES, reload, onInspect }: FeedViewProps) {
   const [tab, setTab] = useState<string>('account')
   const [muting, setMuting] = useState<string | null>(null)
+  const [tsMap, setTsMap] = useState<Record<string, number[]> | null>(null)
+
+  useEffect(() => {
+    fetchTimeseriesBulk(7).then(setTsMap).catch(() => setTsMap(null))
+  }, [])
+
+  const getSeries = (node: SignetNode): number[] => {
+    const series = tsMap?.[node.id]
+    return series ?? timeSeries(node, 7)
+  }
 
   const handleMute = async (node: SignetNode, name: string) => {
     if (node.type !== 'account') return
@@ -123,9 +133,9 @@ export function FeedView({ search, nodes: NODES, reload, onInspect }: FeedViewPr
               <ThreatMeter value={r.score} max={maxScore} color={band.color} />
               <div className={s.trend}>
                 {r.type === 'account' ? (
-                  <Sparkbars data={timeSeries(r as SignetNode, 7)} color={band.color} height={18} />
+                  <Sparkbars data={getSeries(r as SignetNode)} color={band.color} height={18} />
                 ) : (
-                  <Sparkline data={timeSeries(r as SignetNode, 7)} color={band.color} height={18} lineWidth={1.2} />
+                  <Sparkline data={getSeries(r as SignetNode)} color={band.color} height={18} lineWidth={1.2} />
                 )}
               </div>
               <div className={s.conf}>{conf}</div>

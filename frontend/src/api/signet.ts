@@ -167,3 +167,12 @@ export async function muteAccount(accountId: number) {
     method: 'POST',
   })
 }
+
+export async function fetchTimeseries(nodeId: string, days: number): Promise<number[]> {
+  const res = await apiRequest<{ series: number[] }>(`/signet/${nodeId}/timeseries/?days=${days}`)
+  return res.series
+}
+
+export async function fetchTimeseriesBulk(days: number): Promise<Record<string, number[]>> {
+  return apiRequest<Record<string, number[]>>(`/signet/timeseries/?days=${days}`)
+}
