@@ -5,11 +5,19 @@ import { threatScore, threatBand, nodeColor, timeSeries } from './utils'
 import { SG } from './tokens'
 import { SectionLabel, ThreatMeter, TagRow } from './components/Primitives'
 import { Sparkline, Sparkbars } from './components/Sparkline'
+import { muteAccount } from '@/api/signet'
 import s from './FeedView.module.css'
 
 interface FeedViewProps {
   search: string
   nodes: SignetNode[]
+  reload?: () => Promise<void>
+  onInspect?: (node: SignetNode) => void
+}
+
+// Node ids are `acc_<pk>` / `nar_<pk>` / `tag_<pk>` — pull the numeric pk.
+function nodePk(id: string): number {
+  return Number(id.split('_')[1])
 }
 
 const TABS = [
@@ -18,8 +26,23 @@ const TABS = [
   { key: 'hashtag', label: 'Hashtags', color: SG.med },
 ] as const
 
-export function FeedView({ search, nodes: NODES }: FeedViewProps) {
+export function FeedView({ search, nodes: NODES, reload, onInspect }: FeedViewProps) {
   const [tab, setTab] = useState<string>('account')
+  const [muting, setMuting] = useState<string | null>(null)
+
+  const handleMute = async (node: SignetNode, name: string) => {
+    if (node.type !== 'account') return
+    setMuting(node.id)
+    try {
+      await muteAccount(nodePk(node.id))
+      toast.success(`Muted ${name}`, { description: 'Removed from active triage feed' })
+      await reload?.()
+    } catch {
+      toast.error(`Couldn't mute ${name}`)
+    } finally {
+      setMuting(null)
+    }
+  }
 
   const searchLower = search.trim().toLowerCase()
   const rows = NODES.filter(n => n.type === tab)
@@ -90,7 +113,7 @@ export function FeedView({ search, nodes: NODES }: FeedViewProps) {
               key={r.id}
               className={s.row}
               style={{ animationDelay: `${Math.min(i * 22, 400)}ms` }}
-              onClick={() => toast(`Inspecting ${name}`, { description: `Threat ${r.score} · ${band.label}` })}
+              onClick={() => onInspect?.(r as SignetNode)}
             >
               <div className={s.rail} style={{ background: band.color }} />
               <div className={s.handle} style={{ color: nodeColor(r as SignetNode) }}>
@@ -114,20 +137,23 @@ export function FeedView({ search, nodes: NODES }: FeedViewProps) {
                   className={s.btn}
                   onClick={e => {
                     e.stopPropagation()
-                    toast(`Inspecting ${name}`)
+                    onInspect?.(r as SignetNode)
                   }}
                 >
                   Inspect
                 </button>
-                <button
-                  className={`${s.btn} ${s.btnDanger}`}
-                  onClick={e => {
-                    e.stopPropagation()
-                    toast.success(`Muted ${name}`, { description: 'Removed from active triage feed' })
-                  }}
-                >
-                  Mute
-                </button>
+                {r.type === 'account' && (
+                  <button
+                    className={`${s.btn} ${s.btnDanger}`}
+                    disabled={muting === r.id}
+                    onClick={e => {
+                      e.stopPropagation()
+                      handleMute(r as SignetNode, name)
+                    }}
+                  >
+                    {muting === r.id ? 'Muting…' : 'Mute'}
+                  </button>
+                )}
               </div>
             </div>
           )

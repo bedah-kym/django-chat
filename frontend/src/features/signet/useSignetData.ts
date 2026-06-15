@@ -9,10 +9,11 @@ interface SignetData {
   reviews: ReviewItem[]
   isLoading: boolean
   isLive: boolean
+  reload: () => Promise<void>
 }
 
 export function useSignetData(): SignetData {
-  const [data, setData] = useState<SignetData>({
+  const [data, setData] = useState<Omit<SignetData, 'reload'>>({
     nodes: [],
     edges: [],
     activity: [],
@@ -41,5 +42,5 @@ export function useSignetData(): SignetData {
     loadData()
   }, [loadData])
 
-  return data
+  return { ...data, reload: loadData }
 }

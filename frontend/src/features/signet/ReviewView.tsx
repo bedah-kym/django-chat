@@ -1,24 +1,54 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { tierColor } from './utils'
 import { SG } from './tokens'
 import { SectionLabel, Panel, TagChip, KeyValue, ThreatMeter } from './components/Primitives'
+import { decideReview } from '@/api/signet'
 import type { ReviewItem } from './types'
 import s from './ReviewView.module.css'
 
 interface ReviewViewProps {
   reviews: ReviewItem[]
+  reload?: () => Promise<void>
 }
 
-export function ReviewView({ reviews: REVIEW_QUEUE }: ReviewViewProps) {
+const DECISION_LABEL: Record<string, string> = {
+  approved: 'Approved',
+  rejected: 'Rejected',
+  amended: 'Amended',
+}
+
+export function ReviewView({ reviews: REVIEW_QUEUE, reload }: ReviewViewProps) {
   const [decisions, setDecisions] = useState<Record<string, string>>({})
-  const decide = (id: string, choice: string) => setDecisions(p => ({ ...p, [id]: choice }))
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const decide = async (item: ReviewItem, decision: 'approved' | 'rejected' | 'amended') => {
+    setBusy(item.id)
+    // Optimistic: drop from the queue immediately, roll back on failure.
+    setDecisions(p => ({ ...p, [item.id]: decision }))
+    try {
+      const tags = decision === 'amended'
+        ? [{ tag: item.verdict_tag, confidence: item.confidence, excerpt: item.excerpt }]
+        : undefined
+      await decideReview(Number(item.id), decision, tags)
+      toast.success(`${DECISION_LABEL[decision]} · ${item.verdict_tag}`)
+      await reload?.()
+    } catch {
+      setDecisions(p => { const n = { ...p }; delete n[item.id]; return n })
+      toast.error('Decision failed — try again')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const pending = REVIEW_QUEUE.filter(r => !decisions[r.id])
-  const reviewedToday = 47
+  const avgConf = REVIEW_QUEUE.length
+    ? Math.round((REVIEW_QUEUE.reduce((a, r) => a + (r.confidence || 0), 0) / REVIEW_QUEUE.length) * 100)
+    : 0
   const stats = [
     { l: 'PENDING', v: pending.length, c: SG.med },
-    { l: 'REVIEWED TODAY', v: reviewedToday, c: SG.live },
-    { l: 'AVG LLM CONFIDENCE', v: '64%', c: SG.low },
+    { l: 'GATE 1 ITEMS', v: REVIEW_QUEUE.filter(r => r.gate === 'GATE 1').length, c: SG.live },
+    { l: 'AVG LLM CONFIDENCE', v: REVIEW_QUEUE.length ? `${avgConf}%` : '—', c: SG.low },
     { l: 'GATE 2 ITEMS', v: REVIEW_QUEUE.filter(r => r.gate === 'GATE 2').length, c: SG.high },
   ]
 
@@ -98,14 +128,14 @@ export function ReviewView({ reviews: REVIEW_QUEUE }: ReviewViewProps) {
                 <div className={s.model}>{item.model}</div>
 
                 <div className={s.actions}>
-                  <button className={s.btn} onClick={() => decide(item.id, 'reject')}>
+                  <button className={s.btn} disabled={busy === item.id} onClick={() => decide(item, 'rejected')}>
                     Reject
                   </button>
-                  <button className={`${s.btn} ${s.btnAmend}`} onClick={() => decide(item.id, 'amend')}>
+                  <button className={`${s.btn} ${s.btnAmend}`} disabled={busy === item.id} onClick={() => decide(item, 'amended')}>
                     Amend
                   </button>
-                  <button className={`${s.btn} ${s.btnApprove}`} onClick={() => decide(item.id, 'approve')}>
-                    Approve
+                  <button className={`${s.btn} ${s.btnApprove}`} disabled={busy === item.id} onClick={() => decide(item, 'approved')}>
+                    {busy === item.id ? '…' : 'Approve'}
                   </button>
                 </div>
               </Panel>

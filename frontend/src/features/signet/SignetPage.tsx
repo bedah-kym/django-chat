@@ -19,7 +19,7 @@ interface SignetPageProps {
 }
 
 export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActivity, reviews: extReviews, initialView = 'graph' }: SignetPageProps = {}) {
-  const { nodes: apiNodes, edges: apiEdges, activity: apiActivity, reviews: apiReviews } = useSignetData()
+  const { nodes: apiNodes, edges: apiEdges, activity: apiActivity, reviews: apiReviews, reload } = useSignetData()
 
   const nodes = extNodes ?? apiNodes
   const edges = extEdges ?? apiEdges
@@ -46,8 +46,15 @@ export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActi
               filters={filters} setFilters={setFilters} search={search}
               nodes={nodes} edges={edges} />
           )}
-          {view === 'feed' && <FeedView search={search} nodes={nodes} />}
-          {view === 'review' && <ReviewView reviews={reviews} />}
+          {view === 'feed' && (
+            <FeedView
+              search={search}
+              nodes={nodes}
+              reload={reload}
+              onInspect={(node) => { setSelected(node); setView('graph') }}
+            />
+          )}
+          {view === 'review' && <ReviewView reviews={reviews} reload={reload} />}
         </div>
       </div>
       <ActivityFeed activity={activity} />

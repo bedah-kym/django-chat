@@ -151,10 +151,14 @@ export async function fetchAllSignetData(): Promise<{
   }
 }
 
-export async function decideReview(reviewId: number, decision: string) {
+export async function decideReview(
+  reviewId: number,
+  decision: 'approved' | 'rejected' | 'amended',
+  tags?: Array<{ tag: string; confidence: number; excerpt: string }>,
+) {
   return apiRequest(`/signet/reviews/${reviewId}/decide/`, {
     method: 'POST',
-    body: JSON.stringify({ decision }),
+    body: JSON.stringify(tags ? { decision, tags } : { decision }),
   })
 }
 
