@@ -107,25 +107,56 @@ def project_session(session: CollectionSession) -> dict:
         )
         hashtags_upserted += 1
 
-    # ── Narratives: group by dominant content-domain tag ──
+    # ── Narratives (GLOBAL per user, idempotent) ──
+    # One narrative per content-domain tag, keyed on a STABLE label (no volatile
+    # counts) and aggregated across ALL of the user's eligible classifications —
+    # so repeated runs/sessions converge instead of spawning near-duplicates.
+    from datetime import timedelta
+
+    DOMAIN_TAGS = (
+        'political_disinfo', 'health_misinfo', 'economic_fear',
+        'identity_wedge', 'election_integrity', 'anti_institution',
+    )
+
+    # Latest eligible classification per post (a post can have versioned rows
+    # from review/amend — don't double-count it).
+    rows = (
+        PostClassification.objects
+        .filter(user=user, review_status__in=('auto_eligible', 'approved'))
+        .select_related('post')
+        .order_by('post_id', '-created_at')
+    )
+    seen_posts: set = set()
+    eligible_all: list[PostClassification] = []
+    for c in rows:
+        if c.post_id in seen_posts:
+            continue
+        seen_posts.add(c.post_id)
+        eligible_all.append(c)
+
     domain_tag_posts: dict[str, list[PostClassification]] = {}
-    for c in eligible:
-        for t_obj in c.tags:
-            tag = t_obj.get('tag', '')
-            if tag in (
-                'political_disinfo', 'health_misinfo', 'economic_fear',
-                'identity_wedge', 'election_integrity', 'anti_institution',
-            ):
-                domain_tag_posts.setdefault(tag, []).append(c)
+    for c in eligible_all:
+        ctags = {t.get('tag', '') for t in c.tags}
+        for dt in DOMAIN_TAGS:
+            if dt in ctags:
+                domain_tag_posts.setdefault(dt, []).append(c)
+
+    # Rebuild narrative-involved edges from scratch each run (cleans dangling
+    # edges left by any previously-deduped narratives).
+    SignetEdge.objects.filter(user=user, target_type='narrative').delete()
+    SignetEdge.objects.filter(user=user, source_type='narrative').delete()
 
     narratives_upserted = 0
     edges_upserted = 0
+    now = timezone.now()
+    kept_labels: list[str] = []
     for tag, clist in domain_tag_posts.items():
-        if len(clist) < 1:
-            continue
-        reach = sum(c.post.likes or 0 for c in clist) + sum(c.post.comments or 0 for c in clist)
-        hands = list({c.post.author_handle for c in clist})
-        label = f'{tag.replace("_", " ").title()} — {len(hands)} accounts, {len(clist)} posts'
+        reach = sum((c.post.likes or 0) + (c.post.comments or 0) for c in clist)
+        avg_conf = sum(c.overall_confidence for c in clist) / len(clist)
+        latest = max(c.post.posted_at for c in clist)
+        status = 'active' if latest >= now - timedelta(days=3) else 'decaying'
+        label = tag.replace('_', ' ').title()  # stable key
+        kept_labels.append(label)
 
         nar, _ = SignetNarrative.objects.update_or_create(
             user=user,
@@ -133,48 +164,45 @@ def project_session(session: CollectionSession) -> dict:
             defaults={
                 'tags': [tag],
                 'reach': reach,
-                'status': 'active',
+                'status': status,
+                'confidence': round(avg_conf, 4),
             },
         )
         narratives_upserted += 1
 
-        # Edges: SEEDS (earliest poster per narrative) + AMPLIFIES
+        # account → narrative: SEEDS (earliest poster) + AMPLIFIES (the rest)
         earliest = min(clist, key=lambda c: c.post.posted_at)
-        SignetEdge.objects.get_or_create(
-            user=user,
-            source_type='account',
-            source_id=SignetAccount.objects.get(user=user, handle=earliest.post.author_handle).id,
-            target_type='narrative',
-            target_id=nar.id,
-            edge_type='SEEDS',
-        )
-
-        for c in clist:
-            acct = SignetAccount.objects.filter(user=user, handle=c.post.author_handle).first()
+        seed_handle = earliest.post.author_handle
+        seed_acct = SignetAccount.objects.filter(user=user, handle=seed_handle).first()
+        if seed_acct:
+            SignetEdge.objects.get_or_create(
+                user=user, source_type='account', source_id=seed_acct.id,
+                target_type='narrative', target_id=nar.id, edge_type='SEEDS',
+            )
+            edges_upserted += 1
+        for handle in {c.post.author_handle for c in clist}:
+            if handle == seed_handle or handle == '[deleted]':
+                continue
+            acct = SignetAccount.objects.filter(user=user, handle=handle).first()
             if acct:
                 SignetEdge.objects.get_or_create(
-                    user=user,
-                    source_type='account',
-                    source_id=acct.id,
-                    target_type='narrative',
-                    target_id=nar.id,
-                    edge_type='AMPLIFIES',
+                    user=user, source_type='account', source_id=acct.id,
+                    target_type='narrative', target_id=nar.id, edge_type='AMPLIFIES',
                 )
                 edges_upserted += 1
 
-        # TAGGED_WITH edges
+        # narrative → hashtag
         for ht_label in {h for c in clist for h in (c.post.hashtags or [])}:
             ht = SignetHashtag.objects.filter(user=user, label=ht_label).first()
             if ht:
                 SignetEdge.objects.get_or_create(
-                    user=user,
-                    source_type='narrative',
-                    source_id=nar.id,
-                    target_type='hashtag',
-                    target_id=ht.id,
-                    edge_type='TAGGED_WITH',
+                    user=user, source_type='narrative', source_id=nar.id,
+                    target_type='hashtag', target_id=ht.id, edge_type='TAGGED_WITH',
                 )
                 edges_upserted += 1
+
+    # Drop narratives whose tag no longer appears (incl. the old count-labelled dupes).
+    SignetNarrative.objects.filter(user=user).exclude(label__in=kept_labels).delete()
 
     return {
         'accounts_upserted': accounts_upserted,
