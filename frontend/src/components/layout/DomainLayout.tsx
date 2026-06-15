@@ -1,5 +1,5 @@
 import { Outlet, useLocation, NavLink } from 'react-router-dom'
-import { Menu, Plus, Search } from 'lucide-react'
+import { Menu, Plus, Search, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { domainConfigs, getRoomPath } from '@/domains'
@@ -21,6 +21,8 @@ export function DomainLayout({ domainId }: Props) {
   const setLastDomain = useUiStore((s) => s.setLastDomain)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
+  const domainRailCollapsed = useUiStore((s) => s.domainRailCollapsed)
+  const toggleDomainRailCollapsed = useUiStore((s) => s.toggleDomainRailCollapsed)
   const rooms = useChatStore((s) => s.rooms)
 
   const [showCreate, setShowCreate] = useState(false)
@@ -92,8 +94,29 @@ export function DomainLayout({ domainId }: Props) {
         </div>
       </div>
 
-      <div className={`${styles.body} ${!sidebarCollapsed ? styles.globalRailOpen : ''}`}>
+      <div className={`${styles.body} ${!sidebarCollapsed ? styles.globalRailOpen : ''} ${domainRailCollapsed ? styles.railCollapsed : ''}`}>
+        <aside className={styles.railMini}>
+          <button
+            className={styles.railToggleMini}
+            onClick={toggleDomainRailCollapsed}
+            title="Show rooms panel"
+            aria-label="Show rooms panel"
+          >
+            <PanelLeftOpen size={16} />
+          </button>
+        </aside>
         <aside className={styles.sidebar}>
+          <div className={styles.railHead}>
+            <span className={styles.sectionLabel}>{domain.label}</span>
+            <button
+              className={styles.railToggle}
+              onClick={toggleDomainRailCollapsed}
+              title="Hide rooms panel"
+              aria-label="Hide rooms panel"
+            >
+              <PanelLeftClose size={16} />
+            </button>
+          </div>
           <div className={styles.section}>
             <div className={styles.sectionLabel}>Workspace</div>
             <div className={styles.navList}>

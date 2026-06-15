@@ -18,6 +18,56 @@
   grid-template-columns: minmax(220px, 252px) minmax(0, 1fr);
 }
 
+/* Collapsed domain rail: slim strip + full-width content. Higher specificity
+   so it wins over .globalRailOpen regardless of source order. */
+.body.railCollapsed {
+  grid-template-columns: 44px minmax(0, 1fr);
+}
+
+.railMini {
+  display: none;
+}
+
+.body.railCollapsed .sidebar {
+  display: none;
+}
+
+.body.railCollapsed .railMini {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-block-start: var(--space-lg);
+  border-inline-end: 1px solid var(--border-color);
+  background: var(--surface-muted);
+}
+
+.railHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.railToggle,
+.railToggleMini {
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.railToggle:hover,
+.railToggleMini:hover {
+  background: var(--surface);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
 .sidebar {
   border-inline-end: 1px solid var(--border-color);
   background: var(--surface-muted);
@@ -214,11 +264,14 @@
 }
 
 @media (max-width: 1024px) {
-  .body {
+  .body,
+  .body.railCollapsed {
     grid-template-columns: 1fr;
   }
 
-  .sidebar {
+  .sidebar,
+  .railMini,
+  .body.railCollapsed .railMini {
     display: none;
   }
 

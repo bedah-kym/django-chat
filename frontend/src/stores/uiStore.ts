@@ -10,6 +10,7 @@ interface UiState {
   theme: 'light' | 'dark'
   sidebarOpen: boolean
   sidebarCollapsed: boolean
+  domainRailCollapsed: boolean
   lastDomain: DomainId
   locale: string
   currency: string
@@ -19,6 +20,7 @@ interface UiState {
   setSidebarOpen: (open: boolean) => void
   toggleSidebarCollapsed: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
+  toggleDomainRailCollapsed: () => void
   setLastDomain: (domain: DomainId) => void
   setLocale: (locale: string) => void
   setCurrency: (currency: string) => void
@@ -78,6 +80,7 @@ export const useUiStore = create<UiState>((set) => ({
   theme: initialTheme,
   sidebarOpen: false,
   sidebarCollapsed: localStorage.getItem('mathia-sidebar-collapsed') === 'true',
+  domainRailCollapsed: localStorage.getItem('mathia-domain-rail-collapsed') === 'true',
   lastDomain: (localStorage.getItem('mathia-last-domain') as DomainId) || 'security',
   locale: initialLocale,
   currency: initialCurrency,
@@ -106,6 +109,12 @@ export const useUiStore = create<UiState>((set) => ({
     localStorage.setItem('mathia-sidebar-collapsed', String(collapsed))
     set((state) => (state.sidebarCollapsed === collapsed ? state : { sidebarCollapsed: collapsed }))
   },
+  toggleDomainRailCollapsed: () =>
+    set((state) => {
+      const next = !state.domainRailCollapsed
+      localStorage.setItem('mathia-domain-rail-collapsed', String(next))
+      return { domainRailCollapsed: next }
+    }),
   setLastDomain: (domain) => {
     if (localStorage.getItem('mathia-last-domain') === domain) return
     localStorage.setItem('mathia-last-domain', domain)
