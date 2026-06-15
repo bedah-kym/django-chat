@@ -1,12 +1,23 @@
+import logging
+
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import SignetAccount, SignetNarrative, SignetHashtag, SignetEdge, SignetActivity, SignetReviewItem
+from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+
+from .models import (
+    SignetAccount, SignetNarrative, SignetHashtag, SignetEdge,
+    SignetActivity, SignetReviewItem,
+    PostClassification, CollectionSession,
+)
 from .serializers import (
     SignetAccountSerializer, SignetNarrativeSerializer, SignetHashtagSerializer,
     SignetEdgeSerializer, SignetActivitySerializer, SignetReviewItemSerializer,
 )
+from .projector import project_session
 
 
 class NoPagination:
@@ -23,7 +34,8 @@ class AccountList(generics.ListAPIView):
     pagination_class = NoPagination
 
     def get_queryset(self):
-        return SignetAccount.objects.filter(user=self.request.user)
+        # Muted accounts are suppressed from triage (feed + graph).
+        return SignetAccount.objects.filter(user=self.request.user, is_muted=False)
 
 
 class NarrativeList(generics.ListAPIView):
@@ -68,7 +80,9 @@ class ReviewItemList(generics.ListAPIView):
     pagination_class = NoPagination
 
     def get_queryset(self):
-        return SignetReviewItem.objects.filter(user=self.request.user)
+        # Only items still awaiting a decision belong in the queue; decided
+        # items must not reappear after the operator acts + the view reloads.
+        return SignetReviewItem.objects.filter(user=self.request.user, decision='pending')
 
 
 @api_view(['POST'])
@@ -79,9 +93,79 @@ def decide_review(request, pk):
         return Response({'error': 'Invalid decision'}, status=status.HTTP_400_BAD_REQUEST)
 
     item = SignetReviewItem.objects.get(pk=pk, user=request.user)
+
+    # PostClassification is immutable — approve/amend write a NEW versioned row
+    # (review_status='approved'), never mutate the original. record corrections.
+    affected_sessions = set()
+
+    if decision == 'amended':
+        amended_tags = request.data.get('tags', [])
+        original = item.classifications.order_by('-created_at').first()
+        if original:
+            PostClassification.objects.create(
+                post=original.post,
+                tags=amended_tags,
+                overall_confidence=original.overall_confidence,
+                prompt_version=original.prompt_version,
+                model_version=original.model_version,
+                llm_call_id=original.llm_call_id,
+                raw_llm_response=original.raw_llm_response,
+                review_status='approved',
+                user=request.user,
+                session=original.session,
+                signet_review=item,
+            )
+            if original.session_id:
+                affected_sessions.add(original.session)
+            _record_correction(request.user, original, amended_tags)
+    elif decision == 'approved':
+        # Snapshot the latest classification(s) as approved versioned rows.
+        seen_posts = set()
+        for c in item.classifications.order_by('-created_at'):
+            if c.review_status == 'approved' or c.post_id in seen_posts:
+                continue
+            seen_posts.add(c.post_id)
+            PostClassification.objects.create(
+                post=c.post,
+                tags=c.tags,
+                overall_confidence=c.overall_confidence,
+                prompt_version=c.prompt_version,
+                model_version=c.model_version,
+                llm_call_id=c.llm_call_id,
+                raw_llm_response=c.raw_llm_response,
+                review_status='approved',
+                user=request.user,
+                session=c.session,
+                signet_review=item,
+            )
+            if c.session_id:
+                affected_sessions.add(c.session)
+
     item.decision = decision
+    item.reviewed_at = timezone.now()
     item.save()
+
+    # Re-project so an approved verdict surfaces in the Feed/Graph immediately.
+    for session in affected_sessions:
+        try:
+            project_session(session)
+        except Exception:
+            pass
+
     return Response({'status': 'ok', 'decision': decision})
+
+
+def _record_correction(user, original, amended_tags):
+    """Record an operator tag correction (original vs amended) for Phase-2 tuning.
+
+    NOTE: orchestration.telemetry.record_correction_signal is async and requires
+    a workspace_id; full wiring into that pipeline is a follow-up. For now we
+    persist an auditable signal line so corrections aren't lost.
+    """
+    logger.info(
+        'signet_tag_correction user=%s post=%s original=%s amended=%s',
+        getattr(user, 'id', None), original.post_id, original.tags, amended_tags,
+    )
 
 
 @api_view(['POST'])
@@ -91,3 +175,71 @@ def mute_account(request, pk):
     account.is_muted = not account.is_muted
     account.save()
     return Response({'status': 'ok', 'is_muted': account.is_muted})
+
+
+# ── Collection control ──
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def collection_start(request):
+    subreddits = request.data.get('subreddits', ['Kenya'])
+    limit = request.data.get('limit', 25)
+    config = {'subreddits': subreddits if isinstance(subreddits, list) else [subreddits], 'limit': limit}
+
+    session = CollectionSession.objects.create(
+        user=request.user,
+        platform='reddit',
+        config=config,
+        status='running',
+        started_at=timezone.now(),
+    )
+
+    from signet.tasks import collect_reddit_task
+    collect_reddit_task.delay(session.id)
+
+    return Response({'status': 'started', 'session_id': session.id})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def collection_stop(request):
+    session_id = request.data.get('session_id')
+    if session_id:
+        session = CollectionSession.objects.get(id=session_id, user=request.user)
+        session.status = 'paused'
+        session.save()
+        return Response({'status': 'paused', 'session_id': session.id})
+    CollectionSession.objects.filter(user=request.user, status='running').update(status='paused')
+    return Response({'status': 'all_paused'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def collection_status(request):
+    running = CollectionSession.objects.filter(user=request.user, status='running').first()
+    total_posts = CollectedPost.objects.filter(user=request.user).count()
+    tagged = CollectedPost.objects.filter(user=request.user, tagging_status='tagged').count()
+    accounts = SignetAccount.objects.filter(user=request.user).count()
+
+    return Response({
+        'is_collecting': bool(running),
+        'session_id': running.id if running else None,
+        'counts': {
+            'posts_collected': total_posts,
+            'posts_tagged': tagged,
+            'accounts': accounts,
+        },
+    })
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def collection_config(request):
+    session_id = request.data.get('session_id')
+    config = request.data.get('config', {})
+    if session_id:
+        session = CollectionSession.objects.get(id=session_id, user=request.user)
+        session.config = {**(session.config or {}), **config}
+        session.save()
+        return Response({'status': 'updated', 'config': session.config})
+    return Response({'error': 'session_id required'}, status=400)

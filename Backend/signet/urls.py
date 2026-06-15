@@ -12,4 +12,10 @@ urlpatterns = [
     path('reviews/', views.ReviewItemList.as_view(), name='review_list'),
     path('reviews/<int:pk>/decide/', views.decide_review, name='decide_review'),
     path('accounts/<int:pk>/mute/', views.mute_account, name='mute_account'),
+
+    # Collection control
+    path('collection/start/', views.collection_start, name='collection_start'),
+    path('collection/stop/', views.collection_stop, name='collection_stop'),
+    path('collection/status/', views.collection_status, name='collection_status'),
+    path('collection/config/', views.collection_config, name='collection_config'),
 ]

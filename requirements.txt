@@ -69,6 +69,7 @@ amadeus>=8.0.0
 intasend-python>=0.1.0
 pydub>=0.25.1
 twilio>=9.0.0
+praw>=7.7.0
 
 # Data handling
 Pillow>=10.0.0

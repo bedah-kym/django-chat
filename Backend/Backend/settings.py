@@ -328,6 +328,11 @@ GMAIL_OAUTH_CLIENT_SECRET = os.environ.get('GMAIL_OAUTH_CLIENT_SECRET') or os.en
 GMAIL_OAUTH_REDIRECT_URI = os.environ.get('GMAIL_OAUTH_REDIRECT_URI', '')
 GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send'
 
+# SIGNET — Reddit collector credentials
+REDDIT_CLIENT_ID = os.environ.get('REDDIT_CLIENT_ID', '')
+REDDIT_CLIENT_SECRET = os.environ.get('REDDIT_CLIENT_SECRET', '')
+REDDIT_USER_AGENT = os.environ.get('REDDIT_USER_AGENT', '')
+
 # LLM cost guards
 LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', 700))  # hard ceiling per call
 LLM_PROMPT_CHAR_LIMIT = int(os.environ.get('LLM_PROMPT_CHAR_LIMIT', 4000))  # truncate user prompt to this many chars
@@ -613,5 +618,10 @@ CELERY_BEAT_SCHEDULE = {
     'sweep-memory-notes': {
         'task': 'chatbot.tasks.sweep_memory_notes',
         'schedule': 21600.0,  # Every 6 hours
+    },
+    # SIGNET collection heartbeat (every 30 min — fires for each running session)
+    'signet_collection_heartbeat': {
+        'task': 'signet.tasks.signet_heartbeat',
+        'schedule': 1800.0,
     },
 }

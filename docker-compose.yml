@@ -54,6 +54,9 @@ services:
       - HF_API_TOKEN=${HF_API_TOKEN}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USER_AGENT=${REDDIT_USER_AGENT}
       - CALENDLY_CLIENT_ID=${CALENDLY_CLIENT_ID}
       - Webhook_signing_key=${Webhook_signing_key}
       - CALENDLY_CLIENT_SECRET=${CALENDLY_CLIENT_SECRET}
@@ -79,6 +82,9 @@ services:
       - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USER_AGENT=${REDDIT_USER_AGENT}
     depends_on:
       db:
         condition: service_healthy

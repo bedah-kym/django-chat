@@ -148,3 +148,153 @@ class SignetReviewItem(models.Model):
 
     def __str__(self):
         return f'{self.gate}: {self.verdict_tag} on {self.target}'
+
+
+# ── Collection Engine ──────────────────────────────────────────────
+
+class CollectionSession(models.Model):
+    STATUS_CHOICES = [
+        ('idle', 'Idle'),
+        ('running', 'Running'),
+        ('paused', 'Paused'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='signet_collection_sessions')
+    platform = models.CharField(max_length=20, default='reddit')
+    config = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='idle')
+    started_at = models.DateTimeField(null=True, blank=True)
+    stats = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.platform} session {self.id} ({self.status})'
+
+
+class IngestionRecord(models.Model):
+    """Immutable raw payload — never update, append-only."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='signet_ingestion_records')
+    session = models.ForeignKey(CollectionSession, on_delete=models.CASCADE, related_name='ingestion_records')
+    platform = models.CharField(max_length=20)
+    platform_post_id = models.CharField(max_length=100)
+    raw_payload = models.JSONField()
+    collected_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('platform', 'platform_post_id')]
+        ordering = ['-collected_at']
+        indexes = [
+            models.Index(fields=['platform', 'platform_post_id']),
+            models.Index(fields=['session']),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise RuntimeError('IngestionRecord is immutable and cannot be updated.')
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.platform}:{self.platform_post_id}'
+
+
+class CollectedPost(models.Model):
+    """Normalised post — Collection Payload Schema v1.0"""
+    TAGGING_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('tagged', 'Tagged'),
+        ('failed', 'Failed'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='signet_collected_posts')
+    session = models.ForeignKey(CollectionSession, on_delete=models.CASCADE, related_name='collected_posts')
+
+    platform = models.CharField(max_length=20)
+    platform_post_id = models.CharField(max_length=100)
+    platform_author_id = models.CharField(max_length=100)
+    author_handle = models.CharField(max_length=100)
+    content_text = models.TextField()
+    posted_at = models.DateTimeField()
+    collected_at = models.DateTimeField()
+
+    likes = models.IntegerField(null=True, blank=True)
+    shares = models.IntegerField(null=True, blank=True)
+    comments = models.IntegerField(null=True, blank=True)
+    views = models.IntegerField(null=True, blank=True)
+    reach = models.IntegerField(null=True, blank=True)
+
+    hashtags = models.JSONField(default=list, blank=True)
+    mentions = models.JSONField(default=list, blank=True)
+    urls = models.JSONField(default=list, blank=True)
+    media_type = models.CharField(max_length=20, null=True, blank=True)
+    language = models.CharField(max_length=10, null=True, blank=True)
+    is_reply = models.BooleanField(default=False)
+    is_repost = models.BooleanField(default=False)
+    parent_post_id = models.CharField(max_length=100, null=True, blank=True)
+
+    collector_version = models.CharField(max_length=20, default='1.0')
+    tagging_status = models.CharField(max_length=10, choices=TAGGING_STATUS_CHOICES, default='pending')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('platform', 'platform_post_id')]
+        ordering = ['-posted_at']
+        indexes = [
+            models.Index(fields=['platform', 'platform_post_id']),
+            models.Index(fields=['tagging_status']),
+            models.Index(fields=['session']),
+        ]
+
+    def __str__(self):
+        return f'{self.platform}:{self.platform_post_id} by {self.author_handle}'
+
+
+class PostClassification(models.Model):
+    """Immutable, versioned tag classification — append-only."""
+    REVIEW_STATUS_CHOICES = [
+        ('auto_eligible', 'Auto Eligible'),
+        ('pending_review', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('failed', 'Failed'),
+    ]
+
+    post = models.ForeignKey(CollectedPost, on_delete=models.CASCADE, related_name='classifications')
+    tags = models.JSONField(default=list, blank=True)
+    overall_confidence = models.FloatField(default=0.0)
+    confidence_tier = models.CharField(max_length=10, default='low')
+    prompt_version = models.CharField(max_length=50)
+    model_version = models.CharField(max_length=50, default='')
+    llm_call_id = models.CharField(max_length=100, blank=True, default='')
+    raw_llm_response = models.JSONField(default=dict, blank=True)
+    review_status = models.CharField(max_length=20, choices=REVIEW_STATUS_CHOICES, default='pending_review')
+    session = models.ForeignKey(CollectionSession, on_delete=models.SET_NULL, null=True, blank=True, related_name='classifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='signet_post_classifications')
+    signet_review = models.ForeignKey('SignetReviewItem', on_delete=models.SET_NULL, null=True, blank=True, related_name='classifications')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['post']),
+            models.Index(fields=['review_status']),
+            models.Index(fields=['confidence_tier']),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise RuntimeError('PostClassification is immutable. Create a new versioned row instead of updating.')
+        # Compute tier if needed
+        if self.overall_confidence >= 0.80:
+            self.confidence_tier = 'high'
+        elif self.overall_confidence >= 0.50:
+            self.confidence_tier = 'medium'
+        else:
+            self.confidence_tier = 'low'
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Classification {self.id} on {self.post} ({self.confidence_tier})'
