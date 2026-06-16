@@ -18,6 +18,8 @@ export interface NarrativeNode {
   reach: number
   confidence: number
   status: 'active' | 'decaying'
+  themes?: string[]
+  entities?: string[]
 }
 
 export interface HashtagNode {

@@ -43,11 +43,16 @@ class SignetNarrative(models.Model):
     reach = models.IntegerField(default=0)
     confidence = models.FloatField(default=0.0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    themes = models.JSONField(null=True, blank=True)
+    entities = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-reach']
+        # One narrative per (user, label) — makes update_or_create atomic and
+        # prevents concurrent projections (heartbeat + manual) racing into dupes.
+        unique_together = [('user', 'label')]
 
     def __str__(self):
         return self.label
@@ -274,6 +279,11 @@ class PostClassification(models.Model):
     session = models.ForeignKey(CollectionSession, on_delete=models.SET_NULL, null=True, blank=True, related_name='classifications')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='signet_post_classifications')
     signet_review = models.ForeignKey('SignetReviewItem', on_delete=models.SET_NULL, null=True, blank=True, related_name='classifications')
+    themes = models.JSONField(null=True, blank=True)
+    entities = models.JSONField(null=True, blank=True)
+    summary = models.TextField(null=True, blank=True)
+    novelty_flag = models.BooleanField(null=True, blank=True)
+    novelty_note = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

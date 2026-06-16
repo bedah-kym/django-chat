@@ -22,6 +22,8 @@ interface NarrativeResponse {
   reach: number
   confidence: number
   status: string
+  themes?: string[]
+  entities?: string[]
 }
 
 interface HashtagResponse {
@@ -105,6 +107,8 @@ export async function fetchAllSignetData(): Promise<{
     reach: n.reach,
     confidence: n.confidence,
     status: n.status as 'active' | 'decaying',
+    themes: n.themes as string[] | undefined,
+    entities: n.entities as string[] | undefined,
   }))
 
   const hashtagNodes: SignetNode[] = hashtags.map(h => ({

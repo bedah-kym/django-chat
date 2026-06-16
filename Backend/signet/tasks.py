@@ -120,6 +120,11 @@ def tag_post_task(self, post_id: int, user_id: int):
         user_id=user_id,
         session=post.session,
         signet_review=review_item,
+        themes=result.get('themes', []),
+        entities=result.get('entities', []),
+        summary=result.get('summary', ''),
+        novelty_flag=result.get('novelty_flag', False),
+        novelty_note=result.get('novelty_note', ''),
     )
 
     post.tagging_status = 'tagged'

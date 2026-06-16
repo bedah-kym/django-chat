@@ -19,7 +19,7 @@ class SignetNarrativeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SignetNarrative
-        fields = ['id', 'type', 'label', 'tags', 'reach', 'confidence', 'status']
+        fields = ['id', 'type', 'label', 'tags', 'reach', 'confidence', 'status', 'themes', 'entities']
 
     def get_type(self, obj):
         return 'narrative'

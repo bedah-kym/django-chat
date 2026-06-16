@@ -93,6 +93,20 @@ export function SignetDetailPanel({ selected, onClose, onNavigate, nodes, edges 
             </div>
           )}
 
+          {selected.type === 'narrative' && 'themes' in selected && selected.themes?.length ? (
+            <div className={s.section}>
+              <div className={s.sectionLabel}>THEMES</div>
+              <TagRow tags={selected.themes} max={selected.themes.length} />
+            </div>
+          ) : null}
+
+          {selected.type === 'narrative' && 'entities' in selected && selected.entities?.length ? (
+            <div className={s.section}>
+              <div className={s.sectionLabel}>ENTITIES</div>
+              <TagRow tags={selected.entities} max={selected.entities.length} />
+            </div>
+          ) : null}
+
           <div>
             <div className={s.sectionLabel}>
               CONNECTIONS ({getConnections(selected.id, edges).length})

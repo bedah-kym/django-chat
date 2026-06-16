@@ -71,17 +71,32 @@ def project_session(session: CollectionSession) -> dict:
         )
         accounts_upserted += 1
 
-        # Alerts for coordination / seed high-confidence
+        # Alerts for coordination / seed high-confidence. get_or_create keyed on
+        # the (stable) text so re-projection on every heartbeat doesn't spam dupes.
         for c in clist:
             for t_obj in c.tags:
                 tag = t_obj.get('tag', '')
                 if tag in ('coordinated_inauthentic', 'astroturfing') and float(t_obj.get('confidence', 0)) >= 0.80:
-                    SignetActivity.objects.create(
+                    _, made = SignetActivity.objects.get_or_create(
                         user=user,
                         text=f'[ALERT] {handle}: {tag} (confidence {t_obj["confidence"]}) on {c.post.content_text[:100]}',
-                        is_alert=True,
+                        defaults={'is_alert': True},
                     )
-                    activities_created += 1
+                    activities_created += int(made)
+
+    # ── Novelty alerts (from all classifications, not just eligible) ──
+    novel_posts = set()
+    for c in classifications:
+        if c.novelty_flag and c.post_id not in novel_posts:
+            novel_posts.add(c.post_id)
+            handle = c.post.author_handle
+            note = (c.novelty_note or 'Unknown novelty pattern').strip()
+            _, made = SignetActivity.objects.get_or_create(
+                user=user,
+                text=f'[NOVEL] u/{handle}: {note}',
+                defaults={'is_alert': True},
+            )
+            activities_created += int(made)
 
     # ── Hashtags ──
     hashtag_counts: dict[str, int] = {}
@@ -158,6 +173,17 @@ def project_session(session: CollectionSession) -> dict:
         label = tag.replace('_', ' ').title()  # stable key
         kept_labels.append(label)
 
+        # Aggregate emergent themes + entities from classifications
+        theme_counts: dict[str, int] = {}
+        entity_counts: dict[str, int] = {}
+        for c in clist:
+            for t in (c.themes or []):
+                theme_counts[t] = theme_counts.get(t, 0) + 1
+            for e in (c.entities or []):
+                entity_counts[e] = entity_counts.get(e, 0) + 1
+        top_themes = [t for t, _ in sorted(theme_counts.items(), key=lambda x: -x[1])[:6]]
+        top_entities = [e for e, _ in sorted(entity_counts.items(), key=lambda x: -x[1])[:6]]
+
         nar, _ = SignetNarrative.objects.update_or_create(
             user=user,
             label=label,
@@ -166,6 +192,8 @@ def project_session(session: CollectionSession) -> dict:
                 'reach': reach,
                 'status': status,
                 'confidence': round(avg_conf, 4),
+                'themes': top_themes,
+                'entities': top_entities,
             },
         )
         narratives_upserted += 1

@@ -6,18 +6,23 @@ from .taxonomy import ALLOWED_TAGS, GROUNDING_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = 'post_tagger/1.0'
+PROMPT_VERSION = 'post_tagger/2.0'
 
-SYSTEM_PROMPT = """You are a social media intelligence analyst. Your task is to classify posts into a fixed taxonomy of manipulation techniques, content domains, spread patterns, and audience responses.
+SYSTEM_PROMPT = """You are a social media intelligence analyst. Your task is to classify posts along TWO layers:
 
-For each relevant tag, provide:
-- tag: one of the allowed tags from the taxonomy
-- confidence: a float between 0 and 1 (0 = no evidence, 1 = certain)
-- excerpt: a VERBATIM quote from the post that justifies this tag (required for confidence >= 0.70)
+LAYER 1 — FIXED TAXONOMY (manipulation detection):
+Classify into these fixed categories. For each relevant tag, provide:
+- tag: one of the allowed tags
+- confidence: float 0-1
+- excerpt: VERBATIM quote from the post (required for confidence >= 0.70)
 
-Only return tags that actually apply. An empty list means no manipulation detected.
+LAYER 2 — EMERGENT (what the post is substantively about):
+- themes: 1-4 short noun phrases describing the core subject matter (e.g. "predatory lending", "gen z unemployment")
+- entities: named people, orgs, places, or movements mentioned
+- summary: one neutral sentence summarizing the post
+- novelty: {"flag": true/false, "note": ""}. Set flag=true ONLY if the post exhibits a persuasion or manipulation pattern NOT captured by any tag in the fixed taxonomy. In that case, note what the pattern is.
 
-IMPORTANT: Every excerpt MUST be a word-for-word copy from the post text. Do not paraphrase."""
+IMPORTANT: Every fixed-tag excerpt MUST be word-for-word from the post. Do not paraphrase."""
 
 
 def build_user_prompt(post_text: str) -> str:
@@ -30,19 +35,22 @@ def build_user_prompt(post_text: str) -> str:
 
     return f"""Classify this post:
 
-\"\"\"
+\"""
 {post_text}
-\"\"\"
+\"""
 
-Return a JSON object: {{"tags": [{{"tag": "...", "confidence": 0.0, "excerpt": "..."}}]}}
+Return a JSON object:
+{{"tags": [{{"tag": "...", "confidence": 0.0, "excerpt": "..."}}], "themes": ["..."], "entities": ["..."], "summary": "...", "novelty": {{"flag": false, "note": ""}}}}
 
-Allowed tags:
+Allowed taxonomy tags:
 {chr(10).join(taxonomy_lines)}
 
 Rules:
-1. Only include tags that genuinely apply
+1. Only include taxonomy tags that genuinely apply
 2. For any tag with confidence >= 0.70, the excerpt MUST be a verbatim quote from the post
-3. Confidence reflects how certain you are the tag applies"""
+3. Themes/entities are lowercase noun phrases, max 6 each
+4. Summary is one neutral sentence, max 240 chars
+5. novelty.flag=true ONLY for patterns the fixed taxonomy misses"""
 
 
 def _ground_tags(tags: list[dict], content_text: str) -> list[dict]:
@@ -70,15 +78,58 @@ def _ground_tags(tags: list[dict], content_text: str) -> list[dict]:
     return validated
 
 
+def _validate_emergent(parsed: dict) -> dict:
+    themes = parsed.get('themes', [])
+    if not isinstance(themes, list):
+        themes = []
+    themes = [str(t).strip().lower() for t in themes if t and len(str(t).strip()) <= 40]
+    themes = list(dict.fromkeys(themes))[:6]
+
+    entities = parsed.get('entities', [])
+    if not isinstance(entities, list):
+        entities = []
+    entities = [str(e).strip().lower() for e in entities if e and len(str(e).strip()) <= 40]
+    entities = list(dict.fromkeys(entities))[:6]
+
+    summary = parsed.get('summary', '')
+    if not isinstance(summary, str):
+        summary = ''
+    summary = summary.strip()[:240]
+
+    novelty = parsed.get('novelty', {})
+    if not isinstance(novelty, dict):
+        novelty = {}
+    flag = bool(novelty.get('flag', False))
+    note = str(novelty.get('note', '')).strip()[:240]
+
+    return {
+        'themes': themes,
+        'entities': entities,
+        'summary': summary,
+        'novelty_flag': flag,
+        'novelty_note': note,
+    }
+
+
+def _empty_emergent():
+    return {'themes': [], 'entities': [], 'summary': '', 'novelty_flag': False, 'novelty_note': ''}
+
+
+def _empty_result(model_version: str):
+    return {
+        'tags': [],
+        'overall_confidence': 0.0,
+        'confidence_tier': 'low',
+        'prompt_version': PROMPT_VERSION,
+        'model_version': model_version,
+        'llm_call_id': '',
+        'raw_llm_response': {},
+        'review_status': 'pending_review',
+        **_empty_emergent(),
+    }
+
+
 async def tag_post(post, user_id: int) -> dict:
-    """Tag a CollectedPost via DeepSeek. Returns a classification dict.
-
-    Keys: tags, overall_confidence, confidence_tier, prompt_version,
-    model_version, llm_call_id, raw_llm_response, review_status.
-
-    This coroutine awaits the LLM directly. Call it from sync code via
-    asyncio.run(tag_post(...)); never nest another event loop inside.
-    """
     from django.utils import timezone
     from django.conf import settings
 
@@ -86,16 +137,7 @@ async def tag_post(post, user_id: int) -> dict:
 
     content = post.content_text or ''
     if not content.strip():
-        return {
-            'tags': [],
-            'overall_confidence': 0.0,
-            'confidence_tier': 'low',
-            'prompt_version': PROMPT_VERSION,
-            'model_version': model_version,
-            'llm_call_id': '',
-            'raw_llm_response': {},
-            'review_status': 'pending_review',
-        }
+        return _empty_result(model_version)
 
     client = LLMClient()
     user_prompt = build_user_prompt(content)
@@ -105,6 +147,7 @@ async def tag_post(post, user_id: int) -> dict:
     tags = []
     review_status = 'pending_review'
     overall_conf = 0.0
+    emergent = _empty_emergent()
 
     for attempt in range(2):
         try:
@@ -120,16 +163,7 @@ async def tag_post(post, user_id: int) -> dict:
             logger.error(f'tag_post: LLM call failed on attempt {attempt + 1}: {e}')
             if attempt == 0:
                 continue
-            return {
-                'tags': [],
-                'overall_confidence': 0.0,
-                'confidence_tier': 'low',
-                'prompt_version': PROMPT_VERSION,
-                'model_version': model_version,
-                'llm_call_id': llm_call_id,
-                'raw_llm_response': raw_response,
-                'review_status': 'failed',
-            }
+            return {**_empty_result(model_version), 'review_status': 'failed'}
 
         raw_response = {'raw_text': raw_text}
         llm_call_id = str(timezone.now().timestamp())
@@ -137,12 +171,14 @@ async def tag_post(post, user_id: int) -> dict:
         try:
             parsed = extract_json(raw_text)
             raw_tags = parsed.get('tags', []) if isinstance(parsed, dict) else []
+            emergent = _validate_emergent(parsed)
         except Exception as e:
             logger.warning(f'tag_post: JSON parse failed on attempt {attempt + 1}: {e}')
             if attempt < 1:
                 user_prompt = build_user_prompt(content) + '\n\nCRITICAL: Return ONLY valid JSON. No markdown, no explanation.'
                 continue
             raw_tags = []
+            emergent = _empty_emergent()
 
         validated = _ground_tags(raw_tags, content)
 
@@ -169,7 +205,6 @@ async def tag_post(post, user_id: int) -> dict:
         confs = [t['confidence'] for t in tags]
         overall_conf = sum(confs) / len(confs)
 
-    # Compute tier
     if overall_conf >= 0.80:
         tier = 'high'
     elif overall_conf >= 0.50:
@@ -189,4 +224,5 @@ async def tag_post(post, user_id: int) -> dict:
         'llm_call_id': llm_call_id,
         'raw_llm_response': raw_response,
         'review_status': review_status,
+        **emergent,
     }
