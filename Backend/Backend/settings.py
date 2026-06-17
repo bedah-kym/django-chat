@@ -273,44 +273,12 @@ MODERATION_FLUSH_SECONDS = int(os.environ.get('MODERATION_FLUSH_SECONDS', 600))
 REMINDER_SWEEP_SECONDS = int(os.environ.get('REMINDER_SWEEP_SECONDS', 3600))
 WORKFLOW_REPLAY_SCHEDULE_SECONDS = int(os.environ.get('WORKFLOW_REPLAY_SCHEDULE_SECONDS', 300))
 
-CELERY_BEAT_SCHEDULE = {
-    'reconcile-ledger': {
-        'task': 'payments.tasks.reconcile_ledger',
-        'schedule': 7200.0,  # Every 2 hours
-    },
-    'process-recurring-invoices': {
-        'task': 'payments.tasks.process_recurring_invoices',
-        'schedule': 86400.0,  # Daily
-    },
-    'check-due-reminders': {
-        'task': 'chatbot.tasks.check_due_reminders',
-        'schedule': float(REMINDER_SWEEP_SECONDS),  # Safety sweep
-    },
-    'send-trial-summary': {
-        'task': 'users.tasks.send_trial_summary_task',
-        'schedule': crontab(hour=7, minute=0),  # every day at 07:00
-    },
-}
-
-if MODERATION_ENABLED:
-    CELERY_BEAT_SCHEDULE.update({
-        'flush-moderation-batches': {
-            'task': 'chatbot.tasks.process_pending_batches',
-            'schedule': float(MODERATION_FLUSH_SECONDS),  # Batch moderation
-        },
-        'cleanup-old-batches': {
-            'task': 'chatbot.tasks.cleanup_old_moderation_batches',
-            'schedule': 86400.0,  # Daily
-        },
-    })
-
-if not TEMPORAL_DISABLED:
-    CELERY_BEAT_SCHEDULE.update({
-        'replay-deferred-workflows': {
-            'task': 'workflows.tasks.replay_deferred_workflows',
-            'schedule': float(WORKFLOW_REPLAY_SCHEDULE_SECONDS),  # Batch replays
-        },
-    })
+# CELERY_BEAT_SCHEDULE is defined ONCE, lower in this file (search for
+# "Celery Beat Schedule"). A duplicate assignment used to live here and was
+# silently clobbered by that later one (the duplication existed since
+# 2026-03-06), which left check-due-reminders, send-trial-summary, the
+# moderation flush/cleanup tasks and workflow replay unscheduled. Removed
+# 2026-06-16 and merged into the single block below.
 
 # AI Moderation Settings
 MODERATION_BATCH_SIZE = 10
@@ -332,10 +300,22 @@ GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send'
 REDDIT_CLIENT_ID = os.environ.get('REDDIT_CLIENT_ID', '')
 REDDIT_CLIENT_SECRET = os.environ.get('REDDIT_CLIENT_SECRET', '')
 REDDIT_USER_AGENT = os.environ.get('REDDIT_USER_AGENT', '')
+# Optional user-context auth (script-app password grant) — enables account-scoped
+# reads: subscribed + active subreddits. App-only auth cannot see these.
+REDDIT_USERNAME = os.environ.get('REDDIT_USERNAME', '')
+REDDIT_PASSWORD = os.environ.get('REDDIT_PASSWORD', '')
+SIGNET_PROJECTION_WINDOW_DAYS = int(os.environ.get('SIGNET_PROJECTION_WINDOW_DAYS', '3'))
+SIGNET_PROJECT_DEBOUNCE_SECONDS = int(os.environ.get('SIGNET_PROJECT_DEBOUNCE_SECONDS', '120'))
 
 # LLM cost guards
 LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', 700))  # hard ceiling per call
 LLM_PROMPT_CHAR_LIMIT = int(os.environ.get('LLM_PROMPT_CHAR_LIMIT', 4000))  # truncate user prompt to this many chars
+# Per-user hourly LLM token quota. Off in dev (DEBUG) so batch jobs like the
+# SIGNET tagging eval / soak don't starve; on by default in prod as a cost guard.
+LLM_TOKEN_QUOTA_ENABLED = os.environ.get(
+    'LLM_TOKEN_QUOTA_ENABLED', 'False' if DEBUG else 'True'
+).lower() in ('1', 'true', 'yes')
+LLM_TOKEN_LIMIT_PER_USER_PER_HOUR = int(os.environ.get('LLM_TOKEN_LIMIT_PER_USER_PER_HOUR', 50000))
 LLM_CACHE_ENABLED = os.environ.get('LLM_CACHE_ENABLED', 'True').lower() in ('1', 'true', 'yes')
 LLM_CACHE_TTL_SECONDS = int(os.environ.get('LLM_CACHE_TTL_SECONDS', 600))
 LLM_CACHE_MIN_TEMP = float(os.environ.get('LLM_CACHE_MIN_TEMP', 0.3))
@@ -619,9 +599,44 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'chatbot.tasks.sweep_memory_notes',
         'schedule': 21600.0,  # Every 6 hours
     },
+    # Restored 2026-06-16 — these lived in an earlier CELERY_BEAT_SCHEDULE block
+    # that this one silently clobbered (duplicate assignment since 2026-03-06),
+    # so they had not been scheduling at all. Merged here.
+    'check-due-reminders': {
+        'task': 'chatbot.tasks.check_due_reminders',
+        'schedule': float(REMINDER_SWEEP_SECONDS),  # Safety sweep
+    },
+    'send-trial-summary': {
+        'task': 'users.tasks.send_trial_summary_task',
+        'schedule': crontab(hour=7, minute=0),  # every day at 07:00
+    },
     # SIGNET collection heartbeat (every 30 min — fires for each running session)
     'signet_collection_heartbeat': {
         'task': 'signet.tasks.signet_heartbeat',
         'schedule': 1800.0,
     },
+    'signet_weekly_eval': {
+        'task': 'signet.tasks.signet_weekly_drift_check',
+        'schedule': crontab(day_of_week=1, hour=3, minute=0),  # Monday 3 AM
+    },
 }
+
+if MODERATION_ENABLED:
+    CELERY_BEAT_SCHEDULE.update({
+        'flush-moderation-batches': {
+            'task': 'chatbot.tasks.process_pending_batches',
+            'schedule': float(MODERATION_FLUSH_SECONDS),  # Batch moderation
+        },
+        'cleanup-old-batches': {
+            'task': 'chatbot.tasks.cleanup_old_moderation_batches',
+            'schedule': 86400.0,  # Daily
+        },
+    })
+
+if not TEMPORAL_DISABLED:
+    CELERY_BEAT_SCHEDULE.update({
+        'replay-deferred-workflows': {
+            'task': 'workflows.tasks.replay_deferred_workflows',
+            'schedule': float(WORKFLOW_REPLAY_SCHEDULE_SECONDS),  # Batch replays
+        },
+    })

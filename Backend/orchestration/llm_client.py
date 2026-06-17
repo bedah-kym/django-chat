@@ -360,6 +360,9 @@ class LLMClient:
         if not user_id:
             return True  # No tracking for anonymous
 
+        if not getattr(settings, "LLM_TOKEN_QUOTA_ENABLED", True):
+            return True  # Quota disabled (dev) — don't starve batch jobs
+
         budget = self._get_user_token_budget(user_id)
         if budget["used"] + estimated_tokens > budget["limit"]:
             logger.warning(
