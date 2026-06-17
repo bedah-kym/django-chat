@@ -6,23 +6,32 @@ from .taxonomy import ALLOWED_TAGS, GROUNDING_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = 'post_tagger/2.0'
+PROMPT_VERSION = 'post_tagger/2.2'
 
-SYSTEM_PROMPT = """You are a social media intelligence analyst. Your task is to classify posts along TWO layers:
+SYSTEM_PROMPT = """You are a social media intelligence analyst. Your task is to classify posts along THREE passes.
 
-LAYER 1 — FIXED TAXONOMY (manipulation detection):
-Classify into these fixed categories. For each relevant tag, provide:
-- tag: one of the allowed tags
-- confidence: float 0-1
-- excerpt: VERBATIM quote from the post (required for confidence >= 0.70)
+IMPORTANT — TAG WITH PRECISION:
+You have been over-tagging posts with generic labels. Avoid applying tags just because a post touches a topic area. Specifically:
+- anti_institution: A post being critical of government or institutions is NOT automatically anti_institution. Apply only when the post advocates dismantling institutions or claims systemic illegitimacy with specific evidence.
+- appeal_to_victimhood: An emotional or complaining post is NOT automatically appeal_to_victimhood. Apply only when deliberately framing a group as helpless victims to manipulate the audience.
+- political_disinfo: A post on a political topic is NOT automatically political_disinfo. Apply only when it contains a specific, identifiable false claim presented as fact.
+- firehose_falsehood: Apply only when the post throws out many rapid-fire claims. A single dubious claim is not firehosing.
 
-LAYER 2 — EMERGENT (what the post is substantively about):
-- themes: 1-4 short noun phrases describing the core subject matter (e.g. "predatory lending", "gen z unemployment")
-- entities: named people, orgs, places, or movements mentioned
-- summary: one neutral sentence summarizing the post
-- novelty: {"flag": true/false, "note": ""}. Set flag=true ONLY if the post exhibits a persuasion or manipulation pattern NOT captured by any tag in the fixed taxonomy. In that case, note what the pattern is.
+For EVERY tag you apply, you MUST include a verbatim excerpt from the post that proves the tag. Your confidence should reflect how CERTAIN you are: use 0.80-0.95 when genuinely sure, 0.50-0.70 when plausible but not certain.
 
-IMPORTANT: Every fixed-tag excerpt MUST be word-for-word from the post. Do not paraphrase."""
+When the post genuinely exhibits no manipulation technique, return an empty tags list — that is valuable signal too.
+
+PASS 0 — SAFETY/WELFARE (do this FIRST):
+Decide whether this post is an individual sharing personal distress or seeking personal help. Categories: self_harm, medical_emergency, financial_distress, individual_help, harassment_target, none.
+If individual-welfare, set safety.is_individual_welfare=true and tags=[].
+
+PASS 1 — FIXED TAXONOMY:
+Classify with precision. For each tag: name, confidence (0-1), VERBATIM excerpt as proof.
+
+PASS 2 — EMERGENT:
+themes, entities, summary, novelty flag/note.
+
+Self-harm/suicide cries for help are NOT manipulation. Do not tag them as appeal_to_victimhood or political."""
 
 
 def build_user_prompt(post_text: str) -> str:
@@ -40,17 +49,18 @@ def build_user_prompt(post_text: str) -> str:
 \"""
 
 Return a JSON object:
-{{"tags": [{{"tag": "...", "confidence": 0.0, "excerpt": "..."}}], "themes": ["..."], "entities": ["..."], "summary": "...", "novelty": {{"flag": false, "note": ""}}}}
+{{"safety": {{"is_individual_welfare": false, "category": "none"}}, "tags": [{{"tag": "...", "confidence": 0.0, "excerpt": "..."}}], "themes": ["..."], "entities": ["..."], "summary": "...", "novelty": {{"flag": false, "note": ""}}}}
 
 Allowed taxonomy tags:
 {chr(10).join(taxonomy_lines)}
 
 Rules:
-1. Only include taxonomy tags that genuinely apply
-2. For any tag with confidence >= 0.70, the excerpt MUST be a verbatim quote from the post
-3. Themes/entities are lowercase noun phrases, max 6 each
-4. Summary is one neutral sentence, max 240 chars
-5. novelty.flag=true ONLY for patterns the fixed taxonomy misses"""
+0. SAFETY: If individual welfare/help-seeking, safety.is_individual_welfare=true, tags=[]
+1. Be precise. A post touching a topic is NOT the same as exhibiting a manipulation technique.
+2. anti_institution: only for systemic illegitimacy claims with evidence. appeal_to_victimhood: only for deliberate victim-framing to manipulate. political_disinfo: only for specific identifiable false claims. firehose_falsehood: only for rapid-fire multiple false claims.
+3. EVERY tag needs a verbatim excerpt from the post as proof. Confidence 0.80+ when certain, 0.50-0.70 when plausible.
+4. Themes/entities lowercase noun phrases, max 6. Summary ≤ 240 chars.
+5. novelty.flag=true ONLY for patterns the taxonomy genuinely misses"""
 
 
 def _ground_tags(tags: list[dict], content_text: str) -> list[dict]:
@@ -65,14 +75,14 @@ def _ground_tags(tags: list[dict], content_text: str) -> list[dict]:
         if conf < 0 or conf > 1:
             continue
 
-        needs_grounding = conf >= GROUNDING_THRESHOLD
-        if needs_grounding:
-            if not excerpt:
+        # Require a verbatim excerpt for any substantively confident tag (>= 0.40).
+        # (This subsumes the old >= GROUNDING_THRESHOLD/0.70 excerpt requirement.)
+        if conf >= 0.40 and not excerpt:
+            continue
+        if excerpt and excerpt not in content_text:
+            match_ratio = difflib.SequenceMatcher(None, excerpt, content_text).ratio()
+            if match_ratio < 0.90:
                 continue
-            if excerpt not in content_text:
-                match_ratio = difflib.SequenceMatcher(None, excerpt, content_text).ratio()
-                if match_ratio < 0.90:
-                    continue
 
         validated.append({'tag': tag, 'confidence': conf, 'excerpt': excerpt})
     return validated
@@ -115,6 +125,22 @@ def _empty_emergent():
     return {'themes': [], 'entities': [], 'summary': '', 'novelty_flag': False, 'novelty_note': ''}
 
 
+ALLOWED_SAFETY = {'self_harm', 'medical_emergency', 'financial_distress', 'individual_help', 'harassment_target', 'none'}
+
+
+def _validate_safety(parsed: dict) -> dict:
+    safety = parsed.get('safety', {})
+    if not isinstance(safety, dict):
+        safety = {}
+    is_welfare = bool(safety.get('is_individual_welfare', False))
+    cat = str(safety.get('category', 'none')).strip().lower()
+    if cat not in ALLOWED_SAFETY:
+        cat = 'none'
+    if not is_welfare and cat != 'none':
+        is_welfare = True
+    return {'is_individual_welfare': is_welfare, 'category': cat}
+
+
 def _empty_result(model_version: str):
     return {
         'tags': [],
@@ -125,6 +151,8 @@ def _empty_result(model_version: str):
         'llm_call_id': '',
         'raw_llm_response': {},
         'review_status': 'pending_review',
+        'safety_category': 'none',
+        'safety_excluded': False,
         **_empty_emergent(),
     }
 
@@ -156,7 +184,11 @@ async def tag_post(post, user_id: int) -> dict:
                 user_prompt=user_prompt,
                 json_mode=True,
                 user_id=user_id,
-                temperature=0.3,
+                # Low temp: tagging is classification, not generation. 0.3 made
+                # borderline posts flip-flop between verdicts run-to-run (e.g. a
+                # hiring post tagged economic_fear one run, clean the next). 0.1
+                # is near-deterministic, so tags + the eval are reproducible.
+                temperature=0.1,
                 max_tokens=600,
             )
         except Exception as e:
@@ -170,6 +202,7 @@ async def tag_post(post, user_id: int) -> dict:
 
         try:
             parsed = extract_json(raw_text)
+            safety = _validate_safety(parsed)
             raw_tags = parsed.get('tags', []) if isinstance(parsed, dict) else []
             emergent = _validate_emergent(parsed)
         except Exception as e:
@@ -179,6 +212,16 @@ async def tag_post(post, user_id: int) -> dict:
                 continue
             raw_tags = []
             emergent = _empty_emergent()
+            safety = {'is_individual_welfare': False, 'category': 'none'}
+
+        # Safety guard: if welfare content, clear tags regardless of what model returned
+        if safety['is_individual_welfare']:
+            raw_tags = []
+            tags = []
+            review_status = 'pending_review'
+            overall_conf = 0.0
+            # Skip the grounding retry for welfare posts
+            break
 
         validated = _ground_tags(raw_tags, content)
 
@@ -224,5 +267,7 @@ async def tag_post(post, user_id: int) -> dict:
         'llm_call_id': llm_call_id,
         'raw_llm_response': raw_response,
         'review_status': review_status,
+        'safety_category': safety['category'],
+        'safety_excluded': safety['is_individual_welfare'],
         **emergent,
     }
