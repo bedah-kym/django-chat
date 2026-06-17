@@ -284,6 +284,8 @@ class PostClassification(models.Model):
     summary = models.TextField(null=True, blank=True)
     novelty_flag = models.BooleanField(null=True, blank=True)
     novelty_note = models.TextField(null=True, blank=True)
+    safety_category = models.CharField(max_length=40, null=True, blank=True)
+    safety_excluded = models.BooleanField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

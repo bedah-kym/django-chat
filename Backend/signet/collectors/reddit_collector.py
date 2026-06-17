@@ -1,12 +1,12 @@
 import logging
 
-import praw
-from django.conf import settings
 from django.utils import timezone
 
 from signet.models import IngestionRecord, CollectedPost
 from signet.payload import normalize_reddit_submission
+from orchestration.security_policy import scrub_post_content, safe_log_handle, has_pii
 from .base import BaseCollector
+from .reddit_auth import build_reddit
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,8 @@ class RedditCollector(BaseCollector):
 
     def __init__(self, session):
         super().__init__(session)
-        self.reddit = praw.Reddit(
-            client_id=settings.REDDIT_CLIENT_ID,
-            client_secret=settings.REDDIT_CLIENT_SECRET,
-            user_agent=settings.REDDIT_USER_AGENT,
-        )
+        # App-only auth is fine for collecting public subreddits.
+        self.reddit = build_reddit(user_context=False)
 
     def collect(self) -> int:
         if not self.platform_allowed():
@@ -46,7 +43,7 @@ class RedditCollector(BaseCollector):
                     if self._store_submission(submission):
                         collected += 1
             except Exception as e:
-                logger.error(f'RedditCollector: error on r/{sub_name}: {e}')
+                logger.error(f'RedditCollector: error on r/{safe_log_handle(sub_name)}: {e}')
 
         return collected
 
@@ -56,14 +53,23 @@ class RedditCollector(BaseCollector):
         if IngestionRecord.objects.filter(platform='reddit', platform_post_id=platform_id).exists():
             return False
 
+        author_handle = str(submission.author) if submission.author else '[deleted]'
+        self._log_safe(author_handle, f'Collecting post {platform_id}')
+
+        # PII scrub content before storage
+        title = submission.title or ''
+        selftext = (getattr(submission, 'selftext', '') or '')
+        full_text = f'{title}\n{selftext}'
+        scrubbed, had_pii = scrub_post_content(full_text)
+
         raw_data = {
             'id': submission.id,
-            'title': submission.title,
-            'selftext': submission.selftext,
+            'title': title,
+            'selftext': selftext,
             'score': submission.score,
             'num_comments': submission.num_comments,
             'created_utc': submission.created_utc,
-            'author': str(submission.author) if submission.author else '[deleted]',
+            'author': safe_log_handle(author_handle),
             'author_fullname': str(getattr(submission, 'author_fullname', '') or ''),
             'url': submission.url,
             'permalink': submission.permalink,
@@ -79,6 +85,7 @@ class RedditCollector(BaseCollector):
         )
 
         payload = normalize_reddit_submission(submission)
+        payload.content_text = scrubbed
         CollectedPost.objects.create(
             user=self.session.user,
             session=self.session,
@@ -86,7 +93,7 @@ class RedditCollector(BaseCollector):
             platform_post_id=payload.platform_post_id,
             platform_author_id=payload.platform_author_id,
             author_handle=payload.author_handle,
-            content_text=payload.content_text,
+            content_text=scrubbed,
             posted_at=payload.posted_at,
             collected_at=payload.collected_at,
             likes=payload.likes,

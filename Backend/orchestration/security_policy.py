@@ -170,6 +170,66 @@ def should_refuse_sensitive_request(message: Optional[str]) -> bool:
 
 def sensitive_refusal_message() -> str:
     return (
-        "Sorry, I can’t help with that request. "
+        "Sorry, I can't help with that request. "
         "If you need account or data access changes, please use the official admin tools."
     )
+
+
+# ── SIGNET: PII detection + handle hashing ─────────────────────────
+
+import hashlib
+
+PII_EMAIL_RE = re.compile(r'[\w.+-]+@[\w-]+\.[\w.-]+', re.IGNORECASE)
+# Phone numbers only — anchored on a phone-plausible prefix (+country, a 0 trunk,
+# or a parenthesised area code) so we do NOT eat year ranges ("2024-2025"), vote
+# counts ("22120000"), budgets, or URL hashes, which saturate intel content.
+# The (?<!\d)/(?!\d) guards stop us grabbing a slice out of a longer number.
+PII_PHONE_RE = re.compile(
+    r'(?<!\d)('
+    r'\+\d{1,3}[-.\s]?\d{2,4}[-.\s]?\d{3,4}[-.\s]?\d{2,4}'   # +254 712 345 678
+    r'|0\d{2,3}[-.\s]?\d{3}[-.\s]?\d{3,4}'                    # 0712 345 678 / 0712-345-678
+    r'|\(\d{2,4}\)\s?\d{3}[-.\s]?\d{3,4}'                     # (020) 123 4567
+    r')(?!\d)'
+)
+PII_ADDRESS_RE = re.compile(r'(PO\s*Box\s+\d+|P\.?O\.?\s*Box\s+\d+|Box\s+\d+\s*[-,\s]+\d{5})', re.IGNORECASE)
+
+
+def has_pii(text: str) -> bool:
+    if not text:
+        return False
+    return bool(PII_EMAIL_RE.search(text) or PII_PHONE_RE.search(text) or PII_ADDRESS_RE.search(text))
+
+
+def strip_pii(text: str) -> str:
+    if not text:
+        return text
+    text = PII_EMAIL_RE.sub('[REDACTED EMAIL]', text)
+    text = PII_PHONE_RE.sub('[REDACTED PHONE]', text)
+    text = PII_ADDRESS_RE.sub('[REDACTED ADDRESS]', text)
+    return text
+
+
+def hash_handle(handle: str) -> str:
+    if not handle:
+        return ''
+    return hashlib.sha256(handle.encode()).hexdigest()[:12]
+
+
+def safe_log_handle(handle: str) -> str:
+    return f'h:{hash_handle(handle)}' if handle else '<none>'
+
+
+def scrub_post_content(content: str) -> str:
+    """Remove PII from post content before storage. Returns (scrubbed, had_pii)."""
+    if not content:
+        return content, False
+    had = has_pii(content)
+    return strip_pii(content), had
+
+
+ALLOWED_COLLECTOR_ACTIONS = {'collect', 'read'}
+
+PASSIVE_ONLY_MSG = (
+    'Passive-only policy: collectors may only read/collect.'
+    ' Posting, replying, following, and voting are prohibited.'
+)
