@@ -45,6 +45,20 @@ export interface ActivityItem {
   text: string
 }
 
+export interface ReviewSubtag {
+  tag: string
+  confidence: number
+  excerpt: string
+}
+
+export interface ReviewContext {
+  themes: string[]
+  entities: string[]
+  summary: string
+  novelty_note: string
+  safety_category: string
+}
+
 export interface ReviewItem {
   id: string
   gate: string
@@ -56,6 +70,11 @@ export interface ReviewItem {
   reason: string
   flagged_at: string
   model: string
+  // The tagger's full evidence: every tag it fired (with its own excerpt +
+  // confidence) and what it read the post to be about — so the reviewer judges
+  // the reasoning, not just the top-line verdict.
+  subtags: ReviewSubtag[]
+  context: ReviewContext
 }
 
 export type SignetView = 'graph' | 'feed' | 'review'

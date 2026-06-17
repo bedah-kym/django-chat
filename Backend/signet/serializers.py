@@ -56,11 +56,48 @@ class SignetActivitySerializer(serializers.ModelSerializer):
 
 class SignetReviewItemSerializer(serializers.ModelSerializer):
     flagged_at = serializers.SerializerMethodField()
+    subtags = serializers.SerializerMethodField()
+    context = serializers.SerializerMethodField()
 
     class Meta:
         model = SignetReviewItem
         fields = ['id', 'gate', 'verdict_tag', 'target', 'confidence', 'tier',
-                   'excerpt', 'reason', 'flagged_at', 'model_name', 'decision']
+                   'excerpt', 'reason', 'flagged_at', 'model_name', 'decision',
+                   'subtags', 'context']
 
     def get_flagged_at(self, obj):
         return obj.created_at.strftime('%H:%M')
+
+    def _classification(self, obj):
+        # The classification that produced this review carries the full evidence.
+        return obj.classifications.order_by('-created_at').first()
+
+    def get_subtags(self, obj):
+        """Every tag the tagger applied — each with its own grounding excerpt and
+        confidence. Lets a reviewer judge the tagger's *reasoning* (why it fired
+        each tag) instead of accepting/rejecting a bare top-line verdict on a hunch."""
+        c = self._classification(obj)
+        if not c:
+            return []
+        return [
+            {
+                'tag': t.get('tag', ''),
+                'confidence': t.get('confidence', 0),
+                'excerpt': t.get('excerpt', ''),
+            }
+            for t in (c.tags or [])
+        ]
+
+    def get_context(self, obj):
+        """The tagger's read of what the post is substantively about — neutral
+        context so the reviewer sees the post the way the tagger did."""
+        c = self._classification(obj)
+        if not c:
+            return {}
+        return {
+            'themes': c.themes or [],
+            'entities': c.entities or [],
+            'summary': c.summary or '',
+            'novelty_note': c.novelty_note or '',
+            'safety_category': c.safety_category or 'none',
+        }

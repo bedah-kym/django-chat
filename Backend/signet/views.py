@@ -275,7 +275,11 @@ class ReviewItemList(generics.ListAPIView):
     def get_queryset(self):
         # Only items still awaiting a decision belong in the queue; decided
         # items must not reappear after the operator acts + the view reloads.
-        return SignetReviewItem.objects.filter(user=self.request.user, decision='pending')
+        return (
+            SignetReviewItem.objects
+            .filter(user=self.request.user, decision='pending')
+            .prefetch_related('classifications')  # serializer reads tag evidence + context
+        )
 
 
 @api_view(['POST'])

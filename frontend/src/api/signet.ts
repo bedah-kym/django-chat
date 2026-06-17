@@ -63,6 +63,14 @@ interface ReviewResponse {
   flagged_at: string
   model_name: string
   decision: string
+  subtags: Array<{ tag: string; confidence: number; excerpt: string }>
+  context: {
+    themes: string[]
+    entities: string[]
+    summary: string
+    novelty_note: string
+    safety_category: string
+  }
 }
 
 function nodeId(type: string, pk: number): string {
@@ -143,6 +151,8 @@ export async function fetchAllSignetData(): Promise<{
     reason: r.reason,
     flagged_at: r.flagged_at,
     model: r.model_name,
+    subtags: r.subtags || [],
+    context: r.context || { themes: [], entities: [], summary: '', novelty_note: '', safety_category: 'none' },
   }))
 
   return {

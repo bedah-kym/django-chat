@@ -120,6 +120,59 @@ export function ReviewView({ reviews: REVIEW_QUEUE, reload }: ReviewViewProps) {
                   </div>
                 </div>
 
+                {item.subtags.length > 0 && (
+                  <div>
+                    <div className={s.fieldLabel}>Tagger evidence · every tag it fired</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {item.subtags.map((st, j) => (
+                        <div
+                          key={j}
+                          style={{
+                            display: 'flex', flexDirection: 'column', gap: 3,
+                            paddingInlineStart: 9, borderInlineStart: `2px solid ${SG.line}`,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <TagChip tag={st.tag} />
+                            <span style={{ fontSize: 11, color: SG.textLow, fontVariantNumeric: 'tabular-nums' }}>
+                              {Math.round((st.confidence || 0) * 100)}%
+                            </span>
+                          </div>
+                          {st.excerpt && (
+                            <div style={{ fontSize: 12, color: SG.textMid, fontStyle: 'italic' }}>
+                              &ldquo;{st.excerpt}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(item.context.summary || item.context.themes.length > 0) && (
+                  <div>
+                    <div className={s.fieldLabel}>What the tagger read</div>
+                    {item.context.summary && (
+                      <div style={{ fontSize: 12, color: SG.textMid }}>{item.context.summary}</div>
+                    )}
+                    {item.context.themes.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+                        {item.context.themes.map(t => (
+                          <span
+                            key={t}
+                            style={{
+                              fontSize: 10, padding: '1px 6px', borderRadius: 4,
+                              background: SG.panelRaised, color: SG.textLow, border: `1px solid ${SG.line}`,
+                            }}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className={s.reason}>
                   <span className={s.inlineLabel}>Reason</span>
                   {item.reason}
