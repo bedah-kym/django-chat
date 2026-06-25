@@ -28,7 +28,7 @@ export async function login(username: string, password: string): Promise<string>
   })
   if (!res.ok) throw new Error(`Login failed: ${res.status}`)
   const data = await res.json()
-  authToken = data.token
+  setAuthToken(data.token)
   return data.token
 }
 

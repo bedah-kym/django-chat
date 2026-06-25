@@ -1,5 +1,4 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.utils.safestring import mark_safe
 from .models import Chatroom, Message, Member, RoomReadState, Reminder
@@ -60,6 +59,11 @@ def _is_ai_only_room_members(members):
 
 @login_required
 def home(request, room_name):
+    return redirect(f"/app/ops/chat/{room_name}")
+
+
+@login_required
+def legacy_home(request, room_name):
     # Security Fix: Only show rooms where the user is a participant
     # OPTIMIZATION: Use prefetch_related to fetch participants and their users in one go
     chatrooms = Chatroom.objects.filter(
@@ -236,7 +240,7 @@ def welcomepage(request):
     if not first_room:
         first_room = _ensure_default_room(request.user)
 
-    return redirect(reverse("chatbot:bot-home", kwargs={"room_name": first_room.id}))
+    return redirect(f"/app/ops/chat/{first_room.id}")
 
 
 @login_required
@@ -255,7 +259,7 @@ def create_room(request):
     if request.method == 'GET':
         existing = Chatroom.objects.filter(participants__User=request.user).first()
         if existing:
-            return redirect(reverse("chatbot:bot-home", kwargs={"room_name": existing.id}))
+            return redirect(f"/app/ops/chat/{existing.id}")
 
     with transaction.atomic():
         new_room = Chatroom.objects.create()
@@ -280,7 +284,7 @@ def create_room(request):
                 pass
 
     cache.delete(f"user_rooms:{request.user.id}")
-    return redirect(reverse("chatbot:bot-home", kwargs={"room_name": new_room.id}))
+    return redirect(f"/app/ops/chat/{new_room.id}")
 
 
 from django.core.exceptions import ValidationError

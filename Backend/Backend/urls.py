@@ -17,6 +17,7 @@ import os
 
 from django.contrib import admin
 from django.http import Http404, HttpResponse
+from django.shortcuts import redirect
 from django.urls import path, re_path, include
 from django.views.decorators.cache import never_cache
 from rest_framework.urlpatterns import format_suffix_patterns
@@ -25,8 +26,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from chatbot.views import upload_file
-from users.views import landing_page
-
 
 @never_cache
 def spa_index(_request):
@@ -43,17 +42,12 @@ def spa_index(_request):
     for path_ in candidates:
         if path_ and os.path.exists(path_):
             with open(path_, encoding='utf-8') as f:
-                html = f.read()
-                auth_script = '''<script>
-fetch("/auth/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:"alex",password:"mathia123"})}).then(r=>r.json()).then(d=>{localStorage.setItem("mathia-auth-token",d.token);console.log("AUTH OK")}).catch(e=>document.getElementById("root").innerHTML="<div style=color:red;padding:20px>AUTH FAILED: "+e+"</div>")
-</script>'''
-                html = html.replace('</head>', auth_script + '</head>')
-                return HttpResponse(html)
+                return HttpResponse(f.read())
     raise Http404("SPA index not built; run `cd frontend && npm run build` (or use the Vite dev server in development)")
 
 
 urlpatterns = [
-    path('', landing_page, name='landing'),  # Enterprise landing page
+    path('', lambda _request: redirect('/app/home'), name='landing'),
     path('admin/', admin.site.urls),
     path('chatbot/', include('chatbot.urls')),
     path('accounts/', include('users.urls')),

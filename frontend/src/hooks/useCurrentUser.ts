@@ -12,7 +12,7 @@ export function useCurrentUser() {
   const fetchUserProfile = useAuthStore((s) => s.fetchUserProfile)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && import.meta.env.DEV) {
       login('alex', 'mathia123').catch(() => {})
     } else if (!displayName) {
       fetchUserProfile()

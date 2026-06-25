@@ -77,6 +77,7 @@ let authReadyPromise: Promise<void> | null = null
 
 export function ensureAuth(): Promise<void> {
   if (getAuthToken()) return Promise.resolve()
+  if (!import.meta.env.DEV) return Promise.resolve()
 
   if (!authReadyPromise) {
     authReadyPromise = useAuthStore.getState().login('alex', 'mathia123').catch(() => {})
@@ -84,7 +85,6 @@ export function ensureAuth(): Promise<void> {
   return authReadyPromise
 }
 
-if (!getAuthToken()) {
+if (import.meta.env.DEV && !getAuthToken()) {
   ensureAuth()
 }
-
