@@ -1,0 +1,155 @@
+/* SIGNET — top command bar. */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sg-gap);
+  padding-inline: 20px;
+  block-size: 46px;
+  background: var(--sg-panel);
+  border-block-end: 1px solid var(--sg-line);
+  flex-shrink: 0;
+}
+
+/* ---------------- brand cluster ---------------- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.wordmark {
+  font-family: var(--sg-display);
+  font-size: var(--sg-fs-sm);
+  font-weight: 700;
+  letter-spacing: var(--sg-track-ultra);
+  color: var(--sg-signal);
+}
+
+.divider {
+  inline-size: 1px;
+  block-size: 18px;
+  background: var(--sg-line);
+}
+
+.subtitle {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-wide);
+  color: var(--sg-text-faint);
+  text-transform: uppercase;
+}
+
+.viewLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  color: var(--sg-text-low);
+  text-transform: uppercase;
+}
+
+/* ---------------- search ---------------- */
+.searchWrap {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  inline-size: 280px;
+  padding: 5px 10px;
+  background: var(--sg-panel-inset);
+  border: 1px solid var(--sg-line);
+  border-radius: var(--sg-radius);
+  transition: border-color var(--transition-fast, 150ms ease);
+}
+.search:focus-within {
+  border-color: var(--sg-line-strong);
+}
+
+.searchIcon {
+  color: var(--sg-text-low);
+  font-size: var(--sg-fs-sm);
+  line-height: 1;
+}
+
+.searchInput {
+  flex: 1;
+  min-inline-size: 0;
+  background: transparent;
+  border: none;
+  color: var(--sg-text);
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  outline: none;
+}
+.searchInput::placeholder {
+  color: var(--sg-text-faint);
+}
+
+.searchClear {
+  color: var(--sg-text-low);
+  font-size: var(--sg-fs-sm);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast, 150ms ease);
+}
+.searchClear:hover {
+  color: var(--sg-text-hi);
+}
+
+/* ---------------- status cluster ---------------- */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.live {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.liveLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  color: var(--sg-live);
+  text-transform: uppercase;
+}
+
+.counts {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-low);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+.countNum {
+  color: var(--sg-text-mid);
+}
+.countSep {
+  color: var(--sg-text-faint);
+  margin-inline: 6px;
+}
+
+.alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--sg-high-soft);
+  border: 1px solid rgba(255, 92, 73, 0.4);
+  border-radius: var(--sg-radius);
+  color: var(--sg-high);
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  padding: 3px 10px;
+  text-transform: uppercase;
+}

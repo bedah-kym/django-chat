@@ -25,7 +25,7 @@ export function AppLayout() {
       }
       drawer={
         <MobileDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-          <Sidebar includeDomainContext collapsible={false} />
+          <Sidebar collapsible={false} />
         </MobileDrawer>
       }
       header={!isDomainRoute && !isChat ? <TopBar /> : undefined}

@@ -7,7 +7,7 @@ import {
   Code2,
   House,
   Plane,
-  Radio,
+  ScanEye,
   Settings,
   ShieldAlert,
 } from 'lucide-react'
@@ -49,16 +49,6 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
       { label: 'Bug Bounty', path: '/app/security/bugbounty', icon: Bug },
     ],
   },
-  social: {
-    id: 'social',
-    label: 'Social',
-    description: 'Channels, campaigns, drafts, and performance.',
-    icon: Radio,
-    defaultRoute: '/app/social',
-    featureNav: [
-      { label: 'Overview', path: '/app/social', icon: Radio },
-    ],
-  },
   dev: {
     id: 'dev',
     label: 'Dev',
@@ -72,32 +62,75 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
   ops: {
     id: 'ops',
     label: 'Business/Ops',
-    description: 'Wallet, invoices, reminders, travel, and operations.',
+    description: 'Reminders and day-to-day operations.',
     icon: BriefcaseBusiness,
     defaultRoute: '/app/ops',
     featureNav: [
       { label: 'Overview', path: '/app/ops', icon: BriefcaseBusiness },
-      { label: 'Wallet', path: '/app/ops/wallet', icon: CircleDollarSign },
       { label: 'Reminders', path: '/app/ops/reminders', icon: Clock },
-      { label: 'Travel', path: '/app/ops/travel/itineraries', icon: Plane },
+    ],
+  },
+  signet: {
+    id: 'signet',
+    label: 'Social Intel',
+    description: 'Accounts, narratives, hashtags, and disinformation tracking.',
+    icon: ScanEye,
+    defaultRoute: '/app/signet',
+    featureNav: [
+      { label: 'Dashboard', path: '/app/signet', icon: ScanEye },
     ],
   },
 }
 
-export const domainOrder: DomainId[] = ['security', 'social', 'dev', 'ops']
+export const domainOrder: DomainId[] = ['signet', 'security', 'dev', 'ops']
 
-export const globalNavItems: GlobalNavItem[] = [
-  { label: 'Home', path: '/app/home', icon: House },
-  ...domainOrder.map((domainId) => {
-    const domain = domainConfigs[domainId]
-    return {
-      label: domain.label,
-      path: domain.defaultRoute,
-      icon: domain.icon,
-      domain: domain.id,
-    }
-  }),
+// Sectioned navigation — collapses the "cockpit" feeling by grouping the
+// top-level surfaces under intent (what the user is *here for*), and
+// removing personal utilities (travel, payments, settings) from the main
+// rail entirely (they live in the user menu).
+export interface NavSection {
+  id: string
+  label: string
+  items: GlobalNavItem[]
+}
+
+export const intelligenceDomains: DomainId[] = ['signet', 'security']
+export const workDomains: DomainId[] = ['dev', 'ops']
+
+function domainToNav(domainId: DomainId): GlobalNavItem {
+  const d = domainConfigs[domainId]
+  return { label: d.label, path: d.defaultRoute, icon: d.icon, domain: d.id }
+}
+
+export const sidebarSections: NavSection[] = [
+  {
+    id: 'top',
+    label: '',
+    items: [{ label: 'Home', path: '/app/home', icon: House }],
+  },
+  {
+    id: 'intelligence',
+    label: 'Intelligence',
+    items: intelligenceDomains.map(domainToNav),
+  },
+  {
+    id: 'work',
+    label: 'Work',
+    items: workDomains.map(domainToNav),
+  },
+]
+
+// Personal — lives in the avatar/user menu at the bottom of the sidebar.
+export const personalNavItems: GlobalNavItem[] = [
+  { label: 'Travel', path: '/app/travel/itineraries', icon: Plane },
+  { label: 'Payments', path: '/app/payments/wallet', icon: CircleDollarSign },
   { label: 'Settings', path: '/app/settings', icon: Settings },
+]
+
+// Legacy flat list — keep for any consumer not yet on sidebarSections.
+export const globalNavItems: GlobalNavItem[] = [
+  ...sidebarSections.flatMap((s) => s.items),
+  ...personalNavItems,
 ]
 
 export function isDomainId(value: string | undefined): value is DomainId {
@@ -105,7 +138,7 @@ export function isDomainId(value: string | undefined): value is DomainId {
 }
 
 export function getDomainFromPathname(pathname: string): DomainId | null {
-  const match = pathname.match(/^\/app\/(security|social|dev|ops)(?:\/|$)/)
+  const match = pathname.match(/^\/app\/(signet|security|dev|ops)(?:\/|$)/)
   return match?.[1] ? (match[1] as DomainId) : null
 }
 
@@ -129,8 +162,8 @@ export function getDomainIcon(domainId: DomainId): LucideIcon {
 }
 
 export const domainStatusCopy: Record<DomainId, string> = {
+  signet: 'Accounts, narratives, hashtags, and disinformation patterns tracked.',
   security: 'Findings and approvals need attention.',
-  social: 'Campaign drafts, publishing slots, and approvals are active.',
   dev: 'Release work, repo coordination, and staging health are active.',
   ops: 'Finance, reminders, and travel stay grouped here for now.',
 }

@@ -1,15 +1,17 @@
 """REST API views for the unified notification system."""
 from __future__ import annotations
 
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Notification
 
 
-@login_required
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def notification_list(request):
     """
     GET /notifications/api/
@@ -57,7 +59,8 @@ def notification_list(request):
     )
 
 
-@login_required
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def notification_counts(request):
     """
     GET /notifications/api/counts/
@@ -91,7 +94,8 @@ def notification_counts(request):
     )
 
 
-@login_required
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 @require_POST
 def mark_read(request, pk):
     """POST /notifications/api/<pk>/read/"""
@@ -101,7 +105,8 @@ def mark_read(request, pk):
     return JsonResponse({"status": "ok"})
 
 
-@login_required
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 @require_POST
 def mark_all_read(request):
     """POST /notifications/api/read-all/"""
@@ -111,7 +116,8 @@ def mark_all_read(request):
     return JsonResponse({"status": "ok"})
 
 
-@login_required
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 @require_POST
 def dismiss(request, pk):
     """POST /notifications/api/<pk>/dismiss/"""

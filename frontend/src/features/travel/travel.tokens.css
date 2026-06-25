@@ -1,0 +1,58 @@
+/*
+ * Travel — Apple/visionOS-inspired design tokens.
+ *
+ * Quiet, generous, editorial. Scoped to `.tv` so the warm coral identity
+ * doesn't bleed into the rest of the app. Inherits the global light/dark
+ * theme via `--app-bg` / `--text-color`, then layers travel-specific tone.
+ */
+
+.tv {
+  /* ---- palette ---- */
+  --tv-canvas: var(--app-bg);
+  --tv-surface: var(--surface-elevated);
+  --tv-surface-soft: var(--surface-muted);
+  --tv-text: var(--text-color);
+  --tv-text-soft: var(--text-muted);
+  --tv-text-faint: var(--text-subtle);
+  --tv-line: var(--border-color);
+
+  /* Warm coral accent — distinct from the global amber primary so travel
+     reads as a destination/leisure surface, not an ops tool. */
+  --tv-accent: #e07856;
+  --tv-accent-hover: #c8694b;
+  --tv-accent-soft: rgba(224, 120, 86, 0.10);
+  --tv-accent-line: rgba(224, 120, 86, 0.34);
+
+  --tv-today: #2f6f4f; /* a quiet pine for the "Today" tag */
+  --tv-today-soft: rgba(47, 111, 79, 0.12);
+
+  /* ---- typography ---- */
+  --tv-display: 'Fraunces', 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
+  --tv-body: var(--font-family);
+
+  /* Hero numerals use Fraunces with a slight optical-size + softness, set
+     via font-variation-settings on the page where they're rendered. */
+  --tv-hero-feat: "ss01" on, "ss02" on, "ss03" on, "ss04" on;
+
+  /* ---- structure ---- */
+  --tv-radius: 14px;
+  --tv-radius-lg: 22px;
+  --tv-radius-pill: 999px;
+  --tv-gap: 18px;
+  --tv-pad: 24px;
+  --tv-pad-lg: 32px;
+
+  --tv-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 24px rgba(15, 23, 42, 0.06);
+  --tv-shadow-lift: 0 4px 8px rgba(15, 23, 42, 0.05),
+    0 24px 56px rgba(15, 23, 42, 0.10);
+}
+
+/* Six deterministic gradient meshes for trip hero cards. Pick one via
+   `data-tone="<n>"` and the card's hero gets a calm, editorial wash. */
+.tv [data-tone="0"] { --tv-hero-a: #f4a06b; --tv-hero-b: #e07856; }
+.tv [data-tone="1"] { --tv-hero-a: #b9d8e8; --tv-hero-b: #6fa8d6; }
+.tv [data-tone="2"] { --tv-hero-a: #c8dbc2; --tv-hero-b: #7bb28c; }
+.tv [data-tone="3"] { --tv-hero-a: #edd2a3; --tv-hero-b: #d6a87c; }
+.tv [data-tone="4"] { --tv-hero-a: #e89f7b; --tv-hero-b: #d86b5a; }
+.tv [data-tone="5"] { --tv-hero-a: #c5b3d8; --tv-hero-b: #8e7bb4; }

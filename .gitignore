@@ -169,3 +169,10 @@ frontend/.env.*.local
 
 # Vite build output in Django staticfiles
 Backend/staticfiles/spa/
+
+# Local dev/session artifacts — secrets, logs, locks (never commit) #
+*-token.txt
+dev-token.txt
+frontend/dev-token.txt
+frontend/vite-log.txt
+.claude/scheduled_tasks.lock

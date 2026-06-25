@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { mockEngagements, mockFindings } from '@/mocks/pentest'
-import { mockPrograms, mockReports } from '@/mocks/bugBounty'
+import { usePentestStore } from '@/stores/pentestStore'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { useChatStore } from '@/stores/chatStore'
 import { getRoomPath } from '@/domains'
 import { uiCopy } from '@/content/uiCopy'
@@ -14,16 +14,20 @@ import styles from './SecurityDomainPage.module.css'
 export function SecurityDomainPage() {
   const rooms = useChatStore((state) => state.rooms)
   const securityRooms = rooms.filter((room) => room.domain === 'security')
-  const fallbackEngagement = mockEngagements[0]
+  const engagements = usePentestStore((s) => s.engagements)
+  const findings = usePentestStore((s) => s.findings)
+  const programs = useBugBountyStore((s) => s.programs)
+  const reports = useBugBountyStore((s) => s.reports)
+  const fallbackEngagement = engagements[0]
   if (!fallbackEngagement) return null
-  const activeEngagement = mockEngagements.find((engagement) => engagement.status === 'running') ?? fallbackEngagement
-  const reviewQueue = mockFindings.slice(0, 3)
+  const activeEngagement = engagements.find((engagement) => engagement.status === 'running') ?? fallbackEngagement
+  const reviewQueue = findings.slice(0, 3)
 
   const metrics = [
-    { label: 'Engagements', value: String(mockEngagements.length), detail: 'Authorized jobs across active clients.' },
-    { label: 'Findings', value: String(mockFindings.length), detail: 'Validated and in-progress issues.' },
-    { label: 'Reports', value: String(mockReports.length), detail: 'Drafts, triage, and paid bounty work.' },
-    { label: 'Programs', value: String(mockPrograms.length), detail: 'Enrolled programs with active scan coverage.' },
+    { label: 'Engagements', value: String(engagements.length), detail: 'Authorized jobs across active clients.' },
+    { label: 'Findings', value: String(findings.length), detail: 'Validated and in-progress issues.' },
+    { label: 'Reports', value: String(reports.length), detail: 'Drafts, triage, and paid bounty work.' },
+    { label: 'Programs', value: String(programs.length), detail: 'Enrolled programs with active scan coverage.' },
   ]
 
   return (
@@ -60,7 +64,7 @@ export function SecurityDomainPage() {
                 <span>High issues</span>
               </div>
               <div className={styles.signalCard}>
-                <strong>{mockReports.filter((report) => report.status === 'draft').length}</strong>
+                <strong>{reports.filter((report) => report.status === 'draft').length}</strong>
                 <span>Draft reports</span>
               </div>
             </div>
@@ -101,7 +105,7 @@ export function SecurityDomainPage() {
           <section className={styles.panel}>
             <SectionHeader eyebrow="Programs" title="Recent bounty activity" description="Program coverage and submission freshness." />
             <div className={styles.list}>
-              {mockPrograms.map((program) => (
+              {programs.map((program) => (
                 <div key={program.id} className={styles.rowStatic}>
                   <div>
                     <div className={styles.primary}>{program.name}</div>

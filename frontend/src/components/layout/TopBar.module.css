@@ -3,22 +3,23 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-lg);
-  min-block-size: 72px;
-  padding: var(--space-md) var(--space-xl);
+  min-block-size: 50px;
+  padding: 0 var(--space-lg);
+  background: var(--surface-muted);
   border-block-end: 1px solid var(--border-color);
 }
 
 .left {
   display: flex;
-  align-items: start;
+  align-items: center;
   gap: var(--space-sm);
 }
 
 .menuBtn {
   display: none;
-  inline-size: 40px;
-  block-size: 40px;
-  border-radius: 12px;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 8px;
   align-items: center;
   justify-content: center;
   background: var(--surface);
@@ -27,57 +28,64 @@
 
 .title {
   margin: 0;
-  font-size: 18px;
-  letter-spacing: -0.02em;
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
 }
 
 .description {
-  margin: 2px 0 0;
+  margin: 1px 0 0;
   color: var(--text-subtle);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: var(--font-weight-normal);
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .actionBtn {
   position: relative;
-  inline-size: 40px;
-  block-size: 40px;
-  border-radius: 12px;
+  inline-size: 34px;
+  block-size: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-subtle);
+  color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--border-color);
 }
 
+.actionBtn:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
 .badge {
   position: absolute;
-  inset-block-start: 4px;
-  inset-inline-end: 4px;
-  inline-size: 16px;
-  block-size: 16px;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
+  inline-size: 14px;
+  block-size: 14px;
   border-radius: var(--radius-full);
   background: var(--critical-color);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: var(--font-weight-bold);
 }
 
 .notifPanel {
-  inline-size: 360px;
+  inline-size: 340px;
   max-inline-size: calc(100vw - 24px);
-  max-block-size: 420px;
+  max-block-size: 400px;
   overflow: hidden;
-  border-radius: var(--radius-lg);
+  border-radius: 8px;
   background: var(--surface-elevated);
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-lg);
@@ -87,18 +95,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-md);
+  padding: 12px var(--space-md);
   border-block-end: 1px solid var(--border-color);
 }
 
 .notifTitle {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
 }
 
 .markAllBtn {
-  color: var(--accent-strong);
-  font-size: 12px;
+  color: var(--primary-color);
+  font-size: 11px;
   font-weight: var(--font-weight-medium);
 }
 
@@ -109,8 +118,8 @@
 .notifItem {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 12px var(--space-md);
+  gap: 8px;
+  padding: 10px var(--space-md);
   border-block-end: 1px solid var(--border-color);
 }
 
@@ -119,27 +128,72 @@
 }
 
 .unread {
-  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  background: var(--primary-subtle);
 }
 
 .notifItemTitle {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: var(--font-weight-semibold);
 }
 
 .notifBody,
 .notifTime {
   color: var(--text-subtle);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .notifBody {
   margin-block-start: 2px;
 }
 
+.notifEmpty {
+  padding: 28px var(--space-md);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.notifRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.notifDismiss {
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  background: transparent;
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.notifItem:hover .notifDismiss {
+  opacity: 1;
+}
+
+.notifDismiss:hover {
+  color: var(--critical-color);
+  background: var(--bg-light);
+}
+
+.notifItem {
+  cursor: pointer;
+}
+
+.notifItem:hover {
+  background: var(--bg-light);
+}
+
 @media (max-width: 768px) {
   .topbar {
     padding-inline: var(--space-md);
+    min-block-size: 48px;
   }
 
   .menuBtn {
@@ -147,7 +201,7 @@
   }
 
   .title {
-    font-size: 17px;
+    font-size: 13px;
   }
 
   .description {

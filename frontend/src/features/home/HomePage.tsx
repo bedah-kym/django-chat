@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { domainConfigs, domainOrder, getRoomPath } from '@/domains'
-import { mockEngagements, mockFindings } from '@/mocks/pentest'
-import { mockReports } from '@/mocks/bugBounty'
-import { mockWallet } from '@/mocks/payments'
+import { usePentestStore } from '@/stores/pentestStore'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
+import { usePaymentStore } from '@/stores/paymentStore'
 import { useChatStore } from '@/stores/chatStore'
 import { uiCopy } from '@/content/uiCopy'
 import { formatCompactNumber, formatCurrency } from '@/utils/format'
@@ -15,15 +15,19 @@ import styles from './HomePage.module.css'
 
 export function HomePage() {
   const rooms = useChatStore((state) => state.rooms)
+  const { wallet } = usePaymentStore()
+  const engagements = usePentestStore((s) => s.engagements)
+  const findings = usePentestStore((s) => s.findings)
+  const reports = useBugBountyStore((s) => s.reports)
   const totalUnread = rooms.reduce((sum, room) => sum + room.unreadCount, 0)
-  const criticalFindings = mockFindings.filter((finding) => finding.severity === 'critical').length
-  const activeEngagement = mockEngagements.find((engagement) => engagement.status === 'running') ?? mockEngagements[0]
+  const criticalFindings = findings.filter((finding) => finding.severity === 'critical').length
+  const activeEngagement = engagements.find((engagement) => engagement.status === 'running') ?? engagements[0]
   const primaryRoom = rooms.find((room) => room.domain === 'security')
 
   const metrics = [
     {
       label: 'Unread items',
-      value: formatCompactNumber(totalUnread + mockReports.filter((report) => report.status === 'draft').length),
+      value: formatCompactNumber(totalUnread + reports.filter((report) => report.status === 'draft').length),
       detail: 'Messages, drafts, and operator actions waiting.',
       tone: 'warning' as const,
     },
@@ -35,13 +39,13 @@ export function HomePage() {
     },
     {
       label: 'Active engagements',
-      value: formatCompactNumber(mockEngagements.filter((engagement) => engagement.status === 'running').length),
+      value: formatCompactNumber(engagements.filter((engagement) => engagement.status === 'running').length),
       detail: 'Authorized jobs currently in progress.',
       tone: 'info' as const,
     },
     {
       label: 'Available cash',
-      value: formatCurrency(mockWallet.balance),
+      value: formatCurrency(wallet?.balance ?? 0),
       detail: 'Operational balance available for work this week.',
       tone: 'success' as const,
     },
@@ -99,7 +103,7 @@ export function HomePage() {
               </div>
               <div className={styles.summaryRow}>
                 <span>Wallet</span>
-                <span className={styles.summaryValue}>{formatCurrency(mockWallet.balance)}</span>
+                <span className={styles.summaryValue}>{formatCurrency(wallet?.balance ?? 0)}</span>
               </div>
             </div>
           </section>
@@ -155,7 +159,7 @@ export function HomePage() {
               </div>
               <div className={styles.signalItemStatic}>
                 <strong>Draft bounty report</strong>
-                <span>{mockReports.filter((report) => report.status === 'draft').length} report draft is ready for refinement and submission.</span>
+                <span>{reports.filter((report) => report.status === 'draft').length} report draft is ready for refinement and submission.</span>
               </div>
               <div className={styles.signalItemStatic}>
                 <strong>Unread coordination</strong>

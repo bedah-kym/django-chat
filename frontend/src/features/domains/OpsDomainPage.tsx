@@ -1,9 +1,6 @@
 import { Link } from 'react-router-dom'
-import { mockWallet, mockInvoices } from '@/mocks/payments'
-import { mockItineraries } from '@/mocks/travel'
 import { useChatStore } from '@/stores/chatStore'
 import { getRoomPath } from '@/domains'
-import { formatCurrency } from '@/utils/format'
 import styles from './OpsDomainPage.module.css'
 
 export function OpsDomainPage() {
@@ -15,46 +12,34 @@ export function OpsDomainPage() {
       <div className={styles.hero}>
         <div>
           <div className={styles.label}>Business/Ops</div>
-          <div className={styles.value}>{formatCurrency(mockWallet.balance)}</div>
-          <p className={styles.description}>Wallet, invoices, reminders, and travel stay grouped together in one operational workspace.</p>
+          <div className={styles.value}>{opsRooms.length} active {opsRooms.length === 1 ? 'room' : 'rooms'}</div>
+          <p className={styles.description}>Day-to-day operations: rooms, reminders, and follow-through. Personal utilities like Travel and Payments live in your user menu.</p>
         </div>
       </div>
 
       <div className={styles.grid}>
         <section className={styles.card}>
           <div className={styles.sectionHeader}>
-            <h2>Wallet</h2>
-            <Link to="/app/ops/wallet" className={styles.linkBtn}>Open</Link>
+            <h2>Reminders</h2>
+            <Link to="/app/ops/reminders" className={styles.linkBtn}>Open</Link>
           </div>
-          <div className={styles.metric}>{formatCurrency(mockWallet.balance)}</div>
-        </section>
-
-        <section className={styles.card}>
-          <div className={styles.sectionHeader}>
-            <h2>Invoices</h2>
-            <Link to="/app/ops/wallet" className={styles.linkBtn}>Open</Link>
-          </div>
-          <div className={styles.metric}>{mockInvoices.length} invoice records</div>
-        </section>
-
-        <section className={styles.card}>
-          <div className={styles.sectionHeader}>
-            <h2>Travel</h2>
-            <Link to="/app/ops/travel/itineraries" className={styles.linkBtn}>Open</Link>
-          </div>
-          <div className={styles.metric}>{mockItineraries.length} planned trips</div>
+          <div className={styles.metric}>Stay on top of follow-ups</div>
         </section>
 
         <section className={styles.card}>
           <div className={styles.sectionHeader}>
             <h2>Ops Rooms</h2>
           </div>
-          {opsRooms.map((room) => (
-            <Link key={room.id} to={getRoomPath(room)} className={styles.row}>
-              <span>{room.displayName}</span>
-              <span className={styles.secondary}>{room.unreadCount} unread</span>
-            </Link>
-          ))}
+          {opsRooms.length === 0 ? (
+            <div className={styles.secondary}>No ops rooms yet.</div>
+          ) : (
+            opsRooms.map((room) => (
+              <Link key={room.id} to={getRoomPath(room)} className={styles.row}>
+                <span>{room.displayName}</span>
+                <span className={styles.secondary}>{room.unreadCount} unread</span>
+              </Link>
+            ))
+          )}
         </section>
       </div>
     </div>

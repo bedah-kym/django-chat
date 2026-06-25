@@ -1,35 +1,58 @@
 import { useLocation } from 'react-router-dom'
 import * as Popover from '@radix-ui/react-popover'
-import { Bell, Menu, Moon, Search, Sun } from 'lucide-react'
-import { mockNotifications } from '@/mocks/notifications'
+import { Bell, Menu, Moon, Search, Sun, X } from 'lucide-react'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useChatStore } from '@/stores/chatStore'
+import { domainConfigs, getDomainFromPathname } from '@/domains'
 import { formatTime } from '@/utils/format'
 import styles from './TopBar.module.css'
 
-const pageTitles: Record<string, { title: string; description: string }> = {
+interface PageCopy {
+  title: string
+  description: string
+}
+
+const staticPageCopy: Record<string, PageCopy> = {
   '/app/home': {
-    title: 'Operations home',
-    description: 'See the queue, switch workspaces, and move on the highest-value task first.',
+    title: 'Home',
+    description: "Today's focus across every workspace.",
   },
   '/app/settings': {
     title: 'Settings',
-    description: 'Manage profile, preferences, integrations, and workspace defaults.',
+    description: 'Profile, preferences, integrations, defaults.',
   },
   '/app/onboarding': {
-    title: 'Welcome to Kazi',
-    description: 'Set the product up once, then let every workspace inherit the right defaults.',
+    title: 'Welcome',
+    description: 'Configure once — every workspace inherits.',
   },
+}
+
+function pickPageCopy(pathname: string): PageCopy {
+  if (staticPageCopy[pathname]) return staticPageCopy[pathname]
+  const domain = getDomainFromPathname(pathname)
+  if (domain) {
+    const d = domainConfigs[domain]
+    return { title: d.label, description: d.description }
+  }
+  return staticPageCopy['/app/home']!
 }
 
 export function TopBar() {
   const location = useLocation()
+  const notifications = useNotificationStore((s) => s.notifications)
+  const unreadNotifs = useNotificationStore((s) => s.unreadCount)
+  const markRead = useNotificationStore((s) => s.markRead)
+  const markAllRead = useNotificationStore((s) => s.markAllRead)
+  const dismiss = useNotificationStore((s) => s.dismiss)
+  const refreshCounts = useNotificationStore((s) => s.refreshCounts)
+  const fetchNotifications = useNotificationStore((s) => s.fetchNotifications)
   const chatUnread = useChatStore((s) => s.rooms.reduce((sum, room) => sum + room.unreadCount, 0))
-  const unread = chatUnread || mockNotifications.filter((notification) => !notification.isRead).length
+  const unread = chatUnread + unreadNotifs
   const theme = useUiStore((s) => s.theme)
   const toggleTheme = useUiStore((s) => s.toggleTheme)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
-  const routeCopy = pageTitles[location.pathname] ?? pageTitles['/app/home']!
+  const routeCopy = pickPageCopy(location.pathname)
 
   return (
     <header className={styles.topbar}>
@@ -50,7 +73,15 @@ export function TopBar() {
         <button className={styles.actionBtn} title="Search">
           <Search size={18} />
         </button>
-        <Popover.Root>
+        <Popover.Root
+          onOpenChange={(open) => {
+            if (open) {
+              // Refresh on open so the panel and badge are accurate.
+              fetchNotifications(1).catch(() => {})
+              refreshCounts().catch(() => {})
+            }
+          }}
+        >
           <Popover.Trigger asChild>
             <button className={styles.actionBtn} title="Notifications">
               <Bell size={18} />
@@ -61,19 +92,36 @@ export function TopBar() {
             <Popover.Content className={styles.notifPanel} sideOffset={8} align="end">
               <div className={styles.notifHeader}>
                 <span className={styles.notifTitle}>Notifications</span>
-                {unread > 0 ? <button className={styles.markAllBtn}>Mark all read</button> : null}
+                {unreadNotifs > 0 ? (
+                  <button className={styles.markAllBtn} onClick={() => markAllRead()}>
+                    Mark all read
+                  </button>
+                ) : null}
               </div>
               <div className={styles.notifList}>
-                {mockNotifications.map((notification) => (
+                {notifications.length === 0 ? (
+                  <div className={styles.notifEmpty}>You're all caught up.</div>
+                ) : notifications.map((notification) => (
                   <div
                     key={notification.id}
                     className={`${styles.notifItem} ${!notification.isRead ? styles.unread : ''}`}
+                    onClick={() => { if (!notification.isRead) markRead(notification.id) }}
                   >
                     <div className={styles.notifMeta}>
                       <div className={styles.notifItemTitle}>{notification.title}</div>
                       <div className={styles.notifBody}>{notification.body}</div>
                     </div>
-                    <div className={styles.notifTime}>{formatTime(notification.createdAt)}</div>
+                    <div className={styles.notifRight}>
+                      <div className={styles.notifTime}>{formatTime(notification.createdAt)}</div>
+                      <button
+                        className={styles.notifDismiss}
+                        onClick={(e) => { e.stopPropagation(); dismiss(notification.id) }}
+                        aria-label="Dismiss"
+                        title="Dismiss"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

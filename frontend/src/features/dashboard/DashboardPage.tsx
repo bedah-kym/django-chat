@@ -5,9 +5,9 @@ import {
   CreditCard, Clock, Mail, Info,
 } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
-import { mockNotifications } from '@/mocks/notifications'
-import { mockWallet } from '@/mocks/payments'
-import { mockItineraries } from '@/mocks/travel'
+import { usePaymentStore } from '@/stores/paymentStore'
+import { useTravelStore } from '@/stores/travelStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { getRoomPath } from '@/domains'
 import styles from './DashboardPage.module.css'
 
@@ -22,12 +22,15 @@ const typeIcons = {
 export function DashboardPage() {
   const mockRooms = useChatStore(s => s.rooms)
   const totalUnread = useChatStore(s => s.rooms.reduce((sum, r) => sum + r.unreadCount, 0))
+  const wallet = usePaymentStore(s => s.wallet)
+  const itineraries = useTravelStore(s => s.itineraries)
+  const notifications = useNotificationStore(s => s.notifications)
 
   const stats = [
     { label: 'Active Rooms', value: mockRooms.length, icon: MessagesSquare },
     { label: 'Unread Messages', value: totalUnread, icon: MessageSquare },
-    { label: 'Wallet Balance', value: `KES ${mockWallet.balance.toLocaleString()}`, icon: Wallet },
-    { label: 'Upcoming Trips', value: mockItineraries.length, icon: Plane },
+    { label: 'Wallet Balance', value: `KES ${(wallet?.balance ?? 0).toLocaleString()}`, icon: Wallet },
+    { label: 'Upcoming Trips', value: itineraries?.length ?? 0, icon: Plane },
   ]
 
   return (
@@ -92,7 +95,7 @@ export function DashboardPage() {
         <h2>Recent Activity</h2>
       </div>
       <div className={styles.activityList}>
-        {mockNotifications.slice(0, 4).map((n, i) => {
+        {(notifications ?? []).slice(0, 4).map((n, i) => {
           const Icon = typeIcons[n.type]
           return (
             <motion.div

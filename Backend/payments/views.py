@@ -5,6 +5,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db.models import Sum
 from django.contrib import messages
@@ -112,7 +114,8 @@ def transactions_view(request):
     return render(request, 'payments/transactions.html', context)
 
 
-@login_required
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 @ratelimit(key='user', rate='5/m', block=False)
 @ratelimit(key='ip', rate='10/m', block=False)
 def initiate_deposit(request):
@@ -291,7 +294,8 @@ def payment_callback(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@login_required
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def deposit_status(request):
     """
     Poll deposit status by IntaSend tracking id.
@@ -376,7 +380,8 @@ def invoice_detail(request, reference_id):
 
 # API Endpoints for read-only access (for AI/Mathia)
 
-@login_required
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_balance_api(request):
     """
     Get user's wallet balance (READ-ONLY)
@@ -388,7 +393,8 @@ def get_balance_api(request):
     })
 
 
-@login_required
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def list_transactions_api(request):
     """
     List recent transactions (READ-ONLY)

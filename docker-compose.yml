@@ -53,6 +53,10 @@ services:
       - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
       - HF_API_TOKEN=${HF_API_TOKEN}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USER_AGENT=${REDDIT_USER_AGENT}
       - CALENDLY_CLIENT_ID=${CALENDLY_CLIENT_ID}
       - Webhook_signing_key=${Webhook_signing_key}
       - CALENDLY_CLIENT_SECRET=${CALENDLY_CLIENT_SECRET}
@@ -67,7 +71,7 @@ services:
 
   celery_worker:
     image: mathia-web:latest
-    command: sh -c "python /app/wait_for_db.py && sh /app/scripts/railway/celery_worker.sh"
+    command: sh -c "python /app/wait_for_db.py && cd /app/Backend && exec celery -A Backend worker -l info --pool prefork --concurrency 1 --max-tasks-per-child 200 --max-memory-per-child 250000"
     volumes:
       - .:/app
     env_file:
@@ -78,6 +82,9 @@ services:
       - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USER_AGENT=${REDDIT_USER_AGENT}
     depends_on:
       db:
         condition: service_healthy

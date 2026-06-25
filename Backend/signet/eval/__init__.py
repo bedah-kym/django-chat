@@ -1,0 +1,1 @@
+# SIGNET eval package — dataset loaders, golden-set, cross-validation harness.

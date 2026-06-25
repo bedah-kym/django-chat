@@ -33,8 +33,8 @@
   font-weight: var(--font-weight-bold);
 }
 
-.HackerOne { background: rgba(37, 99, 235, 0.14); color: #2563eb; }
-.Bugcrowd { background: rgba(234, 88, 12, 0.14); color: #ea580c; }
+.HackerOne { background: color-mix(in srgb, var(--brand-hackerone) 14%, transparent); color: var(--brand-hackerone); }
+.Bugcrowd { background: color-mix(in srgb, var(--brand-bugcrowd) 14%, transparent); color: var(--brand-bugcrowd); }
 .Intigriti { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
 
 .ready { background: var(--bg-light); color: var(--text-muted); }

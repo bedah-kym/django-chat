@@ -15,6 +15,10 @@ from chatbot.models import Chatroom, Message, RoomContext, RoomNote, DocumentUpl
 from chatbot.context_manager import ContextManager
 from orchestration.models import ActionReceipt
 from orchestration.action_receipts import format_receipt_summary
+from users.models import CorrectionSignal
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
@@ -392,3 +396,160 @@ def get_upload_quota(request, room_id):
             {"error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_message_feedback(request, room_id, message_id):
+    """Persist a thumbs up/down on an AI message as a CorrectionSignal.
+
+    Idempotent toggle: same rating again (or null) removes it; a different
+    rating updates in place.
+    """
+    try:
+        chatroom = get_object_or_404(Chatroom, id=room_id)
+        if not chatroom.chats.filter(id=message_id).exists():
+            return Response({"error": "Message not in this room"}, status=status.HTTP_404_NOT_FOUND)
+
+        rating = request.data.get('rating')
+        if rating not in ('up', 'down', None):
+            return Response({"error": "rating must be 'up', 'down', or null"}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing = CorrectionSignal.objects.filter(
+            user=request.user,
+            intent_action='ai_response',
+            correction_type='result_selection',
+            data__message_id=message_id,
+        ).first()
+
+        if rating is None or (existing and existing.data.get('rating') == rating):
+            if existing:
+                existing.delete()
+                return Response({"status": "removed"}, status=status.HTTP_200_OK)
+            return Response({"status": "unchanged"}, status=status.HTTP_200_OK)
+
+        if existing:
+            existing.data['rating'] = rating
+            existing.save(update_fields=['data', 'updated_at'])
+            return Response({"status": "updated", "rating": rating}, status=status.HTTP_200_OK)
+
+        CorrectionSignal.objects.create(
+            user=request.user,
+            intent_action='ai_response',
+            correction_type='result_selection',
+            data={'rating': rating, 'message_id': message_id},
+        )
+        return Response({"status": "created", "rating": rating}, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        logger.error(f"Error saving message feedback: {e}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_chat_attachment(request, room_id):
+    """Upload a media file (image/video/audio/file) as a chat message and
+    broadcast it to the room over WebSocket so it appears inline."""
+    from chatbot.models import Member, MessageAttachment
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+
+    chatroom = get_object_or_404(Chatroom, id=room_id)
+    if not Chatroom.objects.filter(id=room_id, participants__User=request.user).exists():
+        return Response({"error": "You don't have access to this room"}, status=status.HTTP_403_FORBIDDEN)
+
+    f = request.FILES.get('file')
+    if not f:
+        return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+    if f.size > 50 * 1024 * 1024:
+        return Response({"error": "File too large (max 50MB)"}, status=status.HTTP_400_BAD_REQUEST)
+
+    mime = (getattr(f, 'content_type', '') or '').lower()
+    if mime.startswith('image/'):
+        kind = 'image'
+    elif mime.startswith('video/'):
+        kind = 'video'
+    elif mime.startswith('audio/'):
+        kind = 'audio'
+    else:
+        kind = 'file'
+
+    caption = (request.data.get('caption') or '').strip()
+    member, _ = Member.objects.get_or_create(User=request.user)
+
+    message = Message.objects.create(member=member, content=caption, timestamp=timezone.now())
+    chatroom.chats.add(message)
+    att = MessageAttachment.objects.create(
+        message=message, file=f, kind=kind, name=f.name[:255], size=f.size, mime=mime,
+    )
+
+    # Only feed PDFs/images to Mathia when she's actually a participant of this
+    # room — otherwise it's a human-to-human chat and there's nothing to ingest.
+    mathia_present = Chatroom.objects.filter(
+        id=room_id, participants__User__username='mathia'
+    ).exists()
+    ai_doc_type = None
+    if mathia_present:
+        ai_doc_type = 'pdf' if mime == 'application/pdf' else ('image' if kind == 'image' else None)
+
+    ai_document_id = None
+    if ai_doc_type:
+        try:
+            from chatbot.models import DocumentUpload
+            from chatbot.tasks import process_document_task
+            doc = DocumentUpload.objects.create(
+                user=request.user,
+                chatroom=chatroom,
+                file_type=ai_doc_type,
+                file_path=att.file.name,
+                file_size=f.size,
+                status='pending',
+                quota_window_start=timezone.now(),
+            )
+            ai_document_id = doc.id
+            att.ai_document_id = doc.id
+            att.save(update_fields=['ai_document_id'])
+            process_document_task.delay(doc.id)
+        except Exception as e:
+            logger.warning(f"AI document processing skipped for attachment {att.id}: {e}")
+
+    message_json = {
+        'id': message.id,
+        'member': request.user.username,
+        'content': caption,
+        'timestamp': str(message.timestamp),
+        'parent_id': None,
+        'edited_at': None,
+        'is_deleted': False,
+        'is_voice': False,
+        'attachments': [{
+            'id': att.id, 'name': att.name, 'url': att.file_url,
+            'type': att.kind, 'size': att.size, 'mime': att.mime,
+            'ai_readable': bool(ai_document_id),
+            'ai_document_id': ai_document_id,
+        }],
+    }
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat_{room_id}",
+            {'type': 'broadcast_message', 'command': 'new_message', 'message': message_json},
+        )
+    except Exception as e:
+        logger.warning(f"Attachment broadcast skipped: {e}")
+
+    return Response(message_json, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def document_status(request, document_id):
+    """Real ingestion status of a document Mathia is reading
+    (pending | processing | completed | failed)."""
+    from chatbot.models import DocumentUpload
+    doc = DocumentUpload.objects.filter(id=document_id, user=request.user).first()
+    if not doc:
+        return Response({"status": "unknown"}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"status": doc.status})

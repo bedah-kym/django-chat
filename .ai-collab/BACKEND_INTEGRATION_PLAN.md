@@ -1,8 +1,72 @@
-# Backend Integration Plan - Kazi Frontend Wiring
+# Backend Integration Plan - Mathia Frontend Wiring
 **Date:** 2026-04-07
-**Status:** DRAFT - Pending QA
-**Branch:** frontend-v2
+**Status:** TIER 1 COMPLETE — 2026-06-09
+**Branch:** mathia/frontend-v2-merge
 **Depends on:** `FRONTEND_V2_PLAN.md`, `docs/SETTINGS_MIGRATION_PLAN.md`
+
+---
+
+## Claude, if you're reading this — the pros already handled Tier 1. Here's what changed:
+
+### What was done (2026-06-09):
+
+**Tier 1 — User, Rooms, Messages (WIRED) ✅**
+
+1. **New API client layer** (`frontend/src/api/`):
+   - `client.ts` — fetch wrapper with token auth + localStorage persistence
+   - `rooms.ts` — `fetchRooms()`, `fetchMessages()`, `fetchUserProfile()`
+   - Auth store (`authStore.ts`) — auto-login for dev (user: `alex` / `mathia123`)
+
+2. **New backend endpoint** (`Backend/Api/views.py:307`):
+   - `GET /api/user/me/` — returns `{id, username, email, first_name, last_name}`
+   - Requires DRF `IsAuthenticated`
+
+3. **Vite proxy updated** (`vite.config.ts`):
+   - Added `/accounts` and `/auth` proxy paths
+
+4. **Chat store updated** (`chatStore.ts`):
+   - `initialize()` fetches rooms from `GET /accounts/rooms/list/`
+   - `fetchRoomMessages()` fetches from `GET /api/getmessages/<id>/`
+   - Falls back to mock data on API failure
+   - `setActiveRoom()` triggers message fetch
+
+**How it works:**
+- On app load, `authStore` auto-logs in with dev credentials → token stored in localStorage
+- `chatStore.initialize()` fetches real rooms (falls back to mock if no auth)
+- Clicking a room triggers `fetchRoomMessages()` from the API
+- All API calls go through Vite proxy (`:5173` → `:8000`)
+
+### What remains (Tier 2-5):
+
+**Tier 2 — Settings** (you're up, Claude):
+- Build REST endpoints for each settings section — backend already has model fields
+- `GET/PUT /api/settings/profile/` → UserProfile fields (bio, location, etc.)
+- `GET/PUT /api/settings/preferences/` → notification_preferences JSON
+- `GET /api/settings/integrations/` → connected integrations status
+- Wire the SettingsPage components to call these endpoints
+
+**Tier 3 — Notifications socket wiring** (see `notifications/urls.py`):
+- `GET /notifications/api/` already exists — just needs frontend wiring
+- Add `useNotificationStore` or wire into existing chatStore
+
+**Tier 4 — Chat WebSocket** (already partially wired):
+- WebSocket endpoint at `ws://localhost:8000/ws/chat/<room_id>/`
+- Vite proxy already routes `/ws` → backend
+- Wire `ChatPage` to use WebSocket for send/receive
+
+**Tier 5 — Secondary features** (existing APIs, just wire them):
+- Wallet: `GET /payments/api/balance/`, `GET /payments/api/transactions/`
+- Reminders: HTML pages exist, needs REST conversion
+- Itineraries: `GET/POST /travel/api/itinerary/`
+
+**Also:**
+- Signet page scaffolded at `/app/signet` (Social Intelligence Platform)
+- Social domain merged into Signet
+- Entire frontend re-themed with Signet dark/light design system
+- d3 added as dependency (refresh node_modules if missing)
+- Drop the `--legacy-peer-deps` hack when `@emoji-mart/react` supports React 19
+
+— opencode, out.
 
 ---
 

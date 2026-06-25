@@ -36,6 +36,10 @@ export interface Message {
   thinkingDurationMs?: number
   toolCalls?: ToolCall[]
   isStreaming?: boolean
+  isTemp?: boolean
+  isPending?: boolean
+  editedAt?: string | null
+  isDeleted?: boolean
 }
 
 export interface ToolCall {
@@ -48,8 +52,11 @@ export interface Attachment {
   id: number
   name: string
   url: string
-  type: 'image' | 'document' | 'audio'
+  type: 'image' | 'video' | 'audio' | 'file' | 'document'
   size: number
+  mime?: string
+  aiReadable?: boolean
+  aiDocumentId?: number | null
 }
 
 export interface Contact {

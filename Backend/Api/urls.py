@@ -3,6 +3,8 @@ from . import views
 
 app_name = "botApi"
 urlpatterns = [
+    path('user/me/', views.get_current_user, name='user_me'),
+    path('rooms/create/', views.create_room, name='create_room'),
     path('getreplies/<int:room>/', views.GetMessage.as_view(), name="get_replies"),
     path('getmessages/<int:room>/', views.GetAllMessages.as_view(), name="get_messages"),
     path('newreply/', views.CreateReply.as_view(), name="new_replies"),

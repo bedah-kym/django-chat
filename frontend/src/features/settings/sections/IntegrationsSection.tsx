@@ -69,10 +69,19 @@ export function IntegrationsSection({ integrations }: Props) {
     }
   }
 
+  // Always render every known provider so the user can connect from a blank
+  // state. The server returns only the *connected* set; we merge in the rest
+  // as "Not connected" placeholders so the section is never an empty void.
+  const ALL_PROVIDERS: Integration['type'][] = ['whatsapp', 'gmail', 'intasend', 'calendly']
+  const displayed: Integration[] = ALL_PROVIDERS.map(type => {
+    const existing = localIntegrations.find(i => i.type === type)
+    return existing ?? { type, connected: false }
+  })
+
   return (
     <>
       <div className={styles.integrationGrid}>
-        {localIntegrations.map(int => {
+        {displayed.map(int => {
           const meta = INTEGRATION_META[int.type]
           const isLoading = loading === int.type
           return (

@@ -92,6 +92,9 @@ TRAVEL PLANNER ACTIONS:
 - add_to_itinerary: User wants to add a booking to an existing itinerary
   Examples: "add this hotel to my trip", "save this flight to my itinerary"
   Extract: itinerary_id, item_type (bus|hotel|flight|transfer|event), item_id, provider
+- remove_from_itinerary: User wants to remove/delete an item from their itinerary
+  Examples: "remove that flight", "delete the hotel from my trip", "drop the bus ticket"
+  Extract: item_id (preferred), title (item name if id unknown), itinerary_id (optional)
 - book_travel_item: User ready to book (redirects to provider)
   Examples: "book this hotel", "complete the flight booking", "reserve the bus"
   Extract: item_type, item_id, provider

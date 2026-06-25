@@ -133,13 +133,93 @@ def itinerary_items(request, itinerary_id):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        data = request.data.copy()
-        data['itinerary'] = itinerary.id
-        serializer = ItineraryItemSerializer(data=data)
+        serializer = ItineraryItemSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            # `itinerary` is not a serializer field — attach it on save so the
+            # FK is set (otherwise create() hits a NOT NULL violation).
+            serializer.save(itinerary=itinerary)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def book_itinerary_item(request, item_id):
+    """Deep-link handoff 'booking': attach a real provider checkout URL, record a
+    BookingReference, and mark the item booked. No payment happens here — the
+    traveller completes purchase on the provider's site via the returned URL.
+    """
+    from .models import BookingReference
+    from .booking_links import build_booking_link
+
+    item = get_object_or_404(ItineraryItem, id=item_id, itinerary__user=request.user)
+    url, provider_label = build_booking_link(item)
+
+    booking, _ = BookingReference.objects.get_or_create(
+        itinerary_item=item,
+        defaults={'provider': item.provider or provider_label, 'provider_booking_id': f'handoff-{item.id}'},
+    )
+    booking.provider = item.provider or provider_label
+    booking.booking_url = url
+    booking.status = 'pending'  # pending until the user completes checkout on the provider
+    if not booking.provider_booking_id:
+        booking.provider_booking_id = f'handoff-{item.id}'
+    booking.save()
+
+    item.status = 'booked'
+    item.booking_url = url
+    item.save(update_fields=['status', 'booking_url'])
+
+    return Response(ItineraryItemSerializer(item).data)
+
+
+def ensure_itinerary_chatroom(itinerary):
+    """Get or lazily create the per-trip Mathia chatroom and return it.
+
+    Adds the trip owner plus the 'mathia' AI member so the consumer treats the
+    room as a 1:1 AI room (Mathia replies to every message without an @mention).
+    """
+    from chatbot.models import Chatroom, Member
+    from django.contrib.auth.models import User as AuthUser
+
+    if itinerary.chatroom_id:
+        return itinerary.chatroom
+
+    room = Chatroom.objects.create(name=f"Trip: {itinerary.title}"[:120], domain='travel')
+
+    owner_member, _ = Member.objects.get_or_create(User=itinerary.user)
+    room.participants.add(owner_member)
+
+    try:
+        mathia_user = AuthUser.objects.get(username='mathia')
+        mathia_member, _ = Member.objects.get_or_create(User=mathia_user)
+        room.participants.add(mathia_member)
+    except AuthUser.DoesNotExist:
+        logger.warning("Mathia user not found; trip chatroom %s created without AI participant", room.id)
+
+    itinerary.chatroom = room
+    itinerary.save(update_fields=['chatroom'])
+    return room
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def itinerary_chatroom(request, itinerary_id):
+    """Return (creating on first access) the per-trip Mathia chatroom + participants."""
+    itinerary = get_object_or_404(Itinerary, id=itinerary_id, user=request.user)
+    room = ensure_itinerary_chatroom(itinerary)
+
+    participants = []
+    for member in room.participants.select_related('User').all():
+        u = member.User
+        participants.append({
+            'username': u.username,
+            'displayName': u.get_full_name() or u.username,
+            'isOnline': False,
+            'lastSeen': member.last_seen.isoformat() if member.last_seen else None,
+        })
+
+    return Response({'chatroom_id': room.id, 'participants': participants})
 
 
 @api_view(['GET'])

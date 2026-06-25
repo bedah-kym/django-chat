@@ -1,17 +1,19 @@
 """Avatar upload endpoint with server-side processing."""
 import io
 from uuid import uuid4
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from PIL import Image
 
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_TYPES = {'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'}
 
 
-@login_required
-@require_POST
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
 def avatar_upload(request):
     """Handle avatar upload with crop and resize."""
     uploaded = request.FILES.get('avatar')

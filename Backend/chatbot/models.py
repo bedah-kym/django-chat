@@ -28,14 +28,50 @@ class Message(models.Model):
     voice_transcript = models.TextField(blank=True, null=True)
     has_ai_voice = models.BooleanField(default=False)  # For AI-synthesized responses
 
+    # Edit / delete
+    edited_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.member}: {self.content[:30]}..."
+
+
+class MessageAttachment(models.Model):
+    """A media file attached to a chat message (image / video / audio / file)."""
+    KIND_CHOICES = [
+        ('image', 'Image'),
+        ('video', 'Video'),
+        ('audio', 'Audio'),
+        ('file', 'File'),
+    ]
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='attachments/%Y/%m/')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default='file')
+    name = models.CharField(max_length=255)
+    size = models.PositiveIntegerField(default=0)
+    mime = models.CharField(max_length=120, blank=True, default='')
+    # DocumentUpload id when this attachment was fed to Mathia (PDF/image in an
+    # AI room) — lets the UI poll real ingestion status. Null = not ingested.
+    ai_document_id = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def file_url(self):
+        try:
+            return self.file.url
+        except Exception:
+            return ''
+
+    def __str__(self):
+        return f"{self.kind}: {self.name}"
 
 
 class Chatroom(models.Model):
     participants = models.ManyToManyField(Member)
     chats = models.ManyToManyField(Message, blank=True)
     encryption_key = models.TextField(blank=True)
+    name = models.CharField(max_length=120, blank=True, default='')
+    domain = models.CharField(max_length=32, blank=True, default='ops')
 
     def save(self, *args, **kwargs):
         # Generate a key for the room when it's first created

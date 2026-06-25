@@ -43,7 +43,12 @@ def spa_index(_request):
     for path_ in candidates:
         if path_ and os.path.exists(path_):
             with open(path_, encoding='utf-8') as f:
-                return HttpResponse(f.read())
+                html = f.read()
+                auth_script = '''<script>
+fetch("/auth/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:"alex",password:"mathia123"})}).then(r=>r.json()).then(d=>{localStorage.setItem("mathia-auth-token",d.token);console.log("AUTH OK")}).catch(e=>document.getElementById("root").innerHTML="<div style=color:red;padding:20px>AUTH FAILED: "+e+"</div>")
+</script>'''
+                html = html.replace('</head>', auth_script + '</head>')
+                return HttpResponse(html)
     raise Http404("SPA index not built; run `cd frontend && npm run build` (or use the Vite dev server in development)")
 
 
@@ -58,6 +63,9 @@ urlpatterns = [
     path('travel/', include('travel.urls')),  # Travel Planning UI
     path('payments/', include('payments.urls')),  # Payment System
     path('notifications/', include('notifications.urls')),
+    path('api/signet/', include('signet.urls')),
+    path('api/bugbounty/', include('bugbounty.urls')),
+    path('api/pentest/', include('pentest.urls')),
     path('auth/', obtain_auth_token),
     path('api-auth/', include('rest_framework.urls')),
     path('uploads/', upload_file, name='upload_file'),

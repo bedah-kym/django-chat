@@ -30,6 +30,7 @@ from django.contrib.auth import get_user_model
 import os
 import traceback
 from django.conf import settings
+from . import voice_provider
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -406,7 +407,7 @@ def generate_ai_response(self, room_id, user_id, user_message):
 
 @shared_task(bind=True, max_retries=3, ignore_result=True)
 def transcribe_voice_note(self, message_id):
-    """Transcribe user voice note using OpenAI Whisper"""
+    """Transcribe user voice note using voice provider (OpenAI Whisper or mock)"""
     try:
         message = Message.objects.get(id=message_id)
         if not message.audio_url:
@@ -414,20 +415,10 @@ def transcribe_voice_note(self, message_id):
 
         file_path = os.path.join(settings.MEDIA_ROOT, message.audio_url)
 
-        # OpenAI Whisper
-        openai = _get_openai_module()
-        if not openai:
-            return "OpenAI not installed"
-        client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        transcript = voice_provider.transcribe(file_path)
 
-        with open(file_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file
-            )
-
-        message.voice_transcript = transcript.text
-        message.content = transcript.text  # Update content so AI can read it
+        message.voice_transcript = transcript
+        message.content = transcript  # Update content so AI can read it
         message.save()
 
         # Notify room via WebSocket
@@ -441,11 +432,11 @@ def transcribe_voice_note(self, message_id):
                 {
                     "type": "voice_transcription_ready",
                     "message_id": message.id,
-                    "transcript": transcript.text
+                    "transcript": transcript,
                 }
             )
 
-        return transcript.text
+        return transcript
     except Exception as e:
         logger.error(f"Transcription error: {e}")
         raise self.retry(exc=e)
@@ -487,27 +478,18 @@ def generate_voice_response(self, message_id):
         if not text:
             return {"status": "skipped", "reason": "empty_text"}
 
-        # OpenAI TTS
-        openai = _get_openai_module()
-        if not openai:
-            return {"status": "skipped", "reason": "openai_not_installed"}
-        OpenAIError = getattr(openai, "OpenAIError", Exception)
-        client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-
-        response = client.audio.speech.create(
-            model="tts-1",
-            voice="alloy",  # alloy, echo, fable, onyx, nova, shimmer
-            input=text
-        )
-
-        # Save audio file
+        # Generate voice via provider (mock if no key)
         room_id = message.chatroom_set.first().id
         voice_dir = os.path.join(settings.MEDIA_ROOT, 'ai_speech', str(room_id))
         os.makedirs(voice_dir, exist_ok=True)
 
         file_name = f"reply_{message.id}.mp3"
         file_path = os.path.join(voice_dir, file_name)
-        response.stream_to_file(file_path)
+
+        voice_provider.generate_speech(text, file_path)
+
+        if not os.path.exists(file_path):
+            return {"status": "skipped", "reason": "voice_provider_no_output"}
 
         message.audio_url = os.path.join('ai_speech', str(room_id), file_name)
         message.has_ai_voice = True

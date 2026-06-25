@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { mockCurrentUser } from '@/mocks/users'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { ProfileSection } from './sections/ProfileSection'
 import { AssistantStyleSection } from './sections/AssistantStyleSection'
 import { CapabilityControlsSection } from './sections/CapabilityControlsSection'
@@ -22,8 +22,8 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile')
-  const user = mockCurrentUser
-  const showInvites = (user.inviteDepth ?? 1) === 0
+  const user = useCurrentUser()
+  const showInvites = ((user as any).inviteDepth ?? 1) === 0
 
   return (
     <div className={styles.settings}>
@@ -47,14 +47,14 @@ export function SettingsPage() {
       >
         {activeTab === 'profile' && (
           <>
-            <ProfileSection user={user} />
+            <ProfileSection user={user as any} />
             <div className={styles.sectionDivider} />
             <AssistantStyleSection />
           </>
         )}
         {activeTab === 'ai-controls' && <CapabilityControlsSection />}
         {activeTab === 'preferences' && <NotificationMatrixSection />}
-        {activeTab === 'integrations' && <IntegrationsSection integrations={user.integrations} />}
+        {activeTab === 'integrations' && <IntegrationsSection integrations={(user as any).integrations ?? []} />}
         {activeTab === 'workspace' && (
           <>
             <WorkspaceSection />

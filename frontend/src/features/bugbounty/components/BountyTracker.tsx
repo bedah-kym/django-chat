@@ -1,10 +1,11 @@
-import { mockReports } from '@/mocks/bugBounty'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { formatCurrency } from '@/utils/format'
 import styles from './BountyTracker.module.css'
 
 export function BountyTracker() {
-  const paid = mockReports.filter(report => report.status === 'paid').reduce((sum, report) => sum + report.bountyKes, 0)
-  const pending = mockReports.filter(report => report.status === 'triaged').reduce((sum, report) => sum + report.bountyKes, 0)
+  const reports = useBugBountyStore((s) => s.reports)
+  const paid = reports.filter(report => report.status === 'paid').reduce((sum, report) => sum + report.bountyKes, 0)
+  const pending = reports.filter(report => report.status === 'triaged').reduce((sum, report) => sum + report.bountyKes, 0)
 
   return (
     <div className={styles.tracker}>

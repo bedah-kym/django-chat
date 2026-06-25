@@ -99,8 +99,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.last_key_rotation = timezone.now()
 
     async def connect(self):
-        # 1. Auth check
-        if not self.scope["user"].is_authenticated:
+        # 1. Auth check — session auth or token via query parameter
+        user = self.scope.get("user")
+        authenticated = bool(user and getattr(user, 'is_authenticated', False))
+
+        if not authenticated:
+            qs = self.scope.get("query_string", b"")
+            if isinstance(qs, bytes):
+                qs = qs.decode()
+            path = self.scope.get("path", "")
+            token = None
+            for source in [qs, path]:
+                if "token=" in source:
+                    parts = source.lstrip("?").split("&")
+                    for p in parts:
+                        if p.startswith("token="):
+                            token = p.split("=", 1)[1]
+                            break
+                if token:
+                    break
+            if token:
+                from rest_framework.authtoken.models import Token
+                try:
+                    token_obj = await sync_to_async(Token.objects.select_related('user').get)(key=token)
+                    self.scope["user"] = token_obj.user
+                    authenticated = True
+                except Token.DoesNotExist:
+                    pass
+
+        if not authenticated:
+            logger.info("WS auth: closing 403 — not authenticated")
             await self.close(code=4001)
             return
 
@@ -509,6 +537,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send_quotas()
             elif command == "voice_message":
                 await self.voice_message(data)
+            elif command == "edit_message":
+                await self.edit_message(data)
+            elif command == "delete_message":
+                await self.delete_message(data)
             else:
                 await self.send_message({
                     'member': 'system',
@@ -2122,6 +2154,73 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': str(timezone.now())
             })
 
+    async def edit_message(self, data):
+        try:
+            message_id = data.get('message_id')
+            new_content = (data.get('content') or '').strip()
+            if not message_id or not new_content or len(new_content) > 5000:
+                return
+
+            get_msg = sync_to_async(lambda: Message.objects.filter(id=message_id).select_related('member__User').first())
+            message = await get_msg()
+            if not message:
+                return
+
+            username = await sync_to_async(lambda: message.member.User.username)()
+            if username != self.scope["user"].username or message.is_deleted:
+                return
+
+            encrypted = await self.encrypt_message({
+                'content': new_content,
+                'timestamp': str(message.timestamp),
+            })
+            if not encrypted:
+                return
+
+            payload = json.dumps({'data': encrypted['data'], 'nonce': encrypted['nonce']})
+            now = timezone.now()
+
+            await sync_to_async(lambda: Message.objects.filter(id=message_id).update(
+                content=payload, edited_at=now,
+            ))()
+            broadcast_msg = {
+                'id': message_id,
+                'member': username,
+                'content': new_content,
+                'timestamp': str(message.timestamp),
+                'parent_id': message.parent_id,
+                'edited_at': str(now),
+            }
+            await self.send_chat_message({
+                "command": "message_edited",
+                "message": broadcast_msg,
+            })
+        except Exception as e:
+            logger.error(f"Error in edit_message: {e}")
+
+    async def delete_message(self, data):
+        try:
+            message_id = data.get('message_id')
+            if not message_id:
+                return
+
+            get_msg = sync_to_async(lambda: Message.objects.filter(id=message_id).select_related('member__User').first())
+            message = await get_msg()
+            if not message:
+                return
+
+            username = await sync_to_async(lambda: message.member.User.username)()
+            if username != self.scope["user"].username:
+                return
+
+            await sync_to_async(lambda: Message.objects.filter(id=message_id).update(is_deleted=True))()
+            await self.send_chat_message({
+                "command": "message_deleted",
+                "message_id": message_id,
+            })
+        except Exception as e:
+            logger.error(f"Error in delete_message: {e}")
+
     async def typing_message(self, event):
         # fan out typing to all group members
         await self.send(text_data=json.dumps({
@@ -2152,6 +2251,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def send_chat_message(self, message):
         """Helper to send message to group"""
         await self.send(text_data=json.dumps(message))
+
+    async def broadcast_message(self, event):
+        """Group handler: forward a message broadcast (e.g. a REST-uploaded
+        attachment) to this connected client."""
+        await self.send(text_data=json.dumps({
+            'command': event.get('command', 'new_message'),
+            'message': event.get('message'),
+        }))
 
     async def ai_response_message(self, event):
         """
@@ -2262,7 +2369,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if before_id:
                 qs = qs.filter(id__lt=before_id)
             # Optimize: select_related to avoid N+1 queries on member.User
-            qs = qs.select_related('member__User').order_by('-timestamp')[:limit + 1]
+            # Secondary sort on -id gives a stable, deterministic order when
+            # messages share a timestamp (e.g. a user msg + AI reply in the
+            # same instant) — otherwise tie order flips between queries.
+            qs = qs.select_related('member__User').order_by('-timestamp', '-id')[:limit + 1]
             msgs = list(qs)
             # Check if there are more messages beyond this page
             has_more = len(msgs) > limit
@@ -2346,7 +2456,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'member': username,
                 'content': final_content,
                 'timestamp': str(message.timestamp),
-                'parent_id': message.parent_id
+                'parent_id': message.parent_id,
+                'edited_at': str(message.edited_at) if message.edited_at else None,
+                'is_deleted': message.is_deleted,
+                'is_voice': message.is_voice,
+                'audio_url': message.audio_url or None,
+                'voice_transcript': message.voice_transcript or None,
+                'has_ai_voice': message.has_ai_voice,
+                'attachments': await self._serialize_attachments(message),
             }
         except Exception as e:
             logger.error(f"Error in message_to_json: {e}")
@@ -2355,6 +2472,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'content': 'Error processing message',
                 'timestamp': str(timezone.now())
             }
+
+    async def _serialize_attachments(self, message):
+        """Serialize a message's media attachments. Returns [] gracefully if the
+        attachment model/relation isn't present yet."""
+        try:
+            def _get():
+                return [
+                    {
+                        'id': a.id,
+                        'name': a.name,
+                        'url': a.file_url,
+                        'type': a.kind,   # image | video | audio | file
+                        'size': a.size or 0,
+                        'mime': a.mime or '',
+                        'ai_readable': a.ai_document_id is not None,
+                        'ai_document_id': a.ai_document_id,
+                    }
+                    for a in message.attachments.all()
+                ]
+            return await sync_to_async(_get)()
+        except Exception:
+            return []
 
     async def get_history_as_text(self, room_id, limit=5):
         "Fetches last N messages and formats them as plain text history."

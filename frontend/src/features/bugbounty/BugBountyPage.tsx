@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { BanknoteArrowDown, FileText, ShieldCheck, RefreshCcw } from 'lucide-react'
-import { mockPrograms, mockReportDraft, mockReports } from '@/mocks/bugBounty'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { ProgramCard } from './components/ProgramCard'
 import { BountyTracker } from './components/BountyTracker'
 import { ReportDraftModal } from './components/ReportDraftModal'
 import { formatCurrency, formatNumber } from '@/utils/format'
+import { RouteSkeleton } from '@/components/ui/RouteSkeleton'
+import { useDelayedFlag } from '@/hooks/useDelayedFlag'
 import styles from './BugBountyPage.module.css'
 
 const FILTERS = ['All', 'HackerOne', 'Bugcrowd', 'Intigriti'] as const
@@ -14,18 +16,28 @@ const FILTERS = ['All', 'HackerOne', 'Bugcrowd', 'Intigriti'] as const
 export function BugBountyPage() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All')
   const [showDraft, setShowDraft] = useState(false)
+  const programs = useBugBountyStore((s) => s.programs)
+  const reports = useBugBountyStore((s) => s.reports)
+  const drafts = useBugBountyStore((s) => s.drafts)
+  const isLoading = useBugBountyStore((s) => s.isLoading)
+  const initialize = useBugBountyStore((s) => s.initialize)
+  const showSkeleton = useDelayedFlag(isLoading && programs.length === 0)
+
+  useEffect(() => { initialize() }, [initialize])
+
+  if (showSkeleton) return <RouteSkeleton />
 
   const filteredPrograms = filter === 'All'
-    ? mockPrograms
-    : mockPrograms.filter(program => program.platform === filter)
+    ? programs
+    : programs.filter(program => program.platform === filter)
 
-  const totalEarned = mockReports.reduce((sum, report) => sum + report.bountyKes, 0)
-  const openReports = mockReports.filter(report => ['draft', 'triaged'].includes(report.status)).length
+  const totalEarned = reports.reduce((sum, report) => sum + report.bountyKes, 0)
+  const openReports = reports.filter(report => ['draft', 'triaged'].includes(report.status)).length
 
   const stats = [
     { label: 'Total Earned', value: formatCurrency(totalEarned), icon: BanknoteArrowDown },
     { label: 'Open Reports', value: openReports, icon: FileText },
-    { label: 'Programs Enrolled', value: mockPrograms.length, icon: ShieldCheck },
+    { label: 'Programs Enrolled', value: programs.length, icon: ShieldCheck },
   ]
 
   return (
@@ -85,8 +97,8 @@ export function BugBountyPage() {
           </div>
         </div>
 
-        <div className={styles.reportList}>
-          {mockReports.map(report => (
+          <div className={styles.reportList}>
+          {reports.map(report => (
             <div key={report.id} className={styles.reportRow}>
               <span className={styles.reportTitle}>{report.title}</span>
               <span className={styles.reportTarget}>{report.target}</span>
@@ -98,7 +110,7 @@ export function BugBountyPage() {
         </div>
       </div>
 
-      {showDraft && <ReportDraftModal draft={mockReportDraft} onClose={() => setShowDraft(false)} />}
+      {showDraft && drafts[0] && <ReportDraftModal draft={drafts[0]} onClose={() => setShowDraft(false)} />}
     </div>
   )
 }

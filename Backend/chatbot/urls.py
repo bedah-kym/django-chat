@@ -34,9 +34,12 @@ urlpatterns = [
     path('api/rooms/<int:room_id>/messages/<int:message_id>/pin/', message_actions.pin_message_to_notes, name='pin-message'),
     path('api/rooms/<int:room_id>/messages/<int:message_id>/reply/', message_actions.reply_to_message, name='reply-message'),
     path('api/rooms/<int:room_id>/messages/<int:message_id>/retry/', message_actions.retry_ai_message, name='retry-message'),
+    path('api/rooms/<int:room_id>/messages/<int:message_id>/feedback/', message_actions.submit_message_feedback, name='message-feedback'),
     path('api/rooms/<int:room_id>/actions/', message_actions.get_action_receipts, name='action-receipts'),
     path('api/rooms/<int:room_id>/documents/upload/', message_actions.upload_document_to_ai, name='upload-document'),
     path('api/rooms/<int:room_id>/documents/quota/', message_actions.get_upload_quota, name='upload-quota'),
+    path('api/rooms/<int:room_id>/attachments/upload/', message_actions.upload_chat_attachment, name='upload-attachment'),
+    path('api/documents/<int:document_id>/status/', message_actions.document_status, name='document-status'),
 
     # Voice API
     path('api/rooms/<int:room_id>/voice/upload/', voice_views.upload_voice_note, name='upload-voice-note'),

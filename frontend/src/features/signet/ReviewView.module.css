@@ -1,0 +1,219 @@
+.view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-inline-size: 0;
+}
+
+/* ---------------- header ---------------- */
+.header {
+  padding: 16px 22px;
+  border-block-end: 1px solid var(--sg-line);
+  background: linear-gradient(180deg, var(--sg-panel) 0%, var(--sg-panel-inset) 100%);
+}
+
+.headTop {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-block-end: 14px;
+}
+
+.titleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.title {
+  font-family: var(--sg-display);
+  font-size: var(--sg-fs-lg);
+  font-weight: 700;
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-hi);
+  margin: 0;
+  line-height: 1;
+}
+.titleAccent {
+  color: var(--sg-signal);
+}
+
+.legend {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  color: var(--sg-text-low);
+  text-align: end;
+}
+
+/* ---------------- stat summary row ---------------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+/* ---------------- card grid ---------------- */
+.scroll {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sg-line-strong) transparent;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 12px;
+}
+
+.empty {
+  padding: 60px;
+  text-align: center;
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-sm);
+  letter-spacing: var(--sg-track-wide);
+  color: var(--sg-text-faint);
+  text-transform: uppercase;
+}
+
+/* ---------------- review card ---------------- */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  animation: sg-row-in 0.35s ease both;
+}
+.cardGate2 {
+  border-color: var(--sg-high);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gateBadge {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  text-transform: uppercase;
+  color: var(--sg-text-mid);
+  background: var(--sg-panel-raised);
+  border: 1px solid var(--sg-line-strong);
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+.gateBadgeHigh {
+  color: var(--sg-high);
+  background: var(--sg-high-soft);
+  border-color: rgba(255, 92, 73, 0.4);
+}
+
+.flagged {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-faint);
+}
+
+.fieldLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  text-transform: uppercase;
+  color: var(--sg-text-low);
+  margin-block-end: 6px;
+}
+
+.verdictRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.verdictMeter {
+  flex: 1;
+}
+
+.target {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-xs);
+  color: var(--sg-text);
+}
+.inlineLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  text-transform: uppercase;
+  color: var(--sg-text-low);
+  margin-inline-end: 8px;
+}
+
+.excerpt {
+  font-family: var(--sg-body);
+  font-size: var(--sg-fs-xs);
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--sg-text);
+  background: var(--sg-panel-inset);
+  border-inline-start: 2px solid var(--sg-line-strong);
+  padding: 8px 11px;
+}
+
+.reason {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  line-height: 1.5;
+  color: var(--sg-text-mid);
+}
+
+.model {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-faint);
+}
+
+/* ---------------- actions ---------------- */
+.actions {
+  display: flex;
+  gap: 6px;
+  margin-block-start: 2px;
+}
+.btn {
+  flex: 1;
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  text-transform: uppercase;
+  padding: 7px 0;
+  background: transparent;
+  border: 1px solid var(--sg-line-strong);
+  border-radius: 2px;
+  color: var(--sg-text-low);
+  cursor: pointer;
+  transition: all var(--transition-fast, 150ms ease);
+}
+.btn:hover {
+  color: var(--sg-text-hi);
+  border-color: var(--sg-text-low);
+  background: var(--sg-panel-raised);
+}
+.btnAmend {
+  color: var(--sg-text-mid);
+}
+.btnApprove {
+  color: var(--sg-live);
+  border-color: rgba(61, 214, 140, 0.4);
+  background: rgba(61, 214, 140, 0.08);
+  font-weight: 700;
+}
+.btnApprove:hover {
+  color: var(--sg-live);
+  border-color: var(--sg-live);
+  background: rgba(61, 214, 140, 0.16);
+}

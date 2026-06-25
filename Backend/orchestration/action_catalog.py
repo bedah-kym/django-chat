@@ -293,6 +293,21 @@ ACTION_CATALOG: List[Dict[str, Any]] = [
         "capability_gate": "allow_travel",
     },
     {
+        "action": "remove_from_itinerary",
+        "aliases": [],
+        "service": "travel",
+        "description": "Remove an item (flight, hotel, bus, transfer, event, or activity) from an itinerary. Use view_itinerary first to get the item's id.",
+        "params": {
+            "item_id": {"type": "string", "required": False, "description": "ID of the itinerary item to remove (get it from view_itinerary)"},
+            "title": {"type": "string", "required": False, "description": "Item name to match if the id is unknown (matches within the active/target itinerary)"},
+            "itinerary_id": {"type": "string", "required": False, "description": "Target itinerary ID. Uses the active itinerary if not specified."},
+        },
+        "return_description": "Confirms which item was removed",
+        "risk_level": "medium",
+        "confirmation_policy": "always",
+        "capability_gate": "allow_travel",
+    },
+    {
         "action": "book_travel_item",
         "aliases": [],
         "service": "travel",

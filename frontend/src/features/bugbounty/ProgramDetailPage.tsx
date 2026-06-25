@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { mockPrograms, mockReportDraft, mockReports } from '@/mocks/bugBounty'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import { ReportDraftModal } from './components/ReportDraftModal'
 import styles from './BugBountyPage.module.css'
@@ -9,10 +9,17 @@ import detailStyles from './ProgramDetailPage.module.css'
 export function ProgramDetailPage() {
   const { programId } = useParams<{ programId: string }>()
   const [showDraft, setShowDraft] = useState(false)
-  const fallbackProgram = mockPrograms[0]
+  const programs = useBugBountyStore((s) => s.programs)
+  const allReports = useBugBountyStore((s) => s.reports)
+  const drafts = useBugBountyStore((s) => s.drafts)
+  const initialize = useBugBountyStore((s) => s.initialize)
+
+  useEffect(() => { initialize() }, [initialize])
+
+  const fallbackProgram = programs[0]
   if (!fallbackProgram) return null
-  const program = mockPrograms.find(item => item.id === programId) ?? fallbackProgram
-  const reports = mockReports.filter(report => report.programId === program.id)
+  const program = programs.find(item => item.id === programId) ?? fallbackProgram
+  const reports = allReports.filter(report => report.programId === program.id)
 
   return (
     <div className={detailStyles.page}>
@@ -57,7 +64,7 @@ export function ProgramDetailPage() {
         ))}
       </div>
 
-      {showDraft && <ReportDraftModal draft={mockReportDraft} onClose={() => setShowDraft(false)} />}
+      {showDraft && drafts[0] && <ReportDraftModal draft={drafts[0]} onClose={() => setShowDraft(false)} />}
     </div>
   )
 }

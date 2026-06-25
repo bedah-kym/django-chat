@@ -52,6 +52,7 @@ _TRAVEL_ACTIONS = {
     'create_itinerary': ItineraryConnector(),
     'view_itinerary': ItineraryConnector(),
     'add_to_itinerary': ItineraryConnector(),
+    'remove_from_itinerary': ItineraryConnector(),
     'book_travel_item': ItineraryConnector(),
 }
 

@@ -36,7 +36,7 @@ export interface DomainWorkspaceContent {
 }
 
 export const mockDomainWorkspaces: Partial<Record<DomainId, DomainWorkspaceContent>> = {
-  social: {
+  signet: {
     eyebrow: 'Social command',
     title: 'Campaign flow stays in motion.',
     description:
