@@ -1,6 +1,10 @@
 import os
+import logging
 from celery import Celery
 from pathlib import Path
+from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 # === LOAD .ENV BEFORE ANYTHING ===
 try:
@@ -16,7 +20,12 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Backend.settings')
 
 # === CREATE CELERY APP WITH EXPLICIT BROKER ===
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-print(f"Celery.py DEBUG: Using broker = {REDIS_URL}")
+parsed_broker = urlparse(REDIS_URL)
+logger.debug(
+    "Celery broker configured: %s://%s",
+    parsed_broker.scheme or "unknown",
+    parsed_broker.hostname or "unknown",
+)
 
 app = Celery('Backend', broker=REDIS_URL, backend='django-db')
 
