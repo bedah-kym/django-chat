@@ -170,7 +170,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const socket = getChatSocket()
     if (socket.isConnected()) {
       const pendingId = -(Date.now())
-      const username = useAuthStore.getState().username || 'alex'
+      const username = useAuthStore.getState().username || ''
       const msg: Message = {
         id: pendingId,
         member: username,

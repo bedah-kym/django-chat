@@ -51,8 +51,8 @@ export async function apiRequest<T = unknown>(
     credentials: 'include',
   })
 
-  if (res.status === 401) {
-    authToken = null
+  if (res.status === 401 || res.status === 403) {
+    setAuthToken(null)
     throw new Error('Unauthorized')
   }
 
@@ -82,12 +82,12 @@ export async function accountsRequest<T = unknown>(
   })
 
   if (res.status === 302 || res.redirected) {
-    authToken = null
+    setAuthToken(null)
     throw new Error('Unauthorized — redirect to login')
   }
 
-  if (res.status === 401) {
-    authToken = null
+  if (res.status === 401 || res.status === 403) {
+    setAuthToken(null)
     throw new Error('Unauthorized')
   }
 
@@ -123,11 +123,11 @@ export async function chatbotApiRequest<T = unknown>(
   })
 
   if (res.status === 302 || res.redirected) {
-    authToken = null
+    setAuthToken(null)
     throw new Error('Unauthorized — redirect to login')
   }
-  if (res.status === 401) {
-    authToken = null
+  if (res.status === 401 || res.status === 403) {
+    setAuthToken(null)
     throw new Error('Unauthorized')
   }
   if (res.status === 204) {

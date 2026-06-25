@@ -7,6 +7,7 @@ from .models import MathiaReply
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.models import Token
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from users.models import CalendlyProfile
@@ -309,6 +310,7 @@ def get_current_user(request):
     """Return the current authenticated user's profile."""
     user = request.user
     profile = getattr(user, 'profile', None)
+    token, _ = Token.objects.get_or_create(user=user)
     response_data = {
         'id': user.id,
         'username': user.username,
@@ -316,6 +318,7 @@ def get_current_user(request):
         'first_name': user.first_name,
         'last_name': user.last_name,
         'date_joined': user.date_joined.isoformat(),
+        'auth_token': token.key,
     }
     if profile:
         response_data.update({

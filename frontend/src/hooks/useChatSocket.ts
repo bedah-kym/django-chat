@@ -184,7 +184,7 @@ export function useChatSocket(roomId: number): ChatSocketState {
       }
     })
 
-    const username = useAuthStore.getState().username || 'alex'
+    const username = useAuthStore.getState().username || ''
     socket.connect(roomId, username)
 
     return () => {

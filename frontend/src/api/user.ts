@@ -7,6 +7,7 @@ export interface CurrentUserResponse {
   first_name: string
   last_name: string
   date_joined: string
+  auth_token?: string
   bio?: string
   location?: string
   website?: string

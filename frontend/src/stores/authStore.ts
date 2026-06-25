@@ -32,6 +32,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isAuthenticated: true, username, isLoading: false })
       try {
         const user = await fetchCurrentUser()
+        if (user.auth_token) setAuthToken(user.auth_token)
         set({
           username: user.username,
           email: user.email,
@@ -62,6 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null })
     try {
       const user = await fetchCurrentUser()
+      if (user.auth_token) setAuthToken(user.auth_token)
       set({
         isAuthenticated: true,
         username: user.username,
@@ -72,6 +74,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Profile unavailable', isLoading: false })
+      throw err
     }
   },
 }))
@@ -80,8 +83,17 @@ export const useAuthStore = create<AuthState>((set) => ({
 let authReadyPromise: Promise<void> | null = null
 
 export function ensureAuth(): Promise<void> {
-  if (getAuthToken()) return Promise.resolve()
-  if (!import.meta.env.DEV) return Promise.resolve()
+  if (getAuthToken()) {
+    return useAuthStore.getState().fetchUserProfile().catch(() => {})
+  }
+
+  if (!import.meta.env.DEV) {
+    return useAuthStore.getState().fetchUserProfile().catch((err) => {
+      const next = `${window.location.pathname}${window.location.search}`
+      window.location.assign(`/accounts/login/?next=${encodeURIComponent(next)}`)
+      throw err
+    })
+  }
 
   if (!authReadyPromise) {
     authReadyPromise = useAuthStore.getState().login('alex', 'mathia123').catch(() => {})

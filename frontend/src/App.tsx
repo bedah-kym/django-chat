@@ -45,9 +45,18 @@ function LazyPage({ children }: { children: React.ReactNode }) {
 
 export function App() {
   useEffect(() => {
+    let cancelled = false
     ensureAuth()
-    useChatStore.getState().initialize()
-    useNotificationStore.getState().initialize()
+      .then(() => {
+        if (cancelled) return
+        useChatStore.getState().initialize()
+        useNotificationStore.getState().initialize()
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (
