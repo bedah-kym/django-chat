@@ -10,6 +10,7 @@ from .models import (
     SignetNarrative, SignetEdge,
     CollectedPost, PostClassification, CollectionSession,
 )
+from .coordination import compute_coordination
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ def project_session(session: CollectionSession) -> dict:
         return {
             'accounts_upserted': 0, 'hashtags_upserted': 0,
             'activities_created': 0, 'narratives_upserted': 0, 'edges_upserted': 0,
+            'coordination_edges_upserted': 0, 'clusters_upserted': 0,
         }
 
     # ── Session post IDs: alerts are session-scoped (this run's new finds),
@@ -87,6 +89,9 @@ def project_session(session: CollectionSession) -> dict:
     desired_accounts: dict[str, dict] = {}
     alert_texts: list[str] = []
     novel_texts: list[str] = []
+    # Coordination tags are deferred — the graph is the judge (Chunk 1).
+    # Keyed by handle → list of (tag, confidence, excerpt).
+    coord_data: dict[str, list[tuple[str, float, str]]] = {}
 
     for handle, clist in author_data.items():
         posts_count = post_counts.get(handle, 0)
@@ -108,15 +113,15 @@ def project_session(session: CollectionSession) -> dict:
             'tags': tags,
         }
 
-        # Coordination alerts — session-scoped, text kept byte-identical for dedup
+        # Collect coordination tag hits — deferred to graph-level judgement
         for c in clist:
             if c.post_id not in session_post_ids:
                 continue
             for t_obj in c.tags:
                 tag = t_obj.get('tag', '')
                 if tag in ('coordinated_inauthentic', 'astroturfing') and float(t_obj.get('confidence', 0)) >= 0.80:
-                    alert_texts.append(
-                        f'[ALERT] {handle}: {tag} (confidence {t_obj["confidence"]}) on {c.post.content_text[:100]}'
+                    coord_data.setdefault(handle, []).append(
+                        (tag, float(t_obj['confidence']), c.post.content_text[:100])
                     )
 
     # ── Novelty alerts (session-scoped, from the windowed rows) ──
@@ -196,6 +201,32 @@ def project_session(session: CollectionSession) -> dict:
                 to_update_accts, ['tier', 'posts', 'confidence', 'tags', 'last_scanned_at'],
             )
         accounts_upserted = len(to_create_accts) + len(to_update_accts)
+
+        # ── Coordination graph layer (Chunk 1) ──
+        # Runs after account upsert so SignetAccount rows exist for the edge FK targets.
+        coord_result = compute_coordination(user, window_start, now)
+        clusters_upserted = coord_result['clusters_upserted']
+        coordination_edges_upserted = coord_result.get('edges_upserted', 0)
+        account_cluster_scores: dict[int, list[float]] = coord_result.get('account_cluster_scores', {})
+
+        # Resolve deferred coordination alerts: [ALERT] for accounts in clusters,
+        # [COORD_TAG] for lone posts with no graph corroboration.
+        acct_ids_lookup = dict(SignetAccount.objects.filter(user=user).values_list('handle', 'id'))
+        for handle, hits in coord_data.items():
+            acct_pk = acct_ids_lookup.get(handle)
+            in_cluster = acct_pk is not None and acct_pk in account_cluster_scores
+            for tag, conf, excerpt in hits:
+                if in_cluster:
+                    alert_texts.append(
+                        f'[ALERT] {handle}: {tag} (confidence {conf}, '
+                        f'graph corroborated — cluster score {max(account_cluster_scores[acct_pk]):.2f}) '
+                        f'on {excerpt}'
+                    )
+                else:
+                    alert_texts.append(
+                        f'[COORD_TAG] {handle}: {tag} (confidence {conf}) '
+                        f'on {excerpt} — no graph corroboration'
+                    )
 
         # Activities (batched dedup on exact text)
         activities_created = 0
@@ -308,4 +339,6 @@ def project_session(session: CollectionSession) -> dict:
         'activities_created': activities_created,
         'narratives_upserted': narratives_upserted,
         'edges_upserted': edges_upserted,
+        'coordination_edges_upserted': coordination_edges_upserted,
+        'clusters_upserted': clusters_upserted,
     }

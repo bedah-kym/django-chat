@@ -307,6 +307,12 @@ REDDIT_PASSWORD = os.environ.get('REDDIT_PASSWORD', '')
 SIGNET_PROJECTION_WINDOW_DAYS = int(os.environ.get('SIGNET_PROJECTION_WINDOW_DAYS', '3'))
 SIGNET_PROJECT_DEBOUNCE_SECONDS = int(os.environ.get('SIGNET_PROJECT_DEBOUNCE_SECONDS', '120'))
 
+# ── SIGNET Coordination layer (Chunk 1) ──────────────────────────────
+SIGNET_COORD_T_MINUTES = int(os.environ.get('SIGNET_COORD_T_MINUTES', '15'))
+SIGNET_COORD_JACCARD_THRESHOLD = float(os.environ.get('SIGNET_COORD_JACCARD_THRESHOLD', '0.6'))
+SIGNET_COORD_MIN_CLUSTER_SIZE = int(os.environ.get('SIGNET_COORD_MIN_CLUSTER_SIZE', '3'))
+SIGNET_COORD_MIN_CLUSTER_SCORE = float(os.environ.get('SIGNET_COORD_MIN_CLUSTER_SCORE', '0.5'))
+
 # LLM cost guards
 LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', 700))  # hard ceiling per call
 LLM_PROMPT_CHAR_LIMIT = int(os.environ.get('LLM_PROMPT_CHAR_LIMIT', 4000))  # truncate user prompt to this many chars

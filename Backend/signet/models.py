@@ -104,6 +104,36 @@ class SignetEdge(models.Model):
         return f'{self.source_type}:{self.source_id} --{self.edge_type}--> {self.target_type}:{self.target_id}'
 
 
+class SignetCoordinationCluster(models.Model):
+    """Read-model for coordination graph layer (Chunk 1).
+
+    Mirrors the SignetNarrative upsert pattern: bulk upsert + prune-not-in-window.
+    Each row represents one candidate coordinated network of accounts.
+    """
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('decaying', 'Decaying'),
+        ('resolved', 'Resolved'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='signet_coordination_clusters')
+    label = models.CharField(max_length=200)
+    account_ids = models.JSONField(default=list, blank=True)
+    axes = models.JSONField(default=list, blank=True)
+    score = models.FloatField(default=0.0)
+    size = models.IntegerField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-score']
+        unique_together = [('user', 'label')]
+
+    def __str__(self):
+        return f'{self.label} (score={self.score:.2f}, size={self.size})'
+
+
 class SignetActivity(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='signet_activities')
     text = models.TextField()
