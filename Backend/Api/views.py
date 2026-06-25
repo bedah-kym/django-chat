@@ -10,6 +10,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
+from django.db.models import Max
+from django.urls import reverse
 from users.models import CalendlyProfile
 from django.contrib.auth import get_user_model
 from urllib.parse import quote
@@ -17,6 +20,18 @@ import requests
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _room_display_name(room, members, current_user):
+    other_members = [m for m in members if m.User_id != current_user.id]
+    if not other_members:
+        return room.name or "Personal room"
+    if len(other_members) == 1:
+        return other_members[0].User.username
+    display = ", ".join([m.User.username for m in other_members[:2]])
+    if len(other_members) > 2:
+        display += f" +{len(other_members) - 2}"
+    return display
 
 
 @api_view(['POST'])
@@ -339,6 +354,34 @@ def get_current_user(request):
     return Response(response_data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_rooms(request):
+    rooms_qs = (
+        Chatroom.objects.filter(participants__User=request.user)
+        .annotate(last_message_at=Max('chats__timestamp'))
+        .prefetch_related('participants__User')
+        .order_by('-last_message_at', '-id')
+    )
+
+    rooms_payload = []
+    for room in rooms_qs:
+        members = list(room.participants.all())
+        rooms_payload.append({
+            'id': room.id,
+            'name': room.name or _room_display_name(room, members, request.user),
+            'domain': room.domain or 'ops',
+            'participant_count': len(members),
+            'last_message_at': room.last_message_at.isoformat() if room.last_message_at else None,
+            'url': request.build_absolute_uri(
+                reverse('chatbot:bot-home', kwargs={'room_name': room.id})
+            ),
+            'has_ai': any(m.User.username == 'mathia' for m in members),
+        })
+
+    return Response({'rooms': rooms_payload, 'count': len(rooms_payload)})
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_room(request):
@@ -358,6 +401,7 @@ def create_room(request):
     room.name = name
     room.domain = domain
     room.save()
+    cache.delete(f"user_rooms:{request.user.id}")
 
     # "general" rooms include the Mathia bot so the AI auto-replies; "private"
     # rooms are solo (or human-only after invites) and require @mathia.

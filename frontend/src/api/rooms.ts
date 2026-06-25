@@ -1,4 +1,4 @@
-import { apiRequest, accountsRequest } from './client'
+import { apiRequest } from './client'
 import type { Room, Message } from '@/types/chat'
 
 interface RoomListResponse {
@@ -50,7 +50,7 @@ function mapMessage(m: MessageResponse, id: number): Message {
 }
 
 export async function fetchRooms(): Promise<Room[]> {
-  const data = await accountsRequest<RoomListResponse>('/rooms/list/?refresh=1')
+  const data = await apiRequest<RoomListResponse>('/rooms/list/')
   return data.rooms.map(mapRoom)
 }
 
