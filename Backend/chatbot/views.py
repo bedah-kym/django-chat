@@ -57,7 +57,6 @@ def _is_ai_only_room_members(members):
     return has_mathia and len(human_members) == 1
 
 
-@login_required
 def home(request, room_name):
     return redirect(f"/app/ops/chat/{room_name}")
 
