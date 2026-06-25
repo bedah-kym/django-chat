@@ -13,9 +13,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,200..900,0..100,0..1;1,9..144,200..900,0..100,0..1&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <script>
-      fetch("/auth/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:"alex",password:"mathia123"})}).then(r=>r.json()).then(d=>{localStorage.setItem("mathia-auth-token",d.token)})
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
