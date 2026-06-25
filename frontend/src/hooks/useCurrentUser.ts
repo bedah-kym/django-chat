@@ -13,11 +13,16 @@ export function useCurrentUser() {
 
   useEffect(() => {
     if (!isAuthenticated && import.meta.env.DEV) {
-      login('alex', 'mathia123').catch(() => {})
-    } else if (!displayName) {
-      fetchUserProfile()
+      login('alex', 'mathia123').catch(() => {
+        fetchUserProfile().catch(() => {})
+      })
+      return
     }
-  }, [])
+
+    if (!displayName) {
+      fetchUserProfile().catch(() => {})
+    }
+  }, [displayName, fetchUserProfile, isAuthenticated, login])
 
   return {
     isAuthenticated,

@@ -59,15 +59,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   fetchUserProfile: async () => {
+    set({ isLoading: true, error: null })
     try {
       const user = await fetchCurrentUser()
       set({
+        isAuthenticated: true,
         username: user.username,
         email: user.email,
         displayName: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username,
         avatarUrl: user.avatar ?? null,
+        isLoading: false,
       })
-    } catch {
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Profile unavailable', isLoading: false })
     }
   },
 }))
