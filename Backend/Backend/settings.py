@@ -395,9 +395,6 @@ if R2_ENABLED:
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / 'chatbot/static',
-]
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 LOGIN_REDIRECT_URL = 'users:dashboard'
