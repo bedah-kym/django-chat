@@ -3,6 +3,13 @@ const TOKEN_KEY = 'mathia-auth-token'
 
 let authToken: string | null = localStorage.getItem(TOKEN_KEY)
 
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length !== 2) return null
+  return parts.pop()?.split(';').shift() || null
+}
+
 function persistToken(token: string | null) {
   if (token) {
     localStorage.setItem(TOKEN_KEY, token)
@@ -36,6 +43,7 @@ export async function apiRequest<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
@@ -43,6 +51,12 @@ export async function apiRequest<T = unknown>(
 
   if (authToken) {
     headers['Authorization'] = `Token ${authToken}`
+  }
+  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method) && !headers['X-CSRFToken']) {
+    const csrfToken = getCookie('csrftoken')
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken
+    }
   }
 
   const res = await fetch(`${BASE_URL}${path}`, {

@@ -42,9 +42,9 @@ def project_session(session: CollectionSession) -> dict:
         PostClassification.objects
         .filter(
             user=user,
-            review_status__in=('auto_eligible', 'approved'),
             post__posted_at__gte=window_start,
         )
+        .filter(Q(review_status__in=('auto_eligible', 'approved')) | Q(tags=[]))
         .exclude(safety_excluded=True)
         .select_related('post')
         .order_by('post_id', '-created_at')
