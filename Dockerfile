@@ -1,3 +1,14 @@
+FROM node:22-slim AS frontend-builder
+
+WORKDIR /app
+
+COPY frontend/package*.json /app/frontend/
+WORKDIR /app/frontend
+RUN npm ci --legacy-peer-deps
+
+COPY frontend /app/frontend
+RUN npm run build
+
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
@@ -30,6 +41,7 @@ RUN pip install --upgrade pip && \
 
 # Copy project files
 COPY . /app/
+COPY --from=frontend-builder /app/Backend/chatbot/static/spa /app/Backend/chatbot/static/spa
 
 # Own the app directory
 RUN chown -R django:django /app

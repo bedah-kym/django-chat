@@ -169,6 +169,7 @@ frontend/.env.*.local
 
 # Vite build output in Django staticfiles
 Backend/staticfiles/spa/
+Backend/chatbot/static/spa/
 
 # Local dev/session artifacts — secrets, logs, locks (never commit) #
 *-token.txt

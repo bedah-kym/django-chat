@@ -36,7 +36,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Er
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
-    <BrowserRouter basename="/static/spa">
+    <BrowserRouter>
       <App />
     </BrowserRouter>
   </ErrorBoundary>,

@@ -14,7 +14,7 @@ export default defineConfig({
   },
   base: '/static/spa/',
   build: {
-    outDir: '../Backend/staticfiles/spa',
+    outDir: '../Backend/chatbot/static/spa',
     emptyOutDir: true,
     rollupOptions: {
       output: {
