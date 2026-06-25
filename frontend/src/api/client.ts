@@ -53,14 +53,17 @@ export async function apiRequest<T = unknown>(
 
   if (res.status === 401 || res.status === 403) {
     setAuthToken(null)
-    throw new Error('Unauthorized')
+    const text = await res.text()
+    throw new Error(text || 'Unauthorized')
   }
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`)
+    const text = await res.text()
+    throw new Error(text || `API error: ${res.status} ${res.statusText}`)
   }
 
-  return res.json()
+  const text = await res.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 export async function accountsRequest<T = unknown>(

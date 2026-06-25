@@ -73,6 +73,16 @@ interface ReviewResponse {
   }
 }
 
+export interface SignetCollectionStatus {
+  is_collecting: boolean
+  session_id: number | null
+  counts: {
+    posts_collected: number
+    posts_tagged: number
+    accounts: number
+  }
+}
+
 function nodeId(type: string, pk: number): string {
   const prefix = type === 'account' ? 'acc' : type === 'narrative' ? 'nar' : 'tag'
   return `${prefix}_${pk}`
@@ -179,6 +189,24 @@ export async function decideReview(
 export async function muteAccount(accountId: number) {
   return apiRequest(`/signet/accounts/${accountId}/mute/`, {
     method: 'POST',
+  })
+}
+
+export async function fetchCollectionStatus(): Promise<SignetCollectionStatus> {
+  return apiRequest<SignetCollectionStatus>('/signet/collection/status/')
+}
+
+export async function startCollection() {
+  return apiRequest<{ status: string; session_id: number }>('/signet/collection/start/', {
+    method: 'POST',
+    body: JSON.stringify({ subreddits: ['Kenya'], limit: 25 }),
+  })
+}
+
+export async function stopCollection(sessionId?: number | null) {
+  return apiRequest<{ status: string; session_id?: number }>('/signet/collection/stop/', {
+    method: 'POST',
+    body: JSON.stringify(sessionId ? { session_id: sessionId } : {}),
   })
 }
 

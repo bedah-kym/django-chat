@@ -123,6 +123,53 @@
   text-transform: uppercase;
 }
 
+.idleLabel {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  color: var(--sg-text-low);
+  text-transform: uppercase;
+}
+
+.startButton,
+.stopButton {
+  border-radius: var(--sg-radius);
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  padding: 4px 10px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast, 150ms ease),
+    border-color var(--transition-fast, 150ms ease),
+    color var(--transition-fast, 150ms ease),
+    opacity var(--transition-fast, 150ms ease);
+}
+
+.startButton {
+  background: rgba(61, 214, 140, 0.13);
+  border: 1px solid rgba(76, 255, 168, 0.42);
+  color: var(--sg-live);
+}
+
+.stopButton {
+  background: transparent;
+  border: 1px solid rgba(255, 92, 73, 0.45);
+  color: var(--sg-high);
+}
+
+.startButton:hover:not(:disabled),
+.stopButton:hover:not(:disabled) {
+  border-color: currentColor;
+}
+
+.startButton:disabled,
+.stopButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .counts {
   font-family: var(--sg-mono);
   font-size: var(--sg-fs-2xs);

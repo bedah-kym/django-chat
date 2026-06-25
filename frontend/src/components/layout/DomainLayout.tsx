@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { PresenceDot } from '@/features/chat/components/PresenceDot'
 import { MathiaAvatar } from '@/components/ui/MathiaAvatar'
 import { apiRequest } from '@/api/client'
+import { ensureAuth } from '@/stores/authStore'
 import type { DomainId } from '@/types/domain'
 import styles from './DomainLayout.module.css'
 
@@ -43,6 +44,7 @@ export function DomainLayout({ domainId }: Props) {
     if (!newRoomName.trim()) return
     setCreating(true)
     try {
+      await ensureAuth()
       const roomData = await apiRequest<{
         id: number
         name: string
@@ -74,9 +76,11 @@ export function DomainLayout({ domainId }: Props) {
       setNewRoomName('')
       setNewRoomType('general')
       setShowCreate(false)
+      void useChatStore.getState().initialize()
       toast.success(newRoomType === 'general' ? 'Room created with Mathia' : 'Private room created')
-    } catch {
-      toast.error('Failed to create room')
+    } catch (err) {
+      console.error('Failed to create room', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to create room')
     } finally {
       setCreating(false)
     }
