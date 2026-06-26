@@ -240,7 +240,7 @@ export function GraphView({ selected, setSelected, filters, setFilters, search, 
         <svg ref={svgRef} className={s.svg} width="100%" height="100%" />
         {hovered && (
           <div className={s.tooltip}>
-            {hovered.type === 'account' && `${hovered.handle} · ${hovered.tier?.toUpperCase()} · ${hovered.followers?.toLocaleString()} followers`}
+            {hovered.type === 'account' && `${hovered.handle} · ${hovered.tier?.toUpperCase()} · REACH ${hovered.followers?.toLocaleString()}`}
             {hovered.type === 'narrative' && `${hovered.label} · REACH ${hovered.reach?.toLocaleString()} · ${hovered.status?.toUpperCase()}`}
             {hovered.type === 'hashtag' && `${hovered.label} · ${hovered.volume?.toLocaleString()} posts · ${hovered.velocity?.toUpperCase()}`}
           </div>

@@ -5,6 +5,32 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def create_post_classification_trigger(apps, schema_editor):
+    if schema_editor.connection.vendor != 'postgresql':
+        return
+    schema_editor.execute("""
+        CREATE OR REPLACE FUNCTION block_post_classification_update()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            RAISE EXCEPTION 'PostClassification is immutable. Create a new versioned row instead of updating. id=%', OLD.id;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        CREATE TRIGGER post_classification_immutable_trigger
+        BEFORE UPDATE ON signet_postclassification
+        FOR EACH ROW EXECUTE FUNCTION block_post_classification_update();
+    """)
+
+
+def drop_post_classification_trigger(apps, schema_editor):
+    if schema_editor.connection.vendor != 'postgresql':
+        return
+    schema_editor.execute("""
+        DROP TRIGGER IF EXISTS post_classification_immutable_trigger ON signet_postclassification;
+        DROP FUNCTION IF EXISTS block_post_classification_update();
+    """)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -35,22 +61,5 @@ class Migration(migrations.Migration):
                 'indexes': [models.Index(fields=['post'], name='signet_post_post_id_fd74ae_idx'), models.Index(fields=['review_status'], name='signet_post_review__7e5818_idx'), models.Index(fields=['confidence_tier'], name='signet_post_confide_b5e651_idx')],
             },
         ),
-        migrations.RunSQL(
-            sql="""
-                CREATE OR REPLACE FUNCTION block_post_classification_update()
-                RETURNS TRIGGER AS $$
-                BEGIN
-                    RAISE EXCEPTION 'PostClassification is immutable. Create a new versioned row instead of updating. id=%', OLD.id;
-                END;
-                $$ LANGUAGE plpgsql;
-
-                CREATE TRIGGER post_classification_immutable_trigger
-                BEFORE UPDATE ON signet_postclassification
-                FOR EACH ROW EXECUTE FUNCTION block_post_classification_update();
-            """,
-            reverse_sql="""
-                DROP TRIGGER IF EXISTS post_classification_immutable_trigger ON signet_postclassification;
-                DROP FUNCTION IF EXISTS block_post_classification_update();
-            """,
-        ),
+        migrations.RunPython(create_post_classification_trigger, drop_post_classification_trigger),
     ]

@@ -5,6 +5,32 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def create_ingestion_record_trigger(apps, schema_editor):
+    if schema_editor.connection.vendor != 'postgresql':
+        return
+    schema_editor.execute("""
+        CREATE OR REPLACE FUNCTION block_ingestion_record_update()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            RAISE EXCEPTION 'IngestionRecord is immutable and cannot be updated. id=%', OLD.id;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        CREATE TRIGGER ingestion_record_immutable_trigger
+        BEFORE UPDATE ON signet_ingestionrecord
+        FOR EACH ROW EXECUTE FUNCTION block_ingestion_record_update();
+    """)
+
+
+def drop_ingestion_record_trigger(apps, schema_editor):
+    if schema_editor.connection.vendor != 'postgresql':
+        return
+    schema_editor.execute("""
+        DROP TRIGGER IF EXISTS ingestion_record_immutable_trigger ON signet_ingestionrecord;
+        DROP FUNCTION IF EXISTS block_ingestion_record_update();
+    """)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -82,22 +108,5 @@ class Migration(migrations.Migration):
                 'unique_together': {('platform', 'platform_post_id')},
             },
         ),
-        migrations.RunSQL(
-            sql="""
-                CREATE OR REPLACE FUNCTION block_ingestion_record_update()
-                RETURNS TRIGGER AS $$
-                BEGIN
-                    RAISE EXCEPTION 'IngestionRecord is immutable and cannot be updated. id=%', OLD.id;
-                END;
-                $$ LANGUAGE plpgsql;
-
-                CREATE TRIGGER ingestion_record_immutable_trigger
-                BEFORE UPDATE ON signet_ingestionrecord
-                FOR EACH ROW EXECUTE FUNCTION block_ingestion_record_update();
-            """,
-            reverse_sql="""
-                DROP TRIGGER IF EXISTS ingestion_record_immutable_trigger ON signet_ingestionrecord;
-                DROP FUNCTION IF EXISTS block_ingestion_record_update();
-            """,
-        ),
+        migrations.RunPython(create_ingestion_record_trigger, drop_ingestion_record_trigger),
     ]

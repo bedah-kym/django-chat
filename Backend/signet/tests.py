@@ -1,13 +1,23 @@
-from datetime import timedelta
+import asyncio
+import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
+from rest_framework.test import APIRequestFactory, force_authenticate
 
+if 'praw' not in sys.modules:
+    praw_stub = ModuleType('praw')
+    praw_stub.Reddit = object
+    sys.modules['praw'] = praw_stub
+
+from .collectors.telegram_collector import TelegramCollector
 from .coordination import compute_coordination
 from .models import (
     CollectionSession,
@@ -18,11 +28,277 @@ from .models import (
     SignetCoordinationCluster,
     SignetEdge,
 )
+from .payload import normalize_telegram_message
 from .projector import project_session
+from .views import collection_start
 from .eval.dataset_loaders import EIPLoader, PesaCheckLoader, StanfordIOLoader
 
 
 User = get_user_model()
+
+
+def _telegram_message(
+    *,
+    message_id=42,
+    text='Live update #Kenya from @source https://example.com/item',
+    chat=None,
+    sender=None,
+    views=1200,
+    forwards=5,
+    comments=7,
+    reply_to_message_id=41,
+):
+    chat = chat or SimpleNamespace(id=-100123, title='Kenya News', username='kenyanews')
+    sender = sender or chat
+    return SimpleNamespace(
+        id=message_id,
+        message_id=message_id,
+        text=text,
+        caption=None,
+        chat=chat,
+        from_user=None,
+        sender_chat=sender,
+        date=datetime(2026, 6, 26, 9, 30, 0),
+        forwards=forwards,
+        views=views,
+        replies=SimpleNamespace(replies=comments),
+        reply_to_message_id=reply_to_message_id,
+        forward_from_chat=SimpleNamespace(id=-100555, title='Forward Source', username='forwardsrc'),
+        forward_from=None,
+    )
+
+
+class _FakeTelegramClient:
+    def __init__(self, messages):
+        self.messages = messages
+        self.calls = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    def get_chat_history(self, channel, limit=50):
+        self.calls.append((channel, limit))
+
+        async def _items():
+            for message in self.messages[:limit]:
+                yield message
+
+        return _items()
+
+
+class TelegramPayloadTests(TestCase):
+    def test_normalize_telegram_message_maps_identity_engagement_and_flags(self):
+        payload = normalize_telegram_message(_telegram_message())
+
+        self.assertEqual(payload.platform, 'telegram')
+        self.assertEqual(payload.platform_post_id, '-100123:42')
+        self.assertEqual(payload.platform_author_id, '-100123')
+        self.assertEqual(payload.author_handle, 'tg:@kenyanews')
+        self.assertEqual(payload.content_text, 'Live update #Kenya from @source https://example.com/item')
+        self.assertEqual(payload.posted_at, '2026-06-26T09:30:00+00:00')
+        self.assertEqual(payload.shares, 5)
+        self.assertEqual(payload.comments, 7)
+        self.assertEqual(payload.views, 1200)
+        self.assertEqual(payload.reach, 1200)
+        self.assertEqual(payload.hashtags, ['Kenya'])
+        self.assertEqual(payload.mentions, ['source'])
+        self.assertEqual(payload.urls, ['https://example.com/item'])
+        self.assertEqual(payload.media_type, 'text')
+        self.assertTrue(payload.is_reply)
+        self.assertTrue(payload.is_repost)
+        self.assertEqual(payload.parent_post_id, '41')
+
+
+@override_settings(
+    TELEGRAM_DEFAULT_CHANNELS=['@kenyanews'],
+    TELEGRAM_API_ID='1',
+    TELEGRAM_API_HASH='hash',
+    TELEGRAM_SESSION_STRING='session',
+    TELEGRAM_BOT_TOKEN='',
+)
+class TelegramCollectorBoundaryTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='tg_collector_user', password='x')
+        self.session = CollectionSession.objects.create(
+            user=self.user,
+            platform='telegram',
+            config={'channels': ['@kenyanews'], 'limit': 10},
+        )
+
+    def test_collect_stores_messages_only_after_async_fetch_finishes(self):
+        message = _telegram_message()
+        client = _FakeTelegramClient([message])
+        collector = TelegramCollector(self.session)
+        stored_ids = []
+
+        def store_message_from_sync_context(stored_message):
+            with self.assertRaises(RuntimeError):
+                asyncio.get_running_loop()
+            stored_ids.append(stored_message.id)
+            return True
+
+        with (
+            patch.object(collector, '_client', return_value=client),
+            patch.object(collector, '_store_message', side_effect=store_message_from_sync_context) as store,
+        ):
+            collected = collector.collect()
+
+        self.assertEqual(collected, 1)
+        self.assertEqual(stored_ids, [42])
+        self.assertEqual(client.calls, [('@kenyanews', 10)])
+        store.assert_called_once_with(message)
+
+
+@override_settings(
+    SIGNET_PROJECTION_WINDOW_DAYS=3,
+    SIGNET_COORD_T_MINUTES=15,
+    SIGNET_COORD_JACCARD_THRESHOLD=0.6,
+    SIGNET_COORD_MIN_CLUSTER_SIZE=3,
+    SIGNET_COORD_MIN_CLUSTER_SCORE=0.5,
+)
+class ProjectorReachTierTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='reach_user', password='x')
+        self.session = CollectionSession.objects.create(user=self.user, platform='telegram')
+        self.now = timezone.now()
+
+    def _post(
+        self,
+        handle: str,
+        index: int,
+        *,
+        platform='telegram',
+        views=None,
+        likes=None,
+        comments=None,
+        shares=None,
+    ) -> CollectedPost:
+        return CollectedPost.objects.create(
+            user=self.user,
+            session=self.session,
+            platform=platform,
+            platform_post_id=f'{handle}-{index}',
+            platform_author_id=f'{handle}-id',
+            author_handle=handle,
+            content_text=f'post {index} from {handle}',
+            posted_at=self.now - timedelta(minutes=index),
+            collected_at=self.now,
+            likes=likes,
+            shares=shares,
+            comments=comments,
+            views=views,
+            reach=views,
+            hashtags=[],
+            urls=[],
+        )
+
+    def _classification(self, post: CollectedPost):
+        return PostClassification.objects.create(
+            user=self.user,
+            session=self.session,
+            post=post,
+            tags=[],
+            overall_confidence=0.0,
+            prompt_version='test/post_tagger',
+            model_version='test-model',
+            raw_llm_response={},
+            review_status='auto_eligible',
+        )
+
+    def test_projector_sets_reach_proxy_and_tiers_from_engagement(self):
+        for i in range(5):
+            self._classification(self._post('tg:@macro', i, views=4000))
+        for i in range(2):
+            self._classification(self._post('tg:@mid', i, views=500))
+        for i in range(2):
+            self._classification(
+                self._post('reddit_micro', i, platform='reddit', likes=5, comments=2, shares=1)
+            )
+
+        result = project_session(self.session)
+
+        self.assertEqual(result['accounts_upserted'], 3)
+        accounts = {
+            account.handle: account
+            for account in SignetAccount.objects.filter(user=self.user)
+        }
+        self.assertEqual(accounts['tg:@macro'].platform, 'telegram')
+        self.assertEqual(accounts['tg:@macro'].followers, 20000)
+        self.assertEqual(accounts['tg:@macro'].posts, 5)
+        self.assertEqual(accounts['tg:@macro'].tier, 'macro')
+        self.assertEqual(accounts['tg:@mid'].followers, 1000)
+        self.assertEqual(accounts['tg:@mid'].tier, 'mid')
+        self.assertEqual(accounts['reddit_micro'].platform, 'reddit')
+        self.assertEqual(accounts['reddit_micro'].followers, 16)
+        self.assertEqual(accounts['reddit_micro'].tier, 'micro')
+
+
+@override_settings(
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+    REST_FRAMEWORK={'DEFAULT_THROTTLE_CLASSES': []},
+)
+class CollectionStartRoutingTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='route_user', password='x')
+        self.factory = APIRequestFactory()
+
+    def _request(self, data):
+        request = self.factory.post('/signet/collection/start/', data, format='json')
+        force_authenticate(request, user=self.user)
+        return collection_start(request)
+
+    def test_collection_start_defaults_to_reddit_and_preserves_default_subreddit(self):
+        with (
+            patch('signet.tasks.collect_reddit_task.delay') as reddit_delay,
+            patch('signet.tasks.collect_telegram_task.delay') as telegram_delay,
+        ):
+            response = self._request({})
+
+        self.assertEqual(response.status_code, 200)
+        session = CollectionSession.objects.get(id=response.data['session_id'])
+        self.assertEqual(session.platform, 'reddit')
+        self.assertEqual(session.config, {'subreddits': ['Kenya'], 'limit': 25})
+        reddit_delay.assert_called_once_with(session.id)
+        telegram_delay.assert_not_called()
+
+    @override_settings(TELEGRAM_DEFAULT_CHANNELS=[])
+    def test_collection_start_rejects_telegram_without_channels(self):
+        with (
+            patch('signet.tasks.collect_reddit_task.delay') as reddit_delay,
+            patch('signet.tasks.collect_telegram_task.delay') as telegram_delay,
+        ):
+            response = self._request({'platform': 'telegram'})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['error'], 'Telegram channels required')
+        self.assertFalse(CollectionSession.objects.filter(user=self.user).exists())
+        reddit_delay.assert_not_called()
+        telegram_delay.assert_not_called()
+
+    @override_settings(TELEGRAM_DEFAULT_CHANNELS=[])
+    def test_collection_start_routes_telegram_when_channels_are_supplied(self):
+        with (
+            patch('signet.tasks.collect_reddit_task.delay') as reddit_delay,
+            patch('signet.tasks.collect_telegram_task.delay') as telegram_delay,
+        ):
+            response = self._request({'platform': 'telegram', 'channels': ['@kenyanews'], 'limit': 7})
+
+        self.assertEqual(response.status_code, 200)
+        session = CollectionSession.objects.get(id=response.data['session_id'])
+        self.assertEqual(session.platform, 'telegram')
+        self.assertEqual(session.config, {'channels': ['@kenyanews'], 'limit': 7})
+        telegram_delay.assert_called_once_with(session.id)
+        reddit_delay.assert_not_called()
+
+    def test_collection_start_rejects_unknown_platform(self):
+        response = self._request({'platform': 'whatsapp'})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['error'], 'Unsupported platform')
+        self.assertFalse(CollectionSession.objects.filter(user=self.user).exists())
 
 
 @override_settings(
