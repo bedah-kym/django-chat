@@ -278,11 +278,13 @@
     // ------------------------------------------------------------------ //
 
     const markNotificationRead = (id) => {
+        const nid = Number(id);
+        if (!Number.isInteger(nid)) return;
         if (notifSocket && notifSocket.readyState === WebSocket.OPEN) {
-            notifSocket.send(JSON.stringify({ action: 'mark_read', id }));
+            notifSocket.send(JSON.stringify({ action: 'mark_read', id: nid }));
         } else {
             const csrf = getCsrfToken();
-            fetch(`/notifications/api/${id}/read/`, {
+            fetch(`/notifications/api/${nid}/read/`, {
                 method: 'POST',
                 headers: csrf ? { 'X-CSRFToken': csrf } : {},
                 credentials: 'same-origin',
@@ -313,11 +315,13 @@
     };
 
     const dismissNotification = (id) => {
+        const nid = Number(id);
+        if (!Number.isInteger(nid)) return;
         if (notifSocket && notifSocket.readyState === WebSocket.OPEN) {
-            notifSocket.send(JSON.stringify({ action: 'dismiss', id }));
+            notifSocket.send(JSON.stringify({ action: 'dismiss', id: nid }));
         } else {
             const csrf = getCsrfToken();
-            fetch(`/notifications/api/${id}/dismiss/`, {
+            fetch(`/notifications/api/${nid}/dismiss/`, {
                 method: 'POST',
                 headers: csrf ? { 'X-CSRFToken': csrf } : {},
                 credentials: 'same-origin',

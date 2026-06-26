@@ -436,7 +436,7 @@ class MessageActions {
                     <i class="fas ${icon}"></i>
                 </div>
                 <div class="upload-preview-info">
-                    <div class="upload-preview-name">${file.name}</div>
+                    <div class="upload-preview-name">${this.escapeHtml(file.name)}</div>
                     <div class="upload-preview-size">${sizeKB} KB</div>
                     <div class="upload-progress">
                         <div class="upload-progress-bar" id="uploadProgressBar" style="width: 0%"></div>
@@ -529,9 +529,12 @@ class MessageActions {
      * Escape HTML for safe insertion
      */
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML.replace(/'/g, "\\'");
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 }
 

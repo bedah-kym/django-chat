@@ -55,7 +55,10 @@ export function AvatarUpload({ displayName, avatarUrl, onUploaded }: Props) {
     if (inputRef.current) inputRef.current.value = ''
   }
 
-  const src = preview ?? avatarUrl
+  const rawSrc = preview ?? avatarUrl
+  // Only render safe image URL schemes (blob: from createObjectURL, data:image,
+  // http(s), or relative) so a tainted URL can't smuggle a javascript: scheme.
+  const src = rawSrc && /^(blob:|data:image\/|https?:|\/)/i.test(rawSrc) ? rawSrc : undefined
 
   return (
     <div className={styles.wrap}>

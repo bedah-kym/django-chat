@@ -441,14 +441,19 @@
             if (msg.is_voice || (msg.audio_url && msg.audio_url !== "null")) {
                 const audio = document.createElement('audio');
                 audio.controls = true;
-                audio.src = msg.audio_url;
+                // Only allow http(s)/blob/relative audio sources (block javascript:, data:, etc.)
+                if (/^(https?:|blob:|\/)/i.test(msg.audio_url || '')) {
+                    audio.src = msg.audio_url;
+                }
                 content.appendChild(audio);
 
                 // Add transcript if available (generic)
                 if (msg.content && msg.content !== "[Voice Message]") {
                     const transcript = document.createElement('div');
                     transcript.className = 'mt-2 small text-muted';
-                    transcript.innerHTML = `<i>${msg.content}</i>`;
+                    const em = document.createElement('i');
+                    em.textContent = msg.content;
+                    transcript.appendChild(em);
                     content.appendChild(transcript);
                 }
             }
@@ -602,30 +607,34 @@
         }
 
         function updateQuotaUI(quotas) {
-            // ... (Same as before)
+            const esc = (v) => String(v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const safeToken = (v) => String(v).replace(/[^a-zA-Z0-9_-]/g, '');
             const container = document.getElementById('quota-body');
             container.innerHTML = '';
             Object.keys(quotas).forEach(key => {
                 const q = quotas[key];
-                const pct = Math.min((q.used / q.limit) * 100, 100);
+                const pct = Math.min((Number(q.used) / Number(q.limit)) * 100, 100) || 0;
                 const bgMap = { 'green': 'bg-success', 'yellow': 'bg-warning', 'orange': 'bg-warning', 'red': 'bg-danger' };
                 const bgClass = bgMap[q.color] || 'bg-primary';
+                const colorVar = q.color === 'orange' ? 'warning' : safeToken(q.color);
                 const html = `
-                    <div class="quota-card ${q.status}" style="border-left-color: var(--bs-${q.color === 'orange' ? 'warning' : q.color})">
+                    <div class="quota-card ${safeToken(q.status)}" style="border-left-color: var(--bs-${colorVar})">
                         <div class="d-flex justify-content-between align-items-center">
-                            <strong>${q.name}</strong>
-                            <span class="badge ${bgClass}">${q.status.toUpperCase()}</span>
+                            <strong>${esc(q.name)}</strong>
+                            <span class="badge ${bgClass}">${esc(String(q.status).toUpperCase())}</span>
                         </div>
                         <div class="progress">
                             <div class="progress-bar ${bgClass}" role="progressbar" style="width: ${pct}%"></div>
                         </div>
                         <div class="d-flex justify-content-between mt-2 small text-muted">
-                            <span>Used: ${q.used} / ${q.limit}</span>
-                            <span>Resets: ${q.reset}</span>
+                            <span>Used: ${esc(q.used)} / ${esc(q.limit)}</span>
+                            <span>Resets: ${esc(q.reset)}</span>
                         </div>
                     </div>
                 `;
-                container.innerHTML += html;
+                container.insertAdjacentHTML('beforeend', html);
             });
         }
 
