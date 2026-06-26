@@ -22,7 +22,15 @@ class TelegramCollector(BaseCollector):
     def collect(self) -> int:
         if not self.platform_allowed():
             return 0
-        return asyncio.run(self._collect_async())
+        # Pyrogram runs inside an asyncio event loop, and Django's ORM refuses to
+        # run from within an async context. So fetch messages in the loop, then
+        # persist them here in the surrounding synchronous context.
+        messages = asyncio.run(self._collect_async())
+        collected = 0
+        for message in messages:
+            if self._store_message(message):
+                collected += 1
+        return collected
 
     def _client(self):
         try:
@@ -58,7 +66,7 @@ class TelegramCollector(BaseCollector):
 
         return Client('signet_telegram_collector', **kwargs)
 
-    async def _collect_async(self) -> int:
+    async def _collect_async(self) -> list:
         config = self.session.config or {}
         configured_channels = config.get('channels', getattr(settings, 'TELEGRAM_DEFAULT_CHANNELS', []))
         channels = [
@@ -70,9 +78,11 @@ class TelegramCollector(BaseCollector):
 
         if not channels:
             logger.warning('TelegramCollector: no channels configured')
-            return 0
+            return []
 
-        collected = 0
+        # Network-only inside the event loop — no Django ORM here. The caller
+        # persists the returned messages from a synchronous context.
+        messages = []
         async with self._client() as client:
             for channel in channels:
                 self._assert_passive_only('read')
@@ -83,12 +93,11 @@ class TelegramCollector(BaseCollector):
                             continue
                         if keywords and not any(k in text.lower() for k in keywords):
                             continue
-                        if self._store_message(message):
-                            collected += 1
+                        messages.append(message)
                 except Exception as exc:
                     logger.error(f'TelegramCollector: error on {safe_log_handle(channel)}: {exc}')
 
-        return collected
+        return messages
 
     def _store_message(self, message) -> bool:
         payload = normalize_telegram_message(message)
