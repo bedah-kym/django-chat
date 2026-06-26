@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import type { SignetNode, Filters, SignetEdge } from './types'
-import { nodeColor, nodeRadius, edgeColor } from './utils'
+import { nodeColor, nodeRadius, edgeColor, accountThreatLevel } from './utils'
 import { SG } from './tokens'
 import { SectionLabel } from './components/Primitives'
 import { SignetDetailPanel } from './SignetDetailPanel'
@@ -43,6 +43,14 @@ export function GraphView({ selected, setSelected, filters, setFilters, search, 
     const hay = (label + ' ' + (n.tags || []).join(' ')).toLowerCase()
     return hay.includes(searchLower)
   }
+
+  // Threat distribution over real account nodes, bucketed by classifier tags.
+  const accountNodes = NODES.filter(n => n.type === 'account')
+  const threatDist = [
+    { l: 'HIGH', c: SG.high, n: accountNodes.filter(n => accountThreatLevel(n) === 'HIGH').length },
+    { l: 'MEDIUM', c: SG.med, n: accountNodes.filter(n => accountThreatLevel(n) === 'MEDIUM').length },
+    { l: 'LOW', c: SG.low, n: accountNodes.filter(n => accountThreatLevel(n) === 'LOW').length },
+  ]
 
   useEffect(() => {
     if (!svgRef.current || dims.w < 10) return
@@ -202,7 +210,7 @@ export function GraphView({ selected, setSelected, filters, setFilters, search, 
         </div>
         <div className={s.section}>
           <SectionLabel style={{ marginBlockEnd: 10 }}>Threat dist.</SectionLabel>
-          {[{ l: 'HIGH', c: SG.high, n: 2 }, { l: 'MEDIUM', c: SG.med, n: 5 }, { l: 'LOW', c: SG.low, n: 5 }].map(t => (
+          {threatDist.map(t => (
             <div key={t.l} className={s.distRow}>
               <div className={s.distLeft}>
                 <div className={s.distSwatch} style={{ background: t.c }} />

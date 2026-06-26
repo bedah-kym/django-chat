@@ -40,7 +40,7 @@ export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActi
   const [filters, setFilters] = useState<Filters>({ account: true, narrative: true, hashtag: true })
   const [search, setSearch] = useState('')
   const [collectionBusy, setCollectionBusy] = useState(false)
-  const [collectionPlatform, setCollectionPlatform] = useState<SignetCollectionPlatform>('telegram')
+  const [collectionPlatform, setCollectionPlatform] = useState<SignetCollectionPlatform>('reddit')
   const pendingReviewCount = reviews.filter(
     r => !('decision' in r) || (r as ReviewItem & { decision?: string }).decision === 'pending',
   ).length || 0

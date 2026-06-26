@@ -54,6 +54,19 @@ export function isHighThreatTag(tag: string): boolean {
   return HIGH_THREAT_TAGS.has(tag)
 }
 
+/**
+ * Real-signal threat level for an account, derived from its classifier tags
+ * (not followers, which collected sources don't expose). Mirrors nodeColor:
+ * HIGH = carries a high-threat tag (coordinated/firehose/red-pill),
+ * MEDIUM = flagged with any tag, LOW = clean / observed only.
+ */
+export function accountThreatLevel(n: SignetNode): 'HIGH' | 'MEDIUM' | 'LOW' {
+  if (n.type !== 'account') return 'LOW'
+  if (n.tags?.some(t => HIGH_THREAT_TAGS.has(t))) return 'HIGH'
+  if ((n.tags?.length ?? 0) > 0) return 'MEDIUM'
+  return 'LOW'
+}
+
 function seed(str: string): () => number {
   let h = 0x811c9dc5
   for (let i = 0; i < str.length; i++) {
