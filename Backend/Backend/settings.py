@@ -304,6 +304,21 @@ REDDIT_USER_AGENT = os.environ.get('REDDIT_USER_AGENT', '')
 # reads: subscribed + active subreddits. App-only auth cannot see these.
 REDDIT_USERNAME = os.environ.get('REDDIT_USERNAME', '')
 REDDIT_PASSWORD = os.environ.get('REDDIT_PASSWORD', '')
+
+# SIGNET - Telegram collector credentials.
+# API ID/HASH come from https://my.telegram.org/apps. For public-channel
+# history collection in workers, provide TELEGRAM_SESSION_STRING from a
+# pre-authorized user session. TELEGRAM_BOT_TOKEN is supported for chats the bot
+# can access, but it cannot passively observe arbitrary public channels.
+TELEGRAM_API_ID = os.environ.get('TELEGRAM_API_ID', '')
+TELEGRAM_API_HASH = os.environ.get('TELEGRAM_API_HASH', '')
+TELEGRAM_SESSION_STRING = os.environ.get('TELEGRAM_SESSION_STRING', '')
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_DEFAULT_CHANNELS = [
+    c.strip() for c in os.environ.get('TELEGRAM_DEFAULT_CHANNELS', '').split(',')
+    if c.strip()
+]
+
 SIGNET_PROJECTION_WINDOW_DAYS = int(os.environ.get('SIGNET_PROJECTION_WINDOW_DAYS', '3'))
 SIGNET_PROJECT_DEBOUNCE_SECONDS = int(os.environ.get('SIGNET_PROJECT_DEBOUNCE_SECONDS', '120'))
 

@@ -76,6 +76,8 @@ interface ReviewResponse {
 export interface SignetCollectionStatus {
   is_collecting: boolean
   session_id: number | null
+  platform?: 'reddit' | 'telegram' | null
+  platforms?: Array<'reddit' | 'telegram'>
   counts: {
     posts_collected: number
     posts_tagged: number
@@ -196,10 +198,15 @@ export async function fetchCollectionStatus(): Promise<SignetCollectionStatus> {
   return apiRequest<SignetCollectionStatus>('/signet/collection/status/')
 }
 
-export async function startCollection() {
-  return apiRequest<{ status: string; session_id: number }>('/signet/collection/start/', {
+export type SignetCollectionPlatform = 'reddit' | 'telegram'
+
+export async function startCollection(platform: SignetCollectionPlatform = 'reddit') {
+  const body = platform === 'telegram'
+    ? { platform, limit: 25 }
+    : { platform, subreddits: ['Kenya'], limit: 25 }
+  return apiRequest<{ status: string; session_id: number; platform: SignetCollectionPlatform }>('/signet/collection/start/', {
     method: 'POST',
-    body: JSON.stringify({ subreddits: ['Kenya'], limit: 25 }),
+    body: JSON.stringify(body),
   })
 }
 

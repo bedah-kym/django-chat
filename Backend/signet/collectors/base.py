@@ -4,7 +4,7 @@ from orchestration.security_policy import safe_log_handle
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_PLATFORMS = {'reddit'}
+ALLOWED_PLATFORMS = {'reddit', 'telegram'}
 FORBIDDEN_ACTIONS = {'post', 'reply', 'follow', 'upvote', 'downvote', 'comment', 'like', 'share', 'retweet'}
 
 

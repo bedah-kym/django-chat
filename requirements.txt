@@ -70,6 +70,8 @@ intasend-python>=0.1.0
 pydub>=0.25.1
 twilio>=9.0.0
 praw>=7.7.0
+Pyrogram>=2.0.106
+TgCrypto>=1.2.5
 
 # Data handling
 Pillow>=10.0.0

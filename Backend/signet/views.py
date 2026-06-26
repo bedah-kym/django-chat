@@ -46,7 +46,6 @@ def _account_timeseries(user, pk: int, days: int) -> list[int]:
         CollectedPost.objects.filter(
             user=user,
             author_handle=handle,
-            platform='reddit',
             posted_at__date__gte=start,
             posted_at__date__lte=end,
         )
@@ -69,7 +68,6 @@ def _hashtag_timeseries(user, pk: int, days: int) -> list[int]:
     start = end - timedelta(days=days)
     posts = CollectedPost.objects.filter(
         user=user,
-        platform='reddit',
         posted_at__date__gte=start,
         posted_at__date__lte=end,
     )
@@ -96,7 +94,6 @@ def _narrative_timeseries(user, pk: int, days: int) -> list[int]:
     qs = (
         CollectedPost.objects.filter(
             user=user,
-            platform='reddit',
             posted_at__date__gte=start,
             posted_at__date__lte=end,
             classifications__tags__contains=[{'tag': tag}],
@@ -108,7 +105,7 @@ def _narrative_timeseries(user, pk: int, days: int) -> list[int]:
     )
     # Fallback (reach proxy) if the JSONB containment query matched nothing.
     if not qs.exists():
-        posts = CollectedPost.objects.filter(user=user, platform='reddit', posted_at__date__gte=start, posted_at__date__lte=end)
+        posts = CollectedPost.objects.filter(user=user, posted_at__date__gte=start, posted_at__date__lte=end)
         buckets: dict[str, int] = {}
         for post in posts:
             post_tags = {t.get('tag', '') for cl in post.classifications.all() for t in cl.tags}
@@ -167,7 +164,7 @@ def timeseries_bulk(request):
 
     posts = list(
         CollectedPost.objects.filter(
-            user=user, platform='reddit',
+            user=user,
             posted_at__date__gte=start, posted_at__date__lte=end,
         ).values('id', 'author_handle', 'hashtags', 'posted_at')
     )
@@ -379,22 +376,38 @@ def mute_account(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def collection_start(request):
-    subreddits = request.data.get('subreddits', ['Kenya'])
+    platform = request.data.get('platform', 'reddit')
     limit = request.data.get('limit', 25)
-    config = {'subreddits': subreddits if isinstance(subreddits, list) else [subreddits], 'limit': limit}
+    if platform not in ('reddit', 'telegram'):
+        return Response({'error': 'Unsupported platform'}, status=400)
+
+    if platform == 'telegram':
+        from django.conf import settings
+        channels = request.data.get('channels') or getattr(settings, 'TELEGRAM_DEFAULT_CHANNELS', [])
+        channels = channels if isinstance(channels, list) else [channels]
+        channels = [c for c in channels if isinstance(c, str) and c.strip()]
+        if not channels:
+            return Response({'error': 'Telegram channels required'}, status=400)
+        config = {'channels': channels, 'limit': limit}
+    else:
+        subreddits = request.data.get('subreddits', ['Kenya'])
+        config = {'subreddits': subreddits if isinstance(subreddits, list) else [subreddits], 'limit': limit}
 
     session = CollectionSession.objects.create(
         user=request.user,
-        platform='reddit',
+        platform=platform,
         config=config,
         status='running',
         started_at=timezone.now(),
     )
 
-    from signet.tasks import collect_reddit_task
-    collect_reddit_task.delay(session.id)
+    from signet.tasks import collect_reddit_task, collect_telegram_task
+    if platform == 'telegram':
+        collect_telegram_task.delay(session.id)
+    else:
+        collect_reddit_task.delay(session.id)
 
-    return Response({'status': 'started', 'session_id': session.id})
+    return Response({'status': 'started', 'session_id': session.id, 'platform': platform})
 
 
 @api_view(['POST'])
@@ -413,7 +426,8 @@ def collection_stop(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def collection_status(request):
-    running = CollectionSession.objects.filter(user=request.user, status='running').first()
+    running_sessions = list(CollectionSession.objects.filter(user=request.user, status='running'))
+    running = running_sessions[0] if running_sessions else None
     total_posts = CollectedPost.objects.filter(user=request.user).count()
     tagged = CollectedPost.objects.filter(user=request.user, tagging_status='tagged').count()
     accounts = SignetAccount.objects.filter(user=request.user).count()
@@ -421,6 +435,8 @@ def collection_status(request):
     return Response({
         'is_collecting': bool(running),
         'session_id': running.id if running else None,
+        'platform': running.platform if running else None,
+        'platforms': [s.platform for s in running_sessions],
         'counts': {
             'posts_collected': total_posts,
             'posts_tagged': tagged,

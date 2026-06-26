@@ -214,7 +214,11 @@ export function GraphView({ selected, setSelected, filters, setFilters, search, 
         </div>
         <div className={s.section}>
           <SectionLabel style={{ marginBlockEnd: 10 }}>Platforms</SectionLabel>
-          {[{ l: 'X / TWITTER', active: true }, { l: 'TELEGRAM', active: false }, { l: 'FACEBOOK', active: false }].map(p => (
+          {[
+            { l: 'REDDIT', active: NODES.some(n => n.type === 'account' && n.platform === 'reddit') },
+            { l: 'TELEGRAM', active: NODES.some(n => n.type === 'account' && n.platform === 'telegram') },
+            { l: 'FACEBOOK', active: false },
+          ].map(p => (
             <div key={p.l} className={`${s.platformRow} ${p.active ? '' : s.platformRowInactive}`}>
               <div className={`${s.platformDot} ${p.active ? s.platformDotActive : ''}`} />
               <span className={`${s.platformLabel} ${p.active ? s.platformLabelActive : ''}`}>{p.l}</span>

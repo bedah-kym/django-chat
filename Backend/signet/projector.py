@@ -98,6 +98,8 @@ def project_session(session: CollectionSession) -> dict:
         confidences = [cl.overall_confidence for cl in clist]
         avg_conf = sum(confidences) / len(confidences) if confidences else 0
         tags = sorted(set(t for cl in clist for t_obj in cl.tags for t in [t_obj['tag']]))
+        platforms = [cl.post.platform for cl in clist if cl.post.platform]
+        platform = platforms[0] if platforms else 'reddit'
 
         if posts_count >= 10:
             tier = 'macro'
@@ -107,6 +109,7 @@ def project_session(session: CollectionSession) -> dict:
             tier = 'micro'
 
         desired_accounts[handle] = {
+            'platform': platform,
             'tier': tier,
             'posts': posts_count,
             'confidence': round(avg_conf, 4),
@@ -185,9 +188,10 @@ def project_session(session: CollectionSession) -> dict:
             a = existing_accts.get(handle)
             if a is None:
                 to_create_accts.append(SignetAccount(
-                    user=user, platform='reddit', handle=handle, last_scanned_at=now, **fields,
+                    user=user, handle=handle, last_scanned_at=now, **fields,
                 ))
             else:
+                a.platform = fields['platform']
                 a.tier = fields['tier']
                 a.posts = fields['posts']
                 a.confidence = fields['confidence']
@@ -198,7 +202,7 @@ def project_session(session: CollectionSession) -> dict:
             SignetAccount.objects.bulk_create(to_create_accts)
         if to_update_accts:
             SignetAccount.objects.bulk_update(
-                to_update_accts, ['tier', 'posts', 'confidence', 'tags', 'last_scanned_at'],
+                to_update_accts, ['platform', 'tier', 'posts', 'confidence', 'tags', 'last_scanned_at'],
             )
         accounts_upserted = len(to_create_accts) + len(to_update_accts)
 

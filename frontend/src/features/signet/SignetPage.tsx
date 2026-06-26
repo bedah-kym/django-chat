@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import { startCollection, stopCollection } from '@/api/signet'
+import { startCollection, stopCollection, type SignetCollectionPlatform } from '@/api/signet'
 import type { SignetView, Filters, SignetNode, SignetEdge, ActivityItem, ReviewItem } from './types'
 import { SignetTopBar } from './SignetTopBar'
 import { SignetLeftNav } from './SignetLeftNav'
@@ -40,6 +40,7 @@ export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActi
   const [filters, setFilters] = useState<Filters>({ account: true, narrative: true, hashtag: true })
   const [search, setSearch] = useState('')
   const [collectionBusy, setCollectionBusy] = useState(false)
+  const [collectionPlatform, setCollectionPlatform] = useState<SignetCollectionPlatform>('telegram')
   const pendingReviewCount = reviews.filter(
     r => !('decision' in r) || (r as ReviewItem & { decision?: string }).decision === 'pending',
   ).length || 0
@@ -49,9 +50,9 @@ export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActi
   const handleStartCollection = async () => {
     setCollectionBusy(true)
     try {
-      await startCollection()
+      await startCollection(collectionPlatform)
       await reload()
-      toast.success('SIGNET collection started')
+      toast.success(`SIGNET ${collectionPlatform} collection started`)
     } catch (err) {
       console.error('Failed to start SIGNET collection', err)
       toast.error(err instanceof Error ? err.message : 'Failed to start SIGNET collection')
@@ -86,7 +87,9 @@ export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActi
         edges={edges}
         collectionStatus={collectionStatus}
         collectionBusy={collectionBusy}
+        collectionPlatform={collectionPlatform}
         alertCount={pendingReviewCount}
+        onCollectionPlatformChange={setCollectionPlatform}
         onStartCollection={handleStartCollection}
         onStopCollection={handleStopCollection}
       />

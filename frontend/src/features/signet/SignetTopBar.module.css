@@ -131,6 +131,45 @@
   text-transform: uppercase;
 }
 
+.platformToggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--sg-line);
+  border-radius: var(--sg-radius);
+  background: var(--sg-panel-inset);
+  overflow: hidden;
+}
+
+.platformButton,
+.platformButtonActive {
+  border: 0;
+  border-inline-end: 1px solid var(--sg-line);
+  background: transparent;
+  color: var(--sg-text-low);
+  cursor: pointer;
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.platformButton:last-child,
+.platformButtonActive:last-child {
+  border-inline-end: 0;
+}
+
+.platformButtonActive {
+  background: rgba(245, 166, 35, 0.14);
+  color: var(--sg-signal);
+}
+
+.platformButton:disabled,
+.platformButtonActive:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .startButton,
 .stopButton {
   border-radius: var(--sg-radius);

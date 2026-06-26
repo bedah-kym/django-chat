@@ -1,4 +1,4 @@
-import type { SignetCollectionStatus } from '@/api/signet'
+import type { SignetCollectionPlatform, SignetCollectionStatus } from '@/api/signet'
 import type { SignetView, SignetNode, SignetEdge } from './types'
 import { SignalDot } from './components/Primitives'
 import s from './SignetTopBar.module.css'
@@ -11,7 +11,9 @@ interface SignetTopBarProps {
   edges?: SignetEdge[]
   collectionStatus?: SignetCollectionStatus | null
   collectionBusy?: boolean
+  collectionPlatform?: SignetCollectionPlatform
   alertCount?: number
+  onCollectionPlatformChange?: (platform: SignetCollectionPlatform) => void
   onStartCollection?: () => void
   onStopCollection?: () => void
 }
@@ -24,13 +26,16 @@ export function SignetTopBar({
   edges = [],
   collectionStatus,
   collectionBusy = false,
+  collectionPlatform = 'reddit',
   alertCount = 0,
+  onCollectionPlatformChange,
   onStartCollection,
   onStopCollection,
 }: SignetTopBarProps) {
   const accounts = nodes.filter(n => n.type === 'account').length
   const narratives = nodes.filter(n => n.type === 'narrative').length
   const isCollecting = Boolean(collectionStatus?.is_collecting)
+  const activePlatform = collectionStatus?.platform ?? collectionPlatform
   const postsCollected = collectionStatus?.counts.posts_collected ?? 0
   const postsTagged = collectionStatus?.counts.posts_tagged ?? 0
 
@@ -65,8 +70,21 @@ export function SignetTopBar({
         <div className={s.live}>
           <SignalDot live={isCollecting} />
           <span className={isCollecting ? s.liveLabel : s.idleLabel}>
-            {isCollecting ? 'Collecting' : 'Idle'}
+            {isCollecting ? `Collecting ${activePlatform}` : 'Idle'}
           </span>
+        </div>
+        <div className={s.platformToggle} aria-label="Collection platform">
+          {(['reddit', 'telegram'] as SignetCollectionPlatform[]).map(platform => (
+            <button
+              key={platform}
+              type="button"
+              className={platform === collectionPlatform ? s.platformButtonActive : s.platformButton}
+              disabled={collectionBusy || isCollecting}
+              onClick={() => onCollectionPlatformChange?.(platform)}
+            >
+              {platform}
+            </button>
+          ))}
         </div>
         <button
           type="button"
