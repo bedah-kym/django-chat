@@ -628,10 +628,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'users.tasks.send_trial_summary_task',
         'schedule': crontab(hour=7, minute=0),  # every day at 07:00
     },
-    # SIGNET collection heartbeat (every 30 min — fires for each running session)
+    # SIGNET collection heartbeat (every hour — fires for each running session)
     'signet_collection_heartbeat': {
         'task': 'signet.tasks.signet_heartbeat',
-        'schedule': 1800.0,
+        'schedule': 3600.0,
     },
     'signet_weekly_eval': {
         'task': 'signet.tasks.signet_weekly_drift_check',
