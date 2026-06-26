@@ -1,4 +1,5 @@
 import logging
+import math
 from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
@@ -101,9 +102,22 @@ def project_session(session: CollectionSession) -> dict:
         platforms = [cl.post.platform for cl in clist if cl.post.platform]
         platform = platforms[0] if platforms else 'reddit'
 
-        if posts_count >= 10:
+        # Audience reach proxy — real follower counts aren't collected, so use the
+        # best engagement signal each platform exposes: Telegram views/forwards,
+        # Reddit score(likes)+comments. Stored on `followers` (the model's audience
+        # field) and drives influence-based tiering + the frontend threat score.
+        reach = 0
+        for cl in clist:
+            p = cl.post
+            engagement = (p.likes or 0) + (p.comments or 0) + (p.shares or 0)
+            reach += max(p.views or 0, engagement)
+
+        # Influence tier from reach (log-scaled) + sustained activity — not raw
+        # post count, which the collection limit caps so everything flattens to macro.
+        influence = math.log10(reach + 1)
+        if influence >= 3.5 and posts_count >= 5:
             tier = 'macro'
-        elif posts_count >= 3:
+        elif influence >= 2.0:
             tier = 'mid'
         else:
             tier = 'micro'
@@ -112,6 +126,7 @@ def project_session(session: CollectionSession) -> dict:
             'platform': platform,
             'tier': tier,
             'posts': posts_count,
+            'followers': reach,
             'confidence': round(avg_conf, 4),
             'tags': tags,
         }
@@ -194,6 +209,7 @@ def project_session(session: CollectionSession) -> dict:
                 a.platform = fields['platform']
                 a.tier = fields['tier']
                 a.posts = fields['posts']
+                a.followers = fields['followers']
                 a.confidence = fields['confidence']
                 a.tags = fields['tags']
                 a.last_scanned_at = now
@@ -202,7 +218,8 @@ def project_session(session: CollectionSession) -> dict:
             SignetAccount.objects.bulk_create(to_create_accts)
         if to_update_accts:
             SignetAccount.objects.bulk_update(
-                to_update_accts, ['platform', 'tier', 'posts', 'confidence', 'tags', 'last_scanned_at'],
+                to_update_accts,
+                ['platform', 'tier', 'posts', 'followers', 'confidence', 'tags', 'last_scanned_at'],
             )
         accounts_upserted = len(to_create_accts) + len(to_update_accts)
 

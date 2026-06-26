@@ -33,9 +33,13 @@ export function threatScore(n: SignetNode): number {
     return Math.round(n.confidence * (n.reach / 1000) * status)
   }
   if (n.type === 'account') {
-    const ht = n.tags?.some(t => HIGH_THREAT_TAGS.has(t)) ? 2.2 : 1
-    const reach = Math.log10(n.followers + 1)
-    return Math.round(n.confidence * reach * ht * 10)
+    // Real-signal threat (0-100): tag severity is the dominant axis (no follower
+    // data is collected), modulated by confidence and reach. `followers` now holds
+    // an engagement-based reach proxy set by the projector.
+    const high = n.tags?.some(t => HIGH_THREAT_TAGS.has(t))
+    const tagWeight = high ? 1 : (n.tags?.length ? 0.5 : 0.12)
+    const reachNorm = Math.min(1, Math.log10((n.followers || 0) + (n.posts || 0) + 1) / 4)
+    return Math.round(100 * tagWeight * (0.5 + 0.5 * (n.confidence || 0)) * (0.45 + 0.55 * reachNorm))
   }
   if (n.type === 'hashtag') {
     const vel: Record<string, number> = { peak: 2, high: 1.5, medium: 1, low: 0.6 }

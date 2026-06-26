@@ -54,7 +54,7 @@ export function SignetDetailPanel({ selected, onClose, onNavigate, nodes, edges 
           <div className={s.statGrid}>
             {selected.type === 'account' && (
               <>
-                <KeyValue label="FOLLOWERS" value={selected.followers.toLocaleString()} />
+                <KeyValue label="REACH" value={selected.followers.toLocaleString()} />
                 <KeyValue label="POSTS" value={selected.posts} />
                 <KeyValue label="CONFIDENCE" value={`${Math.round((selected.confidence || 0) * 100)}%`}
                   color={selected.confidence > 0.75 ? SG.high : selected.confidence > 0.5 ? SG.med : SG.low} />
