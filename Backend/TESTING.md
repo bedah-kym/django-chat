@@ -45,7 +45,9 @@ python tests/smoke_llm_composer.py
 ## Settings
 
 `Backend/settings_test.py` overrides only speed/isolation knobs (MD5 password
-hasher, in-process cache + email). It changes nothing about behaviour under test.
+hasher, locmem email). It changes nothing about behaviour under test. The cache
+is left as the base (shared) backend because `django_ratelimit` rejects a
+non-shared cache at system-check time.
 
 ## Known gap
 

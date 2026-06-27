@@ -12,7 +12,7 @@ from .settings import *  # noqa: F401,F403
 # the encryption-key signal). MD5 is ~100x faster and fine for non-prod hashing.
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
-# In-process cache + email so tests never reach Redis/SMTP, stay isolated between
-# runs, and can assert against django.core.mail.outbox.
-CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
+# locmem email so tests stay offline and can assert against mail.outbox.
+# NB: CACHES is intentionally left as the base (shared) backend — django_ratelimit
+# rejects a non-shared cache (LocMemCache) at system-check time (E003).
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
