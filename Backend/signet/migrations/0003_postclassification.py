@@ -19,7 +19,7 @@ def create_post_classification_trigger(apps, schema_editor):
         CREATE TRIGGER post_classification_immutable_trigger
         BEFORE UPDATE ON signet_postclassification
         FOR EACH ROW EXECUTE FUNCTION block_post_classification_update();
-    """)
+    """, params=None)
 
 
 def drop_post_classification_trigger(apps, schema_editor):
@@ -28,7 +28,7 @@ def drop_post_classification_trigger(apps, schema_editor):
     schema_editor.execute("""
         DROP TRIGGER IF EXISTS post_classification_immutable_trigger ON signet_postclassification;
         DROP FUNCTION IF EXISTS block_post_classification_update();
-    """)
+    """, params=None)
 
 
 class Migration(migrations.Migration):

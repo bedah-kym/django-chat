@@ -19,7 +19,7 @@ def create_ingestion_record_trigger(apps, schema_editor):
         CREATE TRIGGER ingestion_record_immutable_trigger
         BEFORE UPDATE ON signet_ingestionrecord
         FOR EACH ROW EXECUTE FUNCTION block_ingestion_record_update();
-    """)
+    """, params=None)
 
 
 def drop_ingestion_record_trigger(apps, schema_editor):
@@ -28,7 +28,7 @@ def drop_ingestion_record_trigger(apps, schema_editor):
     schema_editor.execute("""
         DROP TRIGGER IF EXISTS ingestion_record_immutable_trigger ON signet_ingestionrecord;
         DROP FUNCTION IF EXISTS block_ingestion_record_update();
-    """)
+    """, params=None)
 
 
 class Migration(migrations.Migration):
