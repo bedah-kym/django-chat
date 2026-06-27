@@ -16,3 +16,8 @@ PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 # NB: CACHES is intentionally left as the base (shared) backend — django_ratelimit
 # rejects a non-shared cache (LocMemCache) at system-check time (E003).
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+
+# The Django test client only speaks HTTP, so an HTTPS redirect turns every
+# request into a 301 and breaks view tests. Force it off here (not via DEBUG)
+# so the suite is correct in ANY environment — including against prod Postgres.
+SECURE_SSL_REDIRECT = False
