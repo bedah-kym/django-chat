@@ -70,7 +70,7 @@ jobs:
         ENCRYPTION_KEY: vOKs0QoK_MI8RWj1vmW-nXWrvZiK8C_PspNOglndRjY=
       run: |
         cd Backend
-        python manage.py test
+        python manage.py test --settings=Backend.settings_test
 
   build-and-deploy:
     needs: test

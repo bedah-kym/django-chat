@@ -5,7 +5,7 @@ Tests real API integrations, caching, and end-to-end workflows
 import asyncio
 import json
 from datetime import datetime, timedelta
-from django.test import TestCase, AsyncTestCase
+from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core.cache import cache
 
@@ -17,6 +17,15 @@ from orchestration.connectors.travel_hotels_connector import TravelHotelsConnect
 from orchestration.connectors.travel_flights_connector import TravelFlightsConnector
 from orchestration.connectors.travel_transfers_connector import TravelTransfersConnector
 from orchestration.connectors.travel_events_connector import TravelEventsConnector
+
+
+def _run_async(coro):
+    """Run a coroutine to completion in a fresh event loop (Python 3.12+ safe)."""
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 class TravelConnectorIntegrationTests(TestCase):
@@ -39,8 +48,7 @@ class TravelConnectorIntegrationTests(TestCase):
         }
 
         # Run async function
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(connector._fetch(parameters, self.context))
+        result = _run_async(connector._fetch(parameters, self.context))
 
         self.assertIn('results', result)
         self.assertIn('metadata', result)
@@ -65,8 +73,7 @@ class TravelConnectorIntegrationTests(TestCase):
             'guests': 2
         }
 
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(connector._fetch(parameters, self.context))
+        result = _run_async(connector._fetch(parameters, self.context))
 
         self.assertIn('results', result)
         self.assertGreaterEqual(len(result['results']), 0)
@@ -88,8 +95,7 @@ class TravelConnectorIntegrationTests(TestCase):
             'passengers': 1
         }
 
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(connector._fetch(parameters, self.context))
+        result = _run_async(connector._fetch(parameters, self.context))
 
         self.assertIn('results', result)
         self.assertGreaterEqual(len(result['results']), 0)
@@ -111,8 +117,7 @@ class TravelConnectorIntegrationTests(TestCase):
             'passengers': 2
         }
 
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(connector._fetch(parameters, self.context))
+        result = _run_async(connector._fetch(parameters, self.context))
 
         self.assertIn('results', result)
         self.assertGreaterEqual(len(result['results']), 1)  # Should have at least 1 transfer option
@@ -130,8 +135,7 @@ class TravelConnectorIntegrationTests(TestCase):
             'category': 'all'
         }
 
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(connector._fetch(parameters, self.context))
+        result = _run_async(connector._fetch(parameters, self.context))
 
         self.assertIn('results', result)
         self.assertGreaterEqual(len(result['results']), 0)
@@ -155,14 +159,13 @@ class CachingIntegrationTests(TestCase):
             'passengers': 1
         }
 
-        loop = asyncio.get_event_loop()
 
         # First search (cache miss)
-        result1 = loop.run_until_complete(self.connector.execute(parameters, self.context))
+        result1 = _run_async(self.connector.execute(parameters, self.context))
         cached1 = result1.get('cached', False)
 
         # Second search (cache hit)
-        result2 = loop.run_until_complete(self.connector.execute(parameters, self.context))
+        result2 = _run_async(self.connector.execute(parameters, self.context))
         cached2 = result2.get('cached', False)
 
         # Second should be from cache
@@ -171,7 +174,6 @@ class CachingIntegrationTests(TestCase):
 
     def test_cache_miss_on_different_search(self):
         """Test that different searches don't share cache"""
-        loop = asyncio.get_event_loop()
 
         # Search 1
         params1 = {
@@ -180,7 +182,7 @@ class CachingIntegrationTests(TestCase):
             'travel_date': '2025-12-25',
             'passengers': 1
         }
-        result1 = loop.run_until_complete(self.connector.execute(params1, self.context))
+        result1 = _run_async(self.connector.execute(params1, self.context))
 
         # Search 2 (different destination)
         params2 = {
@@ -189,7 +191,7 @@ class CachingIntegrationTests(TestCase):
             'travel_date': '2025-12-25',
             'passengers': 1
         }
-        result2 = loop.run_until_complete(self.connector.execute(params2, self.context))
+        result2 = _run_async(self.connector.execute(params2, self.context))
 
         # Both searches should succeed but might have different results
         self.assertIn('results', result1)
@@ -217,8 +219,7 @@ class ItineraryBuildingTests(TestCase):
             'events': []
         }
 
-        loop = asyncio.get_event_loop()
-        itinerary = loop.run_until_complete(
+        itinerary = _run_async(
             self.builder.create_from_searches(
                 user_id=self.user.id,
                 trip_name='Nairobi to Mombasa',
@@ -275,8 +276,7 @@ class ExportTests(TestCase):
 
     def test_export_json(self):
         """Test JSON export"""
-        loop = asyncio.get_event_loop()
-        json_data = loop.run_until_complete(
+        json_data = _run_async(
             self.export_service.export_json(self.itinerary.id)
         )
 
@@ -287,8 +287,7 @@ class ExportTests(TestCase):
 
     def test_export_ical(self):
         """Test iCalendar export"""
-        loop = asyncio.get_event_loop()
-        ical_data = loop.run_until_complete(
+        ical_data = _run_async(
             self.export_service.export_ical(self.itinerary.id)
         )
 
@@ -323,8 +322,7 @@ class BookingOrchestratorTests(TestCase):
 
     def test_record_booking(self):
         """Test recording a booking"""
-        loop = asyncio.get_event_loop()
-        booking_ref = loop.run_until_complete(
+        booking_ref = _run_async(
             self.orchestrator.record_booking(
                 item_id=self.item.id,
                 confirmation_code='CONF123',
@@ -349,8 +347,7 @@ class BookingOrchestratorTests(TestCase):
             status='confirmed'
         )
 
-        loop = asyncio.get_event_loop()
-        status = loop.run_until_complete(
+        status = _run_async(
             self.orchestrator.get_booking_status(self.item.id)
         )
 
@@ -376,10 +373,9 @@ class EndToEndWorkflowTests(TestCase):
         4. Record booking
         5. Verify booking status
         """
-        loop = asyncio.get_event_loop()
 
         # Step 1: Search buses
-        bus_results = loop.run_until_complete(
+        bus_results = _run_async(
             self.router.route(
                 'search_buses',
                 {
@@ -393,7 +389,7 @@ class EndToEndWorkflowTests(TestCase):
         self.assertIn('results', bus_results)
 
         # Step 2: Search hotels
-        hotel_results = loop.run_until_complete(
+        hotel_results = _run_async(
             self.router.route(
                 'search_hotels',
                 {
@@ -415,7 +411,7 @@ class EndToEndWorkflowTests(TestCase):
             'events': []
         }
 
-        itinerary = loop.run_until_complete(
+        itinerary = _run_async(
             self.builder.create_from_searches(
                 user_id=self.user.id,
                 trip_name='Nairobi to Mombasa',
@@ -433,7 +429,7 @@ class EndToEndWorkflowTests(TestCase):
 
         # Step 4: Record booking for first item
         first_item = items.first()
-        booking = loop.run_until_complete(
+        booking = _run_async(
             self.orchestrator.record_booking(
                 item_id=first_item.id,
                 confirmation_code='TEST123',
@@ -444,7 +440,7 @@ class EndToEndWorkflowTests(TestCase):
         self.assertIsNotNone(booking.id)
 
         # Step 5: Verify booking status
-        status = loop.run_until_complete(
+        status = _run_async(
             self.orchestrator.get_booking_status(first_item.id)
         )
 
