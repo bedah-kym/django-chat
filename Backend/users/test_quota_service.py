@@ -112,7 +112,7 @@ class UploadQuotaWindowTests(TestCase):
     def _upload(self, when, user=None):
         up = DocumentUpload.objects.create(
             user=user or self.user, chatroom=self.room,
-            file_type='pdf', file_path='/tmp/x.pdf', file_size=1024,
+            file_type='pdf', file_path='uploads/test.pdf', file_size=1024,
             quota_window_start=when,  # required field; the quota query uses uploaded_at
         )
         # uploaded_at is auto_now_add; .update() bypasses it to place the row in time.
