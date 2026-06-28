@@ -17,6 +17,7 @@ from orchestration.connectors.travel_hotels_connector import TravelHotelsConnect
 from orchestration.connectors.travel_flights_connector import TravelFlightsConnector
 from orchestration.connectors.travel_transfers_connector import TravelTransfersConnector
 from orchestration.connectors.travel_events_connector import TravelEventsConnector
+from orchestration.connectors.pentest_connector import PentestConnector
 from orchestration.mcp_router import SearchConnector, WeatherConnector, GiphyConnector, CurrencyConnector, ReminderConnector, CalendarConnector
 from orchestration.action_receipts import attach_receipt_to_result, record_action_receipt, should_record_receipt
 from orchestration.action_catalog import (
@@ -65,6 +66,7 @@ _MISC_ACTIONS = {
     'check_quotas': QuotaConnector(),
     'schedule_meeting': CalendarConnector(),
     'check_availability': CalendarConnector(),
+    'pentest_check_scope': PentestConnector(),
 }
 
 _AUTO_EMAIL_SUMMARY_TOKEN = "__AUTO_SUMMARY__"

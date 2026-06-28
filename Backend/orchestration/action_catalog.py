@@ -400,6 +400,20 @@ ACTION_CATALOG: List[Dict[str, Any]] = [
         "confirmation_policy": "never",
         "capability_gate": None,
     },
+    {
+        "action": "pentest_check_scope",
+        "aliases": [],
+        "service": "pentest",
+        "description": "Check whether a candidate target is in scope for an authorized pentest engagement. Read-only; runs no tool.",
+        "params": {
+            "engagement_id": {"type": "string", "required": True, "description": "Engagement to check against"},
+            "target": {"type": "string", "required": True, "description": "Candidate target: domain, host, CIDR, or URL"},
+        },
+        "return_description": "in_scope (bool), decision (category), reason, needs_approval (bool)",
+        "risk_level": "low",
+        "confirmation_policy": "never",
+        "capability_gate": "allow_pentest",
+    },
 ]
 
 
