@@ -1,82 +1,103 @@
-# 🤖 Mathia.OS: The AI Operating System for One-Person Empires
+# 🛰️ Mathia — Social Intelligence Platform
 
-**Manage Socials, Finance, Travel, and Documents in one unified intelligence.**
+**Passive intelligence collection → LLM tagging → operator triage → scope-gated action.**
 
-Mathia is not just a workspace—it's an **AI-powered Operating System** designed for **Lone Founders, Social Media Managers, and SMEs**. It gives you the leverage of a 10-person team through a single chat interface.
+Mathia is an **OSINT / social-intelligence platform** for studying manipulation and
+disinformation, with an authorized **"act-on-intel"** security arm. It collects public
+signal, scores it with versioned LLM tagging, surfaces ranked leads to a human operator, and
+— only behind explicit human approval and owner-granted authorization — can hand a lead to a
+scope-guarded penetration-testing workflow.
 
----
-
-## 🚀 Core Pillars (The "OS" Modules)
-
-### 1. 📢 Social Media Growth Engine (New)
-*Target: Social Media Managers & Growth Hackers*
-*   **Zero to Viral**: AI agent that plans, posts, and monitors growth across X (Twitter), LinkedIn, and Instagram.
-*   **Analytics**: Real-time feedback loops to optimize engagement.
-
-### 2. 💰 Enterprise Finance & Quickbooks
-*Target: SMEs & Freelancers*
-*   **Double-Entry Ledger**: ACID-compliant financial core for handling wallet balances (Debits/Credits).
-*   **Quickbooks Integration**: Automatically sync invoices and transaction data to Quickbooks.
-*   **Payments**: Native IntaSend support for M-Pesa STK Pushes and Card payments.
-
-### 3. 🧠 Productivity & Deep Notion
-*Target: Lone Founders*
-*   **Deep Integration**: Mathia lives inside your knowledge base. It can read/write to **Notion** pages and databases.
-*   **Task Orchestration**: "Organize my week" creates tasks in Notion and schedules reminders.
-
-### 4. ✈️ B2B Travel Planner
-*Target: Travel Agents & Trip Managers*
-*   **Agentic Planning**: Create detailed, day-by-day itineraries for clients.
-*   **Logistics**: Manage bookings and budgets for third parties.
+It is built on the **Mathia orchestration spine**: a human-gated, fully-audited agent runtime
+(originally an "AI operating system" for solo founders) whose trust-critical
+machinery — approval gates, provenance receipts, structured-output contracts, durable
+workflows — is exactly what an intelligence platform needs.
 
 ---
 
-## 🛠️ Technical Stack
+## 🧭 The principled boundary (read this first)
 
-Mathia.OS is built for scale and real-time agentic behavior.
+Intelligence and action are deliberately decoupled. **There is no automatic
+intel → attack pipeline.**
 
-*   **Core**: Python 3.11, Django 5.0 (ASGI)
-*   **Real-time**: Django Channels, Redis (WebSockets)
-*   **AI Orchestration**: MCP Router (Model Context Protocol)
-*   **Database**: PostgreSQL 16
-*   **Async Tasks**: Celery & Celery Beat
-*   **Frontend**: HTML5/Bootstrap (served via Django)
-
----
-
-## ⚡ Quick Start (Docker)
-
-Get your OS running in minutes.
-
-1.  **Clone**
-    ```bash
-    git clone https://github.com/your-org/mathia.git
-    cd mathia
-    ```
-
-2.  **Env Setup**
-    ```bash
-    cp .env.example .env
-    # Add your API Keys (Anthropic, IntaSend, OpenWeather, etc.)
-    ```
-
-3.  **Launch**
-    ```bash
-    docker-compose up --build
-    ```
-
-4.  **Initialize**
-    ```bash
-    docker-compose exec web python Backend/manage.py migrate
-    ```
-
-Access the OS at: [http://localhost:8000](http://localhost:8000)
+- Collection is **passive and official-API-first** (no individual targeting; research posture).
+- A pentest is authorized **per-target by the asset owner** — your own assets, a signed
+  engagement, or a bug-bounty scope — **never derived from gathered OSINT**.
+- Every action that touches a target passes a fail-closed chain: **typed scope → verified
+  authorization → scope enforcement → per-action human approval → kill-switch**.
+- Everything is **provenance-tracked and human-gated**; nothing consequential runs without an
+  approved, audited record.
 
 ---
 
-## Railway Deployment
+## 🧱 Capabilities
 
-This repo includes a `Dockerfile` and an entrypoint that runs migrations and `collectstatic` for the web service.
+### 🛰️ SIGNET — live intelligence engine
+Multi-platform passive collection (Reddit, Telegram, …) → versioned LLM tagging
+(manipulation / disinformation taxonomy) → reach-based tier/threat scoring → ranked operator
+triage. Deployed and soaking. *(See `Backend/signet/`.)*
+
+### 🛡️ Pentest — the scope-gated act-on-intel arm
+A penetration-testing workflow that can only act against authorized assets. The full safety
+spine is shipped and human-gated end to end:
+
+| Stage | What it does |
+| --- | --- |
+| **Scope** | typed allow/deny resolver, deny-wins, fail-closed (`pentest/scope.py`) |
+| **Lifecycle** | draft → admin-verified → running, append-only audit (`pentest/lifecycle.py`) |
+| **Enforcement** | single chokepoint: running + verified + in-scope (`pentest/enforcement.py`) |
+| **Approval** | per-action M3 approval for high-active/destructive actions + revoke kill-switch |
+| **Execution** | external Kali-agent transport (REST, token-auth) running a **server-side action allowlist** |
+
+Execution today is **passive OSINT only** — `passive_dns_lookup`, `domain_rdap_lookup`,
+`ct_subdomain_lookup` — which contact DNS resolvers / fixed providers, never the target host.
+Active probing and approved high-active execution are gated behind later slices. *(See
+`Backend/pentest/` and the external agent in `agents/kali_pentest_agent/`.)*
+
+### 🧠 The orchestration spine (foundation)
+The reusable substrate every capability is built on:
+
+- **M3 human-gated runtime** — `WorkflowApprovalRecord` / `pending_approval` (the approval gates).
+- **Provenance** — `ActionReceipt` immutable receipts (lineage & audit).
+- **Contracts** — structured-output validation for every LLM/tool call.
+- **Connectors** — a pluggable registry for collectors and tools.
+- **Durable workflows** — Temporal + Celery for collect → tag → graph pipelines.
+- **Real-time** — Django Channels + Redis for live output and chat.
+
+The spine also still powers the platform's heritage capabilities (conversational agent,
+double-entry finance ledger, integrations) that now serve as primitives rather than the headline.
+
+---
+
+## 🛠️ Tech stack
+
+- **Core**: Python 3.11, Django 6 (ASGI)
+- **Real-time**: Django Channels + Redis (WebSockets)
+- **AI orchestration**: MCP router (Model Context Protocol), structured-output contracts
+- **Workflows / async**: Temporal, Celery & Celery Beat
+- **Database**: PostgreSQL
+- **Frontend**: React 19 + Vite + TypeScript (`frontend/`) — domain-workspace shell
+  (`intel`, `security`, …)
+- **External agent**: standalone FastAPI Kali agent (`agents/kali_pentest_agent/`)
+
+---
+
+## ⚡ Quick start (Docker)
+
+```bash
+git clone <this-repo> mathia && cd mathia
+cp .env.example .env          # add API keys: Anthropic, etc.
+docker-compose up --build
+docker-compose exec web python Backend/manage.py migrate
+```
+
+App at http://localhost:8000 · frontend dev server: `cd frontend && npm install && npm run dev`.
+
+---
+
+## 🚀 Railway deployment
+
+This repo ships a `Dockerfile` and an entrypoint that runs migrations and `collectstatic`.
 
 1. Create a Railway project and connect this repo.
 2. Add PostgreSQL and Redis plugins (Railway injects `DATABASE_URL` and `REDIS_URL`).
@@ -85,36 +106,42 @@ This repo includes a `Dockerfile` and an entrypoint that runs migrations and `co
    - `DJANGO_DEBUG=false`
    - `DJANGO_ALLOWED_HOSTS=yourapp.up.railway.app`
    - `DJANGO_CSRF_TRUSTED_ORIGINS=https://yourapp.up.railway.app`
-4. (Optional) If you need uploads in production, enable R2:
-   - `R2_ENABLED=true` and all `R2_*` variables (see `Backend/Backend/settings.py`).
+4. (Optional) Uploads in production: `R2_ENABLED=true` + all `R2_*` vars (see `Backend/Backend/settings.py`).
 
-Service start commands (use these in Railway service settings):
+Service start commands (Railway service settings):
+
 ```bash
-# web
-sh /app/scripts/railway/web.sh
-
-# celery worker
-sh /app/scripts/railway/celery_worker.sh
-
-# celery beat
-sh /app/scripts/railway/celery_beat.sh
-
-# temporal worker (only if you use Temporal)
-sh /app/scripts/railway/temporal_worker.sh
+sh /app/scripts/railway/web.sh             # web
+sh /app/scripts/railway/celery_worker.sh   # celery worker
+sh /app/scripts/railway/celery_beat.sh     # celery beat
+sh /app/scripts/railway/temporal_worker.sh # temporal worker (if used)
 ```
 
-For worker/beat/temporal services, set `SKIP_MIGRATIONS=1` to avoid repeated migrations.
+For worker/beat/temporal services set `SKIP_MIGRATIONS=1` to avoid repeated migrations.
+
+The **Kali pentest agent** runs as its own process/container — see
+`agents/kali_pentest_agent/README.md` (disabled by default; token-gated).
 
 ---
 
-## 🧪 Testing the OS
-
-Run the diagnostic suite to verify all pillars:
+## 🧪 Testing
 
 ```bash
-docker-compose exec web python Backend/manage.py test
-docker-compose exec web python Backend/verify_ledger.py
+# Django suite (hermetic test settings)
+cd Backend && python manage.py test --settings=Backend.settings_test
+
+# External agent unit tests
+python -m unittest discover -s agents/kali_pentest_agent/tests
+
+# Security scan (CI gate)
+bandit -r . -x ./tests,./venv --skip B101 -ll -ii
+
+# Frontend
+cd frontend && npm run typecheck && npm run lint
 ```
+
+CI (`.github/workflows/main.yml`) runs flake8, Bandit, the Django suite, and the agent tests
+on every PR.
 
 ---
 
