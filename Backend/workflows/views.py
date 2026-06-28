@@ -174,14 +174,18 @@ def execution_detail(request, execution_id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def operations_inbox(request):
+    # Pentest approvals have their own dedicated surface (ConfirmationGate +
+    # /api/pentest/approvals/…) with engagement-scoped accept/reject semantics, and
+    # their executions are synthetic (non-Temporal). Keep them out of the generic
+    # workflows operations inbox so they can't be actioned through the wrong path.
     approvals = WorkflowApprovalRecord.objects.filter(
         workflow__user=request.user,
         status="pending",
-    ).select_related("execution", "workflow")
+    ).exclude(service="pentest").select_related("execution", "workflow")
     failed_executions = WorkflowExecution.objects.filter(
         workflow__user=request.user,
         status__in=["waiting", "failed", "cancelled"],
-    ).select_related("workflow", "pending_approval")
+    ).exclude(workflow__name="__pentest_approvals__").select_related("workflow", "pending_approval")
     deferred = DeferredWorkflowExecution.objects.filter(
         user=request.user,
         status__in=["queued", "processing", "abandoned"],

@@ -21,3 +21,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 # request into a 301 and breaks view tests. Force it off here (not via DEBUG)
 # so the suite is correct in ANY environment — including against prod Postgres.
 SECURE_SSL_REDIRECT = False
+
+# Disable API throttling in tests so suites that create many users/engagements
+# in rapid succession don't hit rate limits.
+REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {}
