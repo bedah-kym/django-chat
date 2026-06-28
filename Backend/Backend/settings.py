@@ -447,6 +447,15 @@ REST_FRAMEWORK = {
 # Chat rate limit (messages per minute)
 CHAT_RATE_LIMIT = 30
 
+# Pentest Kali Agent — disabled-by-default shared-token auth (5B)
+PENTEST_AGENT_ENABLED = os.environ.get("PENTEST_AGENT_ENABLED", "False").lower() in ("1", "true", "yes")
+PENTEST_AGENT_SHARED_TOKEN = os.environ.get("PENTEST_AGENT_SHARED_TOKEN", "")
+PENTEST_AGENT_ALLOWED_IDS = [
+    item.strip()
+    for item in os.environ.get("PENTEST_AGENT_ALLOWED_IDS", "").split(",")
+    if item.strip()
+]
+
 # ==========================================
 # AUTHENTICATION & SECURITY CONFIGURATION
 # ==========================================
