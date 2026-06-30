@@ -72,6 +72,10 @@ jobs:
         cd Backend
         python manage.py test --settings=Backend.settings_test
 
+    - name: Run agent unit tests
+      run: |
+        python -m unittest discover -s agents/kali_pentest_agent/tests -v
+
   build-and-deploy:
     needs: test
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
