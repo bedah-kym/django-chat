@@ -256,7 +256,9 @@
 }
 
 .contentArea {
-  overflow: hidden;
+  /* Scroll long domain pages (engagement lists, etc.) instead of clipping them;
+     also gives PageScaffold's sticky "focused-detail" header a scroll ancestor. */
+  overflow-y: auto;
 }
 
 .chatArea {
