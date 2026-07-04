@@ -138,7 +138,9 @@ class NeuroA2ATravelRunView(APIView):
             },
         )
 
-        if not result.get("metadata", {}).get("error"):
+        metadata = result.get("metadata", {}) if isinstance(result.get("metadata"), dict) else {}
+        provider_error = str(metadata.get("error") or "").strip()
+        if not provider_error or not self._is_user_input_error(provider_error):
             return {
                 "status": "success",
                 "result": self._human_result(action, result),
@@ -146,13 +148,16 @@ class NeuroA2ATravelRunView(APIView):
                 "raw": result,
             }
 
-        message = result.get("metadata", {}).get("error")
         return {
             "status": "error",
-            "result": message or "Travel search could not be completed.",
+            "result": provider_error or "Travel search could not be completed.",
             "action": action,
             "raw": result,
         }
+
+    def _is_user_input_error(self, message: str) -> bool:
+        lowered = message.lower()
+        return lowered.startswith("missing required") or lowered.startswith("invalid ")
 
     async def _execute_search(self, action: str, parameters: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         connector = self._connector_for_action(action)
@@ -209,6 +214,8 @@ class NeuroA2ATravelRunView(APIView):
         data = routed if isinstance(routed, dict) else {}
         results = data.get("results")
         metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+        if metadata.get("error") and not results:
+            return str(metadata["error"])
         if isinstance(results, list):
             count = len(results)
             label = action.replace("search_", "")
