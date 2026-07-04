@@ -51,6 +51,16 @@ KNOWN_TRAVEL_CITIES = (
     "lagos",
     "accra",
 )
+KENYAN_FLIGHT_CITIES = {
+    "nairobi",
+    "kisumu",
+    "mombasa",
+    "diani",
+    "eldoret",
+    "malindi",
+    "lamu",
+}
+DEFAULT_FLIGHT_ORIGIN = "Nairobi"
 STATEFUL_ACTIONS = {
     "add_to_itinerary",
     "book_travel_item",
@@ -260,6 +270,44 @@ class NeuroA2ATravelRunView(APIView):
                     "clarifying_question": "",
                     "raw_query": prompt,
                 }
+            destination = self._extract_destination(
+                text,
+                stop_words=("on", "for", "from", "returning", "with", "at", "in", "tomorrow", "tommorow", "today", "next", "this"),
+            )
+            if destination:
+                origin = self._default_origin_for_destination(destination)
+                if origin and dates:
+                    return {
+                        "action": "search_flights",
+                        "confidence": 0.9,
+                        "parameters": {
+                            "origin": origin,
+                            "destination": destination,
+                            "departure_date": dates[0],
+                            "return_date": dates[1] if len(dates) >= 2 else "",
+                            "passengers": self._extract_guest_count(text),
+                            "cabin_class": "economy",
+                            "assumed_origin": True,
+                        },
+                        "missing_slots": [],
+                        "clarifying_question": "",
+                        "raw_query": prompt,
+                    }
+                return {
+                    "action": "search_flights",
+                    "confidence": 0.9,
+                    "parameters": {
+                        "destination": destination,
+                        "passengers": self._extract_guest_count(text),
+                        "cabin_class": "economy",
+                    },
+                    "missing_slots": ["origin"] if dates else ["origin", "departure_date"],
+                    "clarifying_question": (
+                        f"I can search flights to {destination}. "
+                        "Where are you flying from?"
+                    ),
+                    "raw_query": prompt,
+                }
 
         if any(word in lowered for word in ("hotel", "hotels", "stay", "accommodation", "lodging")):
             destination = self._extract_destination(text, stop_words=("from", "for", "between", "next", "this", "weekend", "tomorrow", "today"))
@@ -335,6 +383,15 @@ class NeuroA2ATravelRunView(APIView):
         dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text)
         lowered = text.lower()
         today = date.today()
+
+        if "tomorrow" in lowered or "tommorow" in lowered:
+            tomorrow = today + timedelta(days=1)
+            if tomorrow.isoformat() not in dates:
+                dates.append(tomorrow.isoformat())
+
+        if re.search(r"\btoday\b", lowered):
+            if today.isoformat() not in dates:
+                dates.append(today.isoformat())
 
         if "next weekend" in lowered:
             days_until_saturday = (5 - today.weekday()) % 7
@@ -425,6 +482,12 @@ class NeuroA2ATravelRunView(APIView):
         if not origin or not destination:
             return None
         return origin, destination
+
+    def _default_origin_for_destination(self, destination: str) -> str:
+        if destination.strip().lower() in KENYAN_FLIGHT_CITIES:
+            default_origin = getattr(settings, "NEUROA2A_DEFAULT_FLIGHT_ORIGIN", DEFAULT_FLIGHT_ORIGIN)
+            return str(default_origin or DEFAULT_FLIGHT_ORIGIN)
+        return ""
 
     async def _llm_travel_intent(self, prompt: str, service_user_id: int) -> Dict[str, Any] | None:
         system_prompt = """You are a travel intent extractor for Mathia's NeuroA2A marketplace listing.
