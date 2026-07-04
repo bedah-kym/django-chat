@@ -26,6 +26,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from chatbot.views import upload_file
+from travel.neuroa2a import NeuroA2ATravelRunView
 
 @never_cache
 def spa_index(_request):
@@ -60,6 +61,7 @@ urlpatterns = [
     path('api/signet/', include('signet.urls')),
     path('api/bugbounty/', include('bugbounty.urls')),
     path('api/pentest/', include('pentest.urls')),
+    path('api/neuroa2a/travel/run/', NeuroA2ATravelRunView.as_view(), name='neuroa2a_travel_run'),
     path('auth/', obtain_auth_token),
     path('api-auth/', include('rest_framework.urls')),
     path('uploads/', upload_file, name='upload_file'),
