@@ -15,7 +15,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from orchestration.intent_parser import parse_intent
-from orchestration.mcp_router import route_intent
 
 logger = logging.getLogger(__name__)
 
@@ -129,8 +128,9 @@ class NeuroA2ATravelRunView(APIView):
                 "action": action,
             }
 
-        routed = await route_intent(
-            intent,
+        result = await self._execute_search(
+            action,
+            intent.get("parameters") or {},
             {
                 "user_id": service_user_id,
                 "room_id": None,
@@ -138,21 +138,50 @@ class NeuroA2ATravelRunView(APIView):
             },
         )
 
-        if routed.get("status") == "success":
+        if not result.get("metadata", {}).get("error"):
             return {
                 "status": "success",
-                "result": self._human_result(action, routed),
+                "result": self._human_result(action, result),
                 "action": action,
-                "raw": routed,
+                "raw": result,
             }
 
-        message = routed.get("message") or routed.get("clarification_prompt") or routed.get("reason")
+        message = result.get("metadata", {}).get("error")
         return {
             "status": "error",
             "result": message or "Travel search could not be completed.",
             "action": action,
-            "raw": routed,
+            "raw": result,
         }
+
+    async def _execute_search(self, action: str, parameters: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        connector = self._connector_for_action(action)
+        parameters = dict(parameters or {})
+        parameters.setdefault("action", action)
+        return await connector._fetch(parameters, context)
+
+    def _connector_for_action(self, action: str):
+        if action == "search_buses":
+            from orchestration.connectors.travel_buses_connector import TravelBusesConnector
+
+            return TravelBusesConnector()
+        if action == "search_hotels":
+            from orchestration.connectors.travel_hotels_connector import TravelHotelsConnector
+
+            return TravelHotelsConnector()
+        if action == "search_flights":
+            from orchestration.connectors.travel_flights_connector import TravelFlightsConnector
+
+            return TravelFlightsConnector()
+        if action == "search_transfers":
+            from orchestration.connectors.travel_transfers_connector import TravelTransfersConnector
+
+            return TravelTransfersConnector()
+        if action == "search_events":
+            from orchestration.connectors.travel_events_connector import TravelEventsConnector
+
+            return TravelEventsConnector()
+        raise ValueError(f"Unsupported travel action: {action}")
 
     async def _service_user_id(self) -> int | None:
         raw_user_id = getattr(settings, "NEUROA2A_TRAVEL_USER_ID", "")
@@ -177,7 +206,7 @@ class NeuroA2ATravelRunView(APIView):
         return await sync_to_async(_get_or_create_service_user)()
 
     def _human_result(self, action: str, routed: Dict[str, Any]) -> str:
-        data = routed.get("data") if isinstance(routed.get("data"), dict) else {}
+        data = routed if isinstance(routed, dict) else {}
         results = data.get("results")
         metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
         if isinstance(results, list):
