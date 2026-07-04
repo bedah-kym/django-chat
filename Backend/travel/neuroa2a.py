@@ -7,6 +7,8 @@ import logging
 import re
 import secrets
 import time
+from calendar import monthrange
+from datetime import date, timedelta
 from typing import Any, Dict
 
 from asgiref.sync import async_to_sync, sync_to_async
@@ -27,6 +29,28 @@ ALLOWED_ACTIONS = {
     "search_transfers",
     "search_events",
 }
+KNOWN_TRAVEL_CITIES = (
+    "nairobi",
+    "kisumu",
+    "mombasa",
+    "diani",
+    "eldoret",
+    "malindi",
+    "lamu",
+    "nakuru",
+    "naivasha",
+    "dubai",
+    "london",
+    "paris",
+    "kampala",
+    "kigali",
+    "dar es salaam",
+    "addis ababa",
+    "johannesburg",
+    "cape town",
+    "lagos",
+    "accra",
+)
 STATEFUL_ACTIONS = {
     "add_to_itinerary",
     "book_travel_item",
@@ -160,6 +184,14 @@ class NeuroA2ATravelRunView(APIView):
                 "action": action,
             }
 
+        missing_slots = intent.get("missing_slots")
+        if isinstance(missing_slots, list) and missing_slots:
+            return {
+                "status": "success",
+                "result": self._missing_slot_result(action, intent),
+                "action": action,
+            }
+
         result = await self._execute_search(
             action,
             intent.get("parameters") or {},
@@ -192,10 +224,27 @@ class NeuroA2ATravelRunView(APIView):
         lowered = text.lower()
         dates = self._extract_dates(text)
 
-        if any(word in lowered for word in ("flight", "flights", "airfare", "fly")):
+        if any(word in lowered for word in ("flight", "flights", "airfare", "fly", "air ticket")):
             route = self._extract_route(text)
-            if route and dates:
+            if route:
                 origin, destination = route
+                if not dates:
+                    return {
+                        "action": "search_flights",
+                        "confidence": 1.0,
+                        "parameters": {
+                            "origin": origin,
+                            "destination": destination,
+                            "passengers": self._extract_guest_count(text),
+                            "cabin_class": "economy",
+                        },
+                        "missing_slots": ["departure_date"],
+                        "clarifying_question": (
+                            f"I can search flights from {origin} to {destination}. "
+                            "What departure date should I use?"
+                        ),
+                        "raw_query": prompt,
+                    }
                 return {
                     "action": "search_flights",
                     "confidence": 1.0,
@@ -212,8 +261,8 @@ class NeuroA2ATravelRunView(APIView):
                     "raw_query": prompt,
                 }
 
-        if "hotel" in lowered:
-            destination = self._extract_destination(text, stop_words=("from", "for", "between"))
+        if any(word in lowered for word in ("hotel", "hotels", "stay", "accommodation", "lodging")):
+            destination = self._extract_destination(text, stop_words=("from", "for", "between", "next", "this", "weekend", "tomorrow", "today"))
             if destination and len(dates) >= 2:
                 return {
                     "action": "search_hotels",
@@ -228,9 +277,24 @@ class NeuroA2ATravelRunView(APIView):
                     "clarifying_question": "",
                     "raw_query": prompt,
                 }
+            if destination:
+                return {
+                    "action": "search_hotels",
+                    "confidence": 1.0,
+                    "parameters": {
+                        "location": destination,
+                        "guests": self._extract_guest_count(text),
+                    },
+                    "missing_slots": ["check_in_date", "check_out_date"],
+                    "clarifying_question": (
+                        f"I can search places to stay in {destination}. "
+                        "What check-in and check-out dates should I use?"
+                    ),
+                    "raw_query": prompt,
+                }
 
         if any(word in lowered for word in ("plan", "trip", "itinerary")):
-            destination = self._extract_destination(text, stop_words=("from", "for", "between"))
+            destination = self._extract_destination(text, stop_words=("from", "for", "between", "in", "on", "during"))
             if destination:
                 params: Dict[str, Any] = {"destination": destination}
                 if len(dates) >= 1:
@@ -247,10 +311,46 @@ class NeuroA2ATravelRunView(APIView):
                     "raw_query": prompt,
                 }
 
+        if any(phrase in lowered for phrase in ("what can i do", "things to do", "events", "activities", "concerts")):
+            destination = self._extract_destination(text, stop_words=("from", "for", "between", "on", "in"))
+            if destination:
+                params = {"location": destination}
+                if len(dates) >= 1:
+                    params["start_date"] = dates[0]
+                    params["event_date"] = dates[0]
+                if len(dates) >= 2:
+                    params["end_date"] = dates[1]
+                return {
+                    "action": "search_events",
+                    "confidence": 1.0,
+                    "parameters": params,
+                    "missing_slots": [],
+                    "clarifying_question": "",
+                    "raw_query": prompt,
+                }
+
         return None
 
     def _extract_dates(self, text: str) -> list[str]:
         dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text)
+        lowered = text.lower()
+        today = date.today()
+
+        if "next weekend" in lowered:
+            days_until_saturday = (5 - today.weekday()) % 7
+            if days_until_saturday == 0:
+                days_until_saturday = 7
+            saturday = today + timedelta(days=days_until_saturday)
+            sunday = saturday + timedelta(days=1)
+            return [saturday.isoformat(), sunday.isoformat()]
+
+        if "next month" in lowered:
+            year = today.year + (1 if today.month == 12 else 0)
+            month = 1 if today.month == 12 else today.month + 1
+            month_start = date(year, month, 1)
+            if month_start.isoformat() not in dates:
+                dates.append(month_start.isoformat())
+
         natural_patterns = [
             r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+20\d{2}\b",
             r"\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+20\d{2}\b",
@@ -265,18 +365,63 @@ class NeuroA2ATravelRunView(APIView):
                     continue
                 if parsed not in dates:
                     dates.append(parsed)
-        return dates
-
-    def _extract_route(self, text: str) -> tuple[str, str] | None:
-        match = re.search(
-            r"\bfrom\s+(?P<origin>[A-Za-z][A-Za-z\s'-]{1,60}?)\s+to\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})(?:\s+(?:on|for|from|returning|with|at|in)\b|[,.]|$)",
+        month_range = re.search(
+            r"\b(?P<month>jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(?P<year>20\d{2})\b",
             text,
             flags=re.IGNORECASE,
         )
-        if not match:
+        if month_range and not dates:
+            try:
+                from dateutil import parser
+
+                parsed = parser.parse(f"1 {month_range.group('month')} {month_range.group('year')}")
+                year = parsed.year
+                month = parsed.month
+                last_day = monthrange(year, month)[1]
+                dates.extend([date(year, month, 1).isoformat(), date(year, month, last_day).isoformat()])
+            except Exception:
+                pass
+        return dates
+
+    def _extract_route(self, text: str) -> tuple[str, str] | None:
+        route_patterns = [
+            r"\bfrom\s+(?P<origin>[A-Za-z][A-Za-z\s'-]{1,60}?)\s+to\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})(?:\s+(?:on|for|from|returning|with|at|in)\b|[,.]|$)",
+        ]
+        for pattern in route_patterns:
+            match = re.search(pattern, text, flags=re.IGNORECASE)
+            if match:
+                origin = self._clean_destination(match.group("origin"), stop_words=("on", "for", "from", "returning", "with", "at", "in", "flight", "flights"))
+                destination = self._clean_destination(match.group("destination"), stop_words=("on", "for", "from", "returning", "with", "at", "in", "flight", "flights"))
+                if origin and destination:
+                    return origin, destination
+
+        city_pair = self._extract_known_city_pair(text)
+        if city_pair:
+            return city_pair
+
+        match = re.search(
+            r"\b(?P<origin>[A-Z][A-Za-z'-]{1,40})\s+to\s+(?P<destination>[A-Z][A-Za-z'-]{1,40})(?:\s+(?:flight|flights|airfare|air ticket|on|for|from|returning|with|at|in)\b|[,.]|$)",
+            text,
+        )
+        if match:
+            origin = self._clean_destination(match.group("origin"), stop_words=("on", "for", "from", "returning", "with", "at", "in", "flight", "flights"))
+            destination = self._clean_destination(match.group("destination"), stop_words=("on", "for", "from", "returning", "with", "at", "in", "flight", "flights"))
+            if origin and destination:
+                return origin, destination
+        return None
+
+    def _extract_known_city_pair(self, text: str) -> tuple[str, str] | None:
+        lowered = text.lower()
+        matches = []
+        for city in KNOWN_TRAVEL_CITIES:
+            match = re.search(rf"\b{re.escape(city)}\b", lowered)
+            if match:
+                matches.append((match.start(), city))
+        matches.sort()
+        if len(matches) < 2:
             return None
-        origin = self._clean_destination(match.group("origin"), stop_words=("on", "for", "from", "returning", "with", "at", "in"))
-        destination = self._clean_destination(match.group("destination"), stop_words=("on", "for", "from", "returning", "with", "at", "in"))
+        origin = matches[0][1].title()
+        destination = matches[1][1].title()
         if not origin or not destination:
             return None
         return origin, destination
@@ -383,11 +528,32 @@ Use general_chat only when the prompt is not a travel request."""
             "raw_query": str(intent.get("raw_query") or prompt),
         }
 
+    def _missing_slot_result(self, action: str, intent: Dict[str, Any]) -> str:
+        question = str(intent.get("clarifying_question") or "").strip()
+        if question:
+            return question
+
+        params = intent.get("parameters") if isinstance(intent.get("parameters"), dict) else {}
+        missing = intent.get("missing_slots") if isinstance(intent.get("missing_slots"), list) else []
+        missing_text = ", ".join(str(slot).replace("_", " ") for slot in missing) or "one more detail"
+        if action == "search_flights":
+            route = ""
+            if params.get("origin") and params.get("destination"):
+                route = f" from {params['origin']} to {params['destination']}"
+            return f"I can search flights{route}. Please send {missing_text}."
+        if action == "search_hotels":
+            location = f" in {params['location']}" if params.get("location") else ""
+            return f"I can search places to stay{location}. Please send {missing_text}."
+        return f"I understood this as {action.replace('_', ' ')}. Please send {missing_text}."
+
     def _extract_destination(self, text: str, *, stop_words: tuple[str, ...]) -> str:
         patterns = [
             r"\bplan(?:\s+(?:a|an|my))?\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60}?)\s+(?:trip|itinerary|travel)\b",
             r"\b(?:trip|itinerary|travel)\s+(?:to|in|for)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
-            r"\b(?:hotels?|events?|flights?|buses?|transfers?)\s+(?:in|to|for)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
+            r"\b(?:hotels?|events?|flights?|buses?|transfers?|stay|accommodation|lodging)\s+(?:in|to|for)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
+            r"\b(?:somewhere|place|places)\s+to\s+stay\s+(?:in|near|around)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
+            r"\b(?:what\s+can\s+i\s+do|things\s+to\s+do|activities|events)\s+(?:in|near|around)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
+            r"\b(?:beach|safari|city|weekend)\s+trip\s+(?:to|in|for)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
         ]
         for pattern in patterns:
             match = re.search(pattern, text, flags=re.IGNORECASE)

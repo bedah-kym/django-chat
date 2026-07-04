@@ -217,7 +217,7 @@ class NeuroA2ATravelRunTests(TestCase):
             },
             "missing_slots": [],
             "clarifying_question": "",
-            "raw_query": "Can you get me an air ticket Nairobi Kisumu August 10, 2026",
+            "raw_query": "Can you get me an air ticket to the lakeside on August 10, 2026",
         }
 
         with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
@@ -236,7 +236,7 @@ class NeuroA2ATravelRunTests(TestCase):
                 response = self.client.post(
                     self.url,
                     {
-                        "user_prompt": "Can you get me an air ticket Nairobi Kisumu August 10, 2026",
+                        "user_prompt": "Can you get me an air ticket to the lakeside on August 10, 2026",
                     },
                     HTTP_AUTHORIZATION="Bearer secret",
                     format="json",
@@ -246,6 +246,133 @@ class NeuroA2ATravelRunTests(TestCase):
         self.assertEqual(response.data["status"], "success")
         fetch_flights.assert_awaited_once()
         llm.generate_text.assert_awaited_once()
+        parse.assert_not_awaited()
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_shorthand_flight_route_with_relative_date_searches(self):
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch(
+                "orchestration.connectors.travel_flights_connector.TravelFlightsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"airline": "Kenya Airways", "price_ksh": 9500}],
+                        "metadata": {"provider": "amadeus"},
+                    }
+                ),
+            ) as fetch_flights, patch(
+                "travel.neuroa2a.parse_intent",
+                new=AsyncMock(),
+            ) as parse:
+                response = self.client.post(
+                    self.url,
+                    {"user_prompt": "Need to fly Nairobi to Kisumu next month"},
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        fetch_flights.assert_awaited_once()
+        self.assertEqual(fetch_flights.await_args.args[0]["origin"], "Nairobi")
+        self.assertEqual(fetch_flights.await_args.args[0]["destination"], "Kisumu")
+        self.assertRegex(fetch_flights.await_args.args[0]["departure_date"], r"^20\d{2}-\d{2}-01$")
+        parse.assert_not_awaited()
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_stay_prompt_with_next_weekend_searches_hotels(self):
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch(
+                "orchestration.connectors.travel_hotels_connector.TravelHotelsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"name": "Nairobi Hotel", "price_ksh": 12000}],
+                        "metadata": {"provider": "fallback"},
+                    }
+                ),
+            ) as fetch_hotels, patch(
+                "travel.neuroa2a.parse_intent",
+                new=AsyncMock(),
+            ) as parse:
+                response = self.client.post(
+                    self.url,
+                    {"user_prompt": "Find me somewhere to stay in Nairobi next weekend"},
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        fetch_hotels.assert_awaited_once()
+        self.assertEqual(fetch_hotels.await_args.args[0]["location"], "Nairobi")
+        self.assertTrue(fetch_hotels.await_args.args[0]["check_in_date"])
+        self.assertTrue(fetch_hotels.await_args.args[0]["check_out_date"])
+        parse.assert_not_awaited()
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_open_ended_beach_trip_uses_trip_planning_searches(self):
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch(
+                "orchestration.connectors.travel_hotels_connector.TravelHotelsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"name": "Beach Stay", "price_ksh": 20000}],
+                        "metadata": {"provider": "fallback"},
+                    }
+                ),
+            ) as fetch_hotels, patch(
+                "orchestration.connectors.travel_events_connector.TravelEventsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"name": "Coastal Tour"}],
+                        "metadata": {"provider": "fallback"},
+                    }
+                ),
+            ) as fetch_events, patch(
+                "travel.neuroa2a.parse_intent",
+                new=AsyncMock(),
+            ) as parse:
+                response = self.client.post(
+                    self.url,
+                    {"user_prompt": "I want a beach trip in Kenya in August 2026"},
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        self.assertIn("safe travel searches", response.data["result"])
+        fetch_hotels.assert_awaited_once()
+        self.assertEqual(fetch_hotels.await_args.args[0]["location"], "Kenya")
+        fetch_events.assert_awaited_once()
+        parse.assert_not_awaited()
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_things_to_do_prompt_searches_events(self):
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch(
+                "orchestration.connectors.travel_events_connector.TravelEventsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"name": "Nairobi Tour"}],
+                        "metadata": {"provider": "fallback"},
+                    }
+                ),
+            ) as fetch_events, patch(
+                "travel.neuroa2a.parse_intent",
+                new=AsyncMock(),
+            ) as parse:
+                response = self.client.post(
+                    self.url,
+                    {"user_prompt": "What can I do in Nairobi on August 10, 2026?"},
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        fetch_events.assert_awaited_once()
+        self.assertEqual(fetch_events.await_args.args[0]["location"], "Nairobi")
+        self.assertEqual(fetch_events.await_args.args[0]["start_date"], "2026-08-10")
         parse.assert_not_awaited()
 
     @override_settings(NEUROA2A_SHARED_TOKEN="secret")
