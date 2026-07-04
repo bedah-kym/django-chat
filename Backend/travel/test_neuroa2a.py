@@ -33,17 +33,14 @@ class NeuroA2ATravelRunTests(TestCase):
     def test_routes_structured_travel_search(self):
         with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
             with patch(
-                "travel.neuroa2a.route_intent",
+                "orchestration.connectors.travel_hotels_connector.TravelHotelsConnector._fetch",
                 new=AsyncMock(
                     return_value={
-                        "status": "success",
-                        "data": {
-                            "results": [{"name": "Nairobi Hotel", "price_ksh": 12000}],
-                            "metadata": {"provider": "fallback"},
-                        },
+                        "results": [{"name": "Nairobi Hotel", "price_ksh": 12000}],
+                        "metadata": {"provider": "fallback"},
                     }
                 ),
-            ) as route_intent:
+            ) as fetch_hotels:
                 response = self.client.post(
                     self.url,
                     {
@@ -67,7 +64,7 @@ class NeuroA2ATravelRunTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], "success")
         self.assertIn("Found 1 hotels option", response.data["result"])
-        route_intent.assert_awaited_once()
+        fetch_hotels.assert_awaited_once()
 
     @override_settings(NEUROA2A_SHARED_TOKEN="secret")
     def test_rejects_stateful_travel_action(self):
