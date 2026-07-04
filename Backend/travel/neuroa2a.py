@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import secrets
 import time
 from typing import Any, Dict
@@ -122,7 +123,9 @@ class NeuroA2ATravelRunView(APIView):
                 "raw_query": prompt,
             }
         else:
-            intent = await parse_intent(prompt, {"user_id": service_user_id})
+            intent = self._deterministic_intent(prompt)
+            if not intent:
+                intent = await parse_intent(prompt, {"user_id": service_user_id})
 
         action = str(intent.get("action") or "").strip()
         if action not in ALLOWED_ACTIONS:
@@ -180,6 +183,76 @@ class NeuroA2ATravelRunView(APIView):
             "action": action,
             "raw": result,
         }
+
+    def _deterministic_intent(self, prompt: str) -> Dict[str, Any] | None:
+        text = " ".join((prompt or "").split())
+        lowered = text.lower()
+        dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text)
+
+        if "hotel" in lowered:
+            destination = self._extract_destination(text, stop_words=("from", "for", "between"))
+            if destination and len(dates) >= 2:
+                return {
+                    "action": "search_hotels",
+                    "confidence": 1.0,
+                    "parameters": {
+                        "location": destination,
+                        "check_in_date": dates[0],
+                        "check_out_date": dates[1],
+                        "guests": self._extract_guest_count(text),
+                    },
+                    "missing_slots": [],
+                    "clarifying_question": "",
+                    "raw_query": prompt,
+                }
+
+        if any(word in lowered for word in ("plan", "trip", "itinerary")):
+            destination = self._extract_destination(text, stop_words=("from", "for", "between"))
+            if destination:
+                params: Dict[str, Any] = {"destination": destination}
+                if len(dates) >= 1:
+                    params["start_date"] = dates[0]
+                if len(dates) >= 2:
+                    params["end_date"] = dates[1]
+                params["guests"] = self._extract_guest_count(text)
+                return {
+                    "action": "create_itinerary",
+                    "confidence": 1.0,
+                    "parameters": params,
+                    "missing_slots": [],
+                    "clarifying_question": "",
+                    "raw_query": prompt,
+                }
+
+        return None
+
+    def _extract_destination(self, text: str, *, stop_words: tuple[str, ...]) -> str:
+        patterns = [
+            r"\bplan(?:\s+(?:a|an|my))?\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60}?)\s+(?:trip|itinerary|travel)\b",
+            r"\b(?:trip|itinerary|travel)\s+(?:to|in|for)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
+            r"\b(?:hotels?|events?|flights?|buses?|transfers?)\s+(?:in|to|for)\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, flags=re.IGNORECASE)
+            if match:
+                destination = match.group("destination")
+                return self._clean_destination(destination, stop_words=stop_words)
+        return ""
+
+    def _clean_destination(self, value: str, *, stop_words: tuple[str, ...]) -> str:
+        cleaned = value.strip(" ,.;")
+        stop_pattern = r"\b(?:" + "|".join(re.escape(word) for word in stop_words) + r")\b"
+        cleaned = re.split(stop_pattern, cleaned, maxsplit=1, flags=re.IGNORECASE)[0].strip(" ,.;")
+        return cleaned
+
+    def _extract_guest_count(self, text: str) -> int:
+        match = re.search(r"\b(?:for\s+)?(?P<count>\d{1,2})\s+(?:guest|guests|person|people|traveler|travelers)\b", text, flags=re.IGNORECASE)
+        if not match:
+            return 1
+        try:
+            return max(1, int(match.group("count")))
+        except (TypeError, ValueError):
+            return 1
 
     async def _handle_trip_planning_intent(self, intent: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         params = intent.get("parameters") if isinstance(intent.get("parameters"), dict) else {}
