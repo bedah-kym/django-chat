@@ -190,7 +190,27 @@ class NeuroA2ATravelRunView(APIView):
     def _deterministic_intent(self, prompt: str) -> Dict[str, Any] | None:
         text = " ".join((prompt or "").split())
         lowered = text.lower()
-        dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text)
+        dates = self._extract_dates(text)
+
+        if any(word in lowered for word in ("flight", "flights", "airfare", "fly")):
+            route = self._extract_route(text)
+            if route and dates:
+                origin, destination = route
+                return {
+                    "action": "search_flights",
+                    "confidence": 1.0,
+                    "parameters": {
+                        "origin": origin,
+                        "destination": destination,
+                        "departure_date": dates[0],
+                        "return_date": dates[1] if len(dates) >= 2 else "",
+                        "passengers": self._extract_guest_count(text),
+                        "cabin_class": "economy",
+                    },
+                    "missing_slots": [],
+                    "clarifying_question": "",
+                    "raw_query": prompt,
+                }
 
         if "hotel" in lowered:
             destination = self._extract_destination(text, stop_words=("from", "for", "between"))
@@ -228,6 +248,38 @@ class NeuroA2ATravelRunView(APIView):
                 }
 
         return None
+
+    def _extract_dates(self, text: str) -> list[str]:
+        dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text)
+        natural_patterns = [
+            r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+20\d{2}\b",
+            r"\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+20\d{2}\b",
+        ]
+        for pattern in natural_patterns:
+            for match in re.findall(pattern, text, flags=re.IGNORECASE):
+                try:
+                    from dateutil import parser
+
+                    parsed = parser.parse(match, fuzzy=True).date().isoformat()
+                except Exception:
+                    continue
+                if parsed not in dates:
+                    dates.append(parsed)
+        return dates
+
+    def _extract_route(self, text: str) -> tuple[str, str] | None:
+        match = re.search(
+            r"\bfrom\s+(?P<origin>[A-Za-z][A-Za-z\s'-]{1,60}?)\s+to\s+(?P<destination>[A-Za-z][A-Za-z\s'-]{1,60})(?:\s+(?:on|for|from|returning|with|at|in)\b|[,.]|$)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None
+        origin = self._clean_destination(match.group("origin"), stop_words=("on", "for", "from", "returning", "with", "at", "in"))
+        destination = self._clean_destination(match.group("destination"), stop_words=("on", "for", "from", "returning", "with", "at", "in"))
+        if not origin or not destination:
+            return None
+        return origin, destination
 
     async def _llm_travel_intent(self, prompt: str, service_user_id: int) -> Dict[str, Any] | None:
         system_prompt = """You are a travel intent extractor for Mathia's NeuroA2A marketplace listing.
