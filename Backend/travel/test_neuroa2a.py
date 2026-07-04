@@ -279,6 +279,37 @@ class NeuroA2ATravelRunTests(TestCase):
         parse.assert_not_awaited()
 
     @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_destination_only_flight_with_typo_tomorrow_defaults_origin(self):
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch(
+                "orchestration.connectors.travel_flights_connector.TravelFlightsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"airline": "Kenya Airways", "price_ksh": 9500}],
+                        "metadata": {"provider": "amadeus"},
+                    }
+                ),
+            ) as fetch_flights, patch(
+                "travel.neuroa2a.parse_intent",
+                new=AsyncMock(),
+            ) as parse:
+                response = self.client.post(
+                    self.url,
+                    {"user_prompt": "can you get me a flight to kisumu tommorow?"},
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        self.assertIn("Found 1 flights option", response.data["result"])
+        fetch_flights.assert_awaited_once()
+        self.assertEqual(fetch_flights.await_args.args[0]["origin"], "Nairobi")
+        self.assertEqual(fetch_flights.await_args.args[0]["destination"], "kisumu")
+        self.assertRegex(fetch_flights.await_args.args[0]["departure_date"], r"^20\d{2}-\d{2}-\d{2}$")
+        parse.assert_not_awaited()
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
     def test_stay_prompt_with_next_weekend_searches_hotels(self):
         with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
             with patch(
