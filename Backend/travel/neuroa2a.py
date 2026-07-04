@@ -25,6 +25,13 @@ ALLOWED_ACTIONS = {
     "search_transfers",
     "search_events",
 }
+STATEFUL_ACTIONS = {
+    "add_to_itinerary",
+    "book_travel_item",
+    "create_itinerary",
+    "remove_from_itinerary",
+    "view_itinerary",
+}
 
 
 class NeuroA2ATravelRunView(APIView):
@@ -119,11 +126,30 @@ class NeuroA2ATravelRunView(APIView):
 
         action = str(intent.get("action") or "").strip()
         if action not in ALLOWED_ACTIONS:
+            if action == "create_itinerary":
+                return await self._handle_trip_planning_intent(
+                    intent,
+                    {
+                        "user_id": service_user_id,
+                        "room_id": None,
+                        "source": "neuroa2a",
+                    },
+                )
+            if action in STATEFUL_ACTIONS:
+                return {
+                    "status": "success",
+                    "result": (
+                        "This marketplace version of Mathia is search-only. It can search flights, hotels, "
+                        "buses, transfers, and events, but booking and itinerary changes stay inside Mathia. "
+                        "Try a prompt like: 'Find hotels in Nairobi from 2026-08-10 to 2026-08-12 for 1 guest.'"
+                    ),
+                    "action": action,
+                }
             return {
-                "status": "error",
+                "status": "success",
                 "result": (
-                    "This listing currently supports travel searches only: flights, hotels, "
-                    "buses, transfers, and events. Booking and itinerary changes stay inside Mathia."
+                    "I can help with travel searches for flights, hotels, buses, transfers, and events. "
+                    "Please include the search type, destination, and dates where relevant."
                 ),
                 "action": action,
             }
@@ -153,6 +179,60 @@ class NeuroA2ATravelRunView(APIView):
             "result": provider_error or "Travel search could not be completed.",
             "action": action,
             "raw": result,
+        }
+
+    async def _handle_trip_planning_intent(self, intent: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        params = intent.get("parameters") if isinstance(intent.get("parameters"), dict) else {}
+        destination = params.get("destination") or params.get("location")
+        start_date = params.get("start_date") or params.get("check_in_date")
+        end_date = params.get("end_date") or params.get("check_out_date")
+        guests = params.get("guests") or params.get("passengers") or 1
+
+        if not destination:
+            return {
+                "status": "success",
+                "result": (
+                    "I can start with safe travel searches, but I need a destination. "
+                    "Try: 'Find hotels and events in Nairobi from 2026-08-10 to 2026-08-12.'"
+                ),
+                "action": "create_itinerary",
+            }
+
+        searches = []
+        if start_date and end_date:
+            searches.append((
+                "search_hotels",
+                {
+                    "location": destination,
+                    "check_in_date": start_date,
+                    "check_out_date": end_date,
+                    "guests": guests,
+                },
+            ))
+        searches.append((
+            "search_events",
+            {
+                "location": destination,
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+        ))
+
+        sections = []
+        raw = {}
+        for search_action, search_params in searches:
+            result = await self._execute_search(search_action, search_params, context)
+            raw[search_action] = result
+            sections.append(f"{search_action.replace('search_', '').title()}:\n{self._human_result(search_action, result)}")
+
+        return {
+            "status": "success",
+            "result": (
+                "I can't create or save an itinerary from NeuroA2A, but I ran safe travel searches "
+                f"for {destination}.\n\n" + "\n\n".join(sections)
+            ),
+            "action": "create_itinerary",
+            "raw": raw,
         }
 
     def _is_user_input_error(self, message: str) -> bool:
