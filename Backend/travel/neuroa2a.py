@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from orchestration.intent_parser import parse_intent
+from orchestration.llm_client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,8 @@ class NeuroA2ATravelRunView(APIView):
         else:
             intent = self._deterministic_intent(prompt)
             if not intent:
+                intent = await self._llm_travel_intent(prompt, service_user_id)
+            if not intent:
                 intent = await parse_intent(prompt, {"user_id": service_user_id})
 
         action = str(intent.get("action") or "").strip()
@@ -225,6 +228,108 @@ class NeuroA2ATravelRunView(APIView):
                 }
 
         return None
+
+    async def _llm_travel_intent(self, prompt: str, service_user_id: int) -> Dict[str, Any] | None:
+        system_prompt = """You are a travel intent extractor for Mathia's NeuroA2A marketplace listing.
+
+Return ONLY JSON. Choose exactly one action from:
+- search_flights
+- search_hotels
+- search_buses
+- search_transfers
+- search_events
+- create_itinerary
+- general_chat
+
+Extract useful travel parameters even when the user is casual or incomplete.
+
+Required parameter names:
+- search_flights: origin, destination, departure_date, return_date optional, passengers default 1, cabin_class default economy
+- search_hotels: location, check_in_date, check_out_date, guests default 1, budget_ksh optional
+- search_buses: origin, destination, travel_date, passengers default 1
+- search_transfers: origin, destination, travel_date, passengers default 1
+- search_events: location, start_date optional, end_date optional, category optional
+- create_itinerary: destination, start_date optional, end_date optional, guests default 1
+
+Normalize explicit dates to YYYY-MM-DD. If a required field is missing, keep the action and list missing_slots.
+Never choose booking or mutation actions. Booking, saving, and itinerary edits are outside this listing.
+Use general_chat only when the prompt is not a travel request."""
+        user_prompt = (
+            "Extract the travel intent for this NeuroA2A user prompt.\n\n"
+            f"Prompt: {prompt}\n\n"
+            "Return this shape: "
+            "{\"action\":\"search_flights\",\"confidence\":0.95,\"parameters\":{},"
+            "\"missing_slots\":[],\"clarifying_question\":\"\",\"raw_query\":\"...\"}"
+        )
+
+        try:
+            llm = get_llm_client()
+            response_text = await llm.generate_text(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.0,
+                max_tokens=500,
+                json_mode=True,
+                user_id=service_user_id,
+                model_role="planner",
+            )
+            intent = llm.extract_json(response_text)
+        except Exception:
+            logger.exception("neuroA2A travel LLM intent extraction failed")
+            return None
+
+        return self._normalize_travel_intent(intent, prompt)
+
+    def _normalize_travel_intent(self, intent: Dict[str, Any], prompt: str) -> Dict[str, Any] | None:
+        if not isinstance(intent, dict):
+            return None
+
+        action = str(intent.get("action") or "").strip()
+        allowed = ALLOWED_ACTIONS | {"create_itinerary", "general_chat"}
+        if action not in allowed:
+            return None
+
+        params = intent.get("parameters")
+        if not isinstance(params, dict):
+            params = {}
+        params = dict(params)
+
+        if action == "search_flights":
+            if params.get("travel_date") and not params.get("departure_date"):
+                params["departure_date"] = params.pop("travel_date")
+            params.setdefault("passengers", 1)
+            params.setdefault("cabin_class", "economy")
+        elif action == "search_buses":
+            if params.get("departure_date") and not params.get("travel_date"):
+                params["travel_date"] = params.pop("departure_date")
+            params.setdefault("passengers", 1)
+        elif action == "search_hotels":
+            params.setdefault("guests", 1)
+        elif action == "search_transfers":
+            params.setdefault("passengers", 1)
+        elif action == "create_itinerary":
+            if params.get("location") and not params.get("destination"):
+                params["destination"] = params.pop("location")
+            params.setdefault("guests", 1)
+
+        confidence = intent.get("confidence", 0.8)
+        try:
+            confidence = float(confidence)
+        except (TypeError, ValueError):
+            confidence = 0.8
+
+        missing_slots = intent.get("missing_slots")
+        if not isinstance(missing_slots, list):
+            missing_slots = []
+
+        return {
+            "action": action,
+            "confidence": max(0.0, min(1.0, confidence)),
+            "parameters": params,
+            "missing_slots": missing_slots,
+            "clarifying_question": str(intent.get("clarifying_question") or ""),
+            "raw_query": str(intent.get("raw_query") or prompt),
+        }
 
     def _extract_destination(self, text: str, *, stop_words: tuple[str, ...]) -> str:
         patterns = [
