@@ -85,3 +85,37 @@ class NeuroA2ATravelRunTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["status"], "error")
         self.assertIn("supports travel searches only", response.data["result"])
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_provider_no_results_is_successful_agent_response(self):
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch(
+                "orchestration.connectors.travel_hotels_connector.TravelHotelsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [],
+                        "metadata": {"error": "No hotel offers returned from Amadeus."},
+                    }
+                ),
+            ):
+                response = self.client.post(
+                    self.url,
+                    {
+                        "user_prompt": "Find hotels in Nairobi",
+                        "context": {
+                            "action": "search_hotels",
+                            "parameters": {
+                                "location": "Nairobi",
+                                "check_in_date": "2026-08-10",
+                                "check_out_date": "2026-08-12",
+                                "guests": 1,
+                            },
+                        },
+                    },
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        self.assertIn("No hotel offers returned", response.data["result"])
