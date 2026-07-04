@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -167,6 +167,56 @@ class NeuroA2ATravelRunTests(TestCase):
         self.assertIn("safe travel searches", response.data["result"])
         fetch_hotels.assert_awaited_once()
         fetch_events.assert_awaited_once()
+        parse.assert_not_awaited()
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_prompt_only_flight_request_uses_travel_llm_parser(self):
+        llm = Mock()
+        llm.generate_text = AsyncMock(return_value='{"action":"search_flights"}')
+        llm.extract_json.return_value = {
+            "action": "search_flights",
+            "confidence": 0.95,
+            "parameters": {
+                "origin": "Nairobi",
+                "destination": "Kisumu",
+                "departure_date": "2026-08-10",
+                "passengers": 1,
+            },
+            "missing_slots": [],
+            "clarifying_question": "",
+            "raw_query": "I need a local flight from Nairobi to Kisumu on August 10, 2026",
+        }
+
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch("travel.neuroa2a.get_llm_client", return_value=llm), patch(
+                "orchestration.connectors.travel_flights_connector.TravelFlightsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"airline": "Kenya Airways", "price_ksh": 9500}],
+                        "metadata": {"provider": "amadeus"},
+                    }
+                ),
+            ) as fetch_flights, patch(
+                "travel.neuroa2a.parse_intent",
+                new=AsyncMock(),
+            ) as parse:
+                response = self.client.post(
+                    self.url,
+                    {
+                        "user_prompt": "I need a local flight from Nairobi to Kisumu on August 10, 2026",
+                    },
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        self.assertIn("Found 1 flights option", response.data["result"])
+        fetch_flights.assert_awaited_once()
+        self.assertEqual(fetch_flights.await_args.args[0]["origin"], "Nairobi")
+        self.assertEqual(fetch_flights.await_args.args[0]["destination"], "Kisumu")
+        self.assertEqual(fetch_flights.await_args.args[0]["departure_date"], "2026-08-10")
+        llm.generate_text.assert_awaited_once()
         parse.assert_not_awaited()
 
     @override_settings(NEUROA2A_SHARED_TOKEN="secret")
