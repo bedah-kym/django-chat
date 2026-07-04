@@ -131,6 +131,45 @@ class NeuroA2ATravelRunTests(TestCase):
         fetch_events.assert_awaited_once()
 
     @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    def test_prompt_only_trip_planning_uses_deterministic_parser(self):
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
+            with patch(
+                "orchestration.connectors.travel_hotels_connector.TravelHotelsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"name": "Nairobi Hotel", "price_ksh": 12000}],
+                        "metadata": {"provider": "fallback"},
+                    }
+                ),
+            ) as fetch_hotels, patch(
+                "orchestration.connectors.travel_events_connector.TravelEventsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [{"name": "Nairobi Tour"}],
+                        "metadata": {"provider": "fallback"},
+                    }
+                ),
+            ) as fetch_events, patch(
+                "travel.neuroa2a.parse_intent",
+                new=AsyncMock(),
+            ) as parse:
+                response = self.client.post(
+                    self.url,
+                    {
+                        "user_prompt": "Plan a Nairobi trip from 2026-08-10 to 2026-08-12",
+                    },
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        self.assertIn("safe travel searches", response.data["result"])
+        fetch_hotels.assert_awaited_once()
+        fetch_events.assert_awaited_once()
+        parse.assert_not_awaited()
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
     def test_provider_no_results_is_successful_agent_response(self):
         with override_settings(NEUROA2A_TRAVEL_USER_ID=str(self.user.id)):
             with patch(
