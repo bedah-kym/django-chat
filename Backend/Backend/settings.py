@@ -456,6 +456,10 @@ PENTEST_AGENT_ALLOWED_IDS = [
     if item.strip()
 ]
 
+# neuroA2A marketplace endpoint auth. Keep disabled until explicitly configured.
+NEUROA2A_SHARED_TOKEN = os.environ.get("NEUROA2A_SHARED_TOKEN", "")
+NEUROA2A_TRAVEL_USER_ID = os.environ.get("NEUROA2A_TRAVEL_USER_ID", "")
+
 # ==========================================
 # AUTHENTICATION & SECURITY CONFIGURATION
 # ==========================================
