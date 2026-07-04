@@ -33,6 +33,7 @@ class NeuroA2ATravelRunView(APIView):
 
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = []
 
     def post(self, request):
         started = time.perf_counter()
