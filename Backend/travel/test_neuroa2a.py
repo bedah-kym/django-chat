@@ -13,6 +13,9 @@ Covers:
 """
 from unittest.mock import AsyncMock, Mock, patch
 
+import os
+
+from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
@@ -628,3 +631,355 @@ class NeuroA2ATravelRunTests(TestCase):
         self.assertEqual(response.data["status"], "success")
         result = str(response.data["result"])
         self.assertIn("check-in", result.lower())
+
+
+# ------------------------------------------------------------------
+# Ticketmaster connector unit tests
+# ------------------------------------------------------------------
+
+from unittest import IsolatedAsyncioTestCase
+
+
+class TicketmasterConnectorTests(IsolatedAsyncioTestCase):
+    """Unit tests for the Ticketmaster Discovery API connector."""
+
+    def setUp(self):
+        from orchestration.connectors.travel_events_connector import TravelEventsConnector
+        self.connector = TravelEventsConnector()
+
+    # -- Event parsing -------------------------------------------------------
+
+    def test_parses_ticketmaster_event_with_full_data(self):
+        event = {
+            "id": "abc123",
+            "name": "Kenya Jazz Festival",
+            "url": "https://ticketmaster.com/e/abc123",
+            "dates": {
+                "start": {
+                    "dateTime": "2026-08-10T18:00:00Z",
+                    "localDate": "2026-08-10",
+                    "localTime": "21:00:00",
+                }
+            },
+            "_embedded": {
+                "venues": [
+                    {
+                        "name": "Safari Park Hotel",
+                        "city": {"name": "Nairobi"},
+                        "country": {"countryCode": "KE"},
+                    }
+                ]
+            },
+            "classifications": [
+                {"segment": {"name": "Music"}}
+            ],
+            "priceRanges": [
+                {"min": 3500, "max": 5000, "currency": "KES"}
+            ],
+            "images": [
+                {"url": "https://example.com/img.jpg"}
+            ],
+        }
+        result = self.connector._parse_ticketmaster_event(event, 0)
+
+        self.assertEqual(result["id"], "event_abc123")
+        self.assertEqual(result["provider"], "Ticketmaster")
+        self.assertEqual(result["title"], "Kenya Jazz Festival")
+        self.assertEqual(result["category"], "music")
+        self.assertEqual(result["start_datetime"], "2026-08-10T18:00:00Z")
+        self.assertEqual(result["location"], "Safari Park Hotel, Nairobi")
+        self.assertEqual(result["venue"], "Safari Park Hotel")
+        self.assertEqual(result["price_ksh"], 3500)
+        self.assertEqual(result["ticket_url"], "https://ticketmaster.com/e/abc123")
+        self.assertEqual(result["image_url"], "https://example.com/img.jpg")
+        self.assertEqual(result["rating"], 4.5)
+        self.assertEqual(result["attendees"], 0)
+
+    def test_parses_event_with_local_date_only(self):
+        event = {
+            "id": "def456",
+            "name": "Local Event",
+            "url": "",
+            "dates": {
+                "start": {
+                    "localDate": "2026-09-15",
+                    "localTime": "20:00:00",
+                }
+            },
+            "_embedded": {
+                "venues": [{"name": "TBA"}]
+            },
+            "classifications": [],
+            "priceRanges": [],
+            "images": [],
+        }
+        result = self.connector._parse_ticketmaster_event(event, 0)
+
+        self.assertEqual(result["title"], "Local Event")
+        self.assertEqual(result["start_datetime"], "2026-09-15T20:00:00Z")
+        self.assertEqual(result["price_ksh"], 0)
+
+    def test_parses_event_with_non_kes_currency_sets_price_zero(self):
+        event = {
+            "id": "ghi789",
+            "name": "USD Event",
+            "url": "",
+            "dates": {"start": {"dateTime": "2026-10-01T19:00:00Z"}},
+            "_embedded": {"venues": []},
+            "classifications": [],
+            "priceRanges": [{"min": 50, "max": 100, "currency": "USD"}],
+            "images": [],
+        }
+        result = self.connector._parse_ticketmaster_event(event, 0)
+
+        self.assertEqual(result["price_ksh"], 0)
+
+    def test_parses_event_with_no_venue_gracefully(self):
+        event = {
+            "id": "jkl012",
+            "name": "No Venue Event",
+            "url": "",
+            "dates": {"start": {"dateTime": "2026-10-10T12:00:00Z"}},
+            "classifications": [],
+            "images": [],
+        }
+        result = self.connector._parse_ticketmaster_event(event, 0)
+
+        self.assertEqual(result["title"], "No Venue Event")
+        self.assertEqual(result["venue"], "TBA")
+        self.assertIn("TBA", result["location"])
+
+    # -- API error handling ------------------------------------------------
+
+    @patch.dict(os.environ, {}, clear=True)
+    async def test_missing_api_key_returns_clean_error(self):
+        from orchestration.connectors.travel_events_connector import TravelEventsConnector
+        conn = TravelEventsConnector()
+
+        results, error = await conn._search_ticketmaster(
+            "Nairobi", None, None, "all"
+        )
+
+        self.assertEqual(results, [])
+        self.assertEqual(error, "TICKETMASTER_API_KEY not set")
+
+    @patch.dict(os.environ, {"TICKETMASTER_API_KEY": "test-key"})
+    async def test_provider_401_returns_clean_auth_error(self):
+        from unittest.mock import AsyncMock, MagicMock, patch as async_patch
+        from orchestration.connectors.travel_events_connector import TravelEventsConnector
+
+        conn = TravelEventsConnector()
+
+        mock_response = MagicMock()
+        mock_response.status = 401
+
+        mock_session = MagicMock()
+        mock_session.get = MagicMock()
+        mock_session.get.return_value.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_session.get.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        mock_response.text = AsyncMock(return_value='{"error":"Unauthorized"}')
+
+        with async_patch("aiohttp.ClientSession", return_value=mock_session):
+            results, error = await conn._search_ticketmaster(
+                "Nairobi", None, None, "all"
+            )
+
+        self.assertEqual(results, [])
+        self.assertIn("401", error)
+        self.assertIn("TICKETMASTER_API_KEY", error)
+
+    @patch.dict(os.environ, {"TICKETMASTER_API_KEY": "test-key"})
+    async def test_provider_404_returns_clean_error(self):
+        from unittest.mock import AsyncMock, MagicMock, patch as async_patch
+        from orchestration.connectors.travel_events_connector import TravelEventsConnector
+
+        conn = TravelEventsConnector()
+
+        mock_response = MagicMock()
+        mock_response.status = 404
+
+        mock_session = MagicMock()
+        mock_session.get = MagicMock()
+        mock_session.get.return_value.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_session.get.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        mock_response.text = AsyncMock(return_value="Not Found")
+
+        with async_patch("aiohttp.ClientSession", return_value=mock_session):
+            results, error = await conn._search_ticketmaster(
+                "Nairobi", None, None, "all"
+            )
+
+        self.assertEqual(results, [])
+        self.assertIn("404", error)
+
+    @patch.dict(os.environ, {"TICKETMASTER_API_KEY": "test-key"})
+    async def test_provider_429_returns_rate_limit_error(self):
+        from unittest.mock import AsyncMock, MagicMock, patch as async_patch
+        from orchestration.connectors.travel_events_connector import TravelEventsConnector
+
+        conn = TravelEventsConnector()
+
+        mock_response = MagicMock()
+        mock_response.status = 429
+
+        mock_session = MagicMock()
+        mock_session.get = MagicMock()
+        mock_session.get.return_value.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_session.get.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        mock_response.text = AsyncMock(return_value='{"error":"Rate limit exceeded"}')
+
+        with async_patch("aiohttp.ClientSession", return_value=mock_session):
+            results, error = await conn._search_ticketmaster(
+                "Nairobi", None, None, "all"
+            )
+
+        self.assertEqual(results, [])
+        self.assertIn("rate limit", error.lower())
+
+    @patch.dict(os.environ, {"TICKETMASTER_API_KEY": "test-key"})
+    async def test_no_embedded_events_returns_clean_empty(self):
+        from unittest.mock import AsyncMock, MagicMock, patch as async_patch
+        from orchestration.connectors.travel_events_connector import TravelEventsConnector
+
+        conn = TravelEventsConnector()
+
+        mock_response = MagicMock()
+        mock_response.status = 200
+
+        mock_session = MagicMock()
+        mock_session.get = MagicMock()
+        mock_session.get.return_value.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_session.get.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        # Ticketmaster returns _links but no _embedded when no results
+        mock_response.text = AsyncMock(
+            return_value='{"_links":{"self":{"href":"..."}},"page":{"size":20,"totalElements":0}}'
+        )
+
+        with async_patch("aiohttp.ClientSession", return_value=mock_session):
+            results, error = await conn._search_ticketmaster(
+                "Nairobi", None, None, "all"
+            )
+
+        self.assertEqual(results, [])
+        self.assertIsNone(error)
+
+    # -- Location mapping ----------------------------------------------------
+
+    def test_city_to_country_code_nairobi(self):
+        from orchestration.connectors.travel_events_connector import _city_to_country_code
+        self.assertEqual(_city_to_country_code("Nairobi"), "KE")
+        self.assertEqual(_city_to_country_code("nAIROBI"), "KE")
+
+    def test_city_to_country_code_unknown(self):
+        from orchestration.connectors.travel_events_connector import _city_to_country_code
+        self.assertIsNone(_city_to_country_code("UnknownCity"))
+
+    # -- Fallback events -----------------------------------------------------
+
+    def test_fallback_events_returns_data_for_known_city(self):
+        results = self.connector._get_fallback_events("Nairobi", "all")
+
+        self.assertIsInstance(results, list)
+        self.assertGreater(len(results), 0)
+        self.assertEqual(results[0]["provider"], "Ticketmaster")
+        for r in results:
+            self.assertIn("title", r)
+            self.assertIn("category", r)
+            self.assertIn("start_datetime", r)
+            self.assertIn("price_ksh", r)
+
+    def test_fallback_events_filters_by_category(self):
+        results = self.connector._get_fallback_events("Nairobi", "music")
+
+        self.assertGreater(len(results), 0)
+        for r in results:
+            self.assertEqual(r["category"], "music")
+
+    def test_fallback_events_unknown_city_returns_nairobi_defaults(self):
+        results = self.connector._get_fallback_events("Zanzibar", "all")
+
+        self.assertGreater(len(results), 0)
+
+    # -- _fetch integration (no API key) ------------------------------------
+
+    async def test_fetch_without_api_key_returns_fallback(self):
+        with override_settings(TRAVEL_ALLOW_FALLBACK=True):
+            result = await self.connector._fetch(
+                {"location": "Nairobi"},
+                {},
+            )
+
+        self.assertIn("results", result)
+        self.assertIn("metadata", result)
+        self.assertGreater(len(result["results"]), 0)
+        self.assertEqual(result["metadata"]["provider"], "ticketmaster")
+
+    async def test_fetch_without_location_returns_error(self):
+        result = await self.connector._fetch(
+            {"location": ""},
+            {},
+        )
+
+        self.assertEqual(result["results"], [])
+        self.assertIn("location", str(result["metadata"].get("error", "")))
+
+    # -- NeuroA2A integration: events prompt uses Ticketmaster ---------------
+
+    @override_settings(NEUROA2A_SHARED_TOKEN="secret")
+    async def test_neuro_events_prompt_uses_ticketmaster_not_eventbrite(self):
+        from django.contrib.auth import get_user_model
+        from rest_framework.test import APIClient
+
+        User = get_user_model()
+        client = APIClient()
+        user = await sync_to_async(User.objects.create_user)(
+            username="neuro_tm_test",
+            email="neuro_tm@example.com",
+            password="pass123",
+        )
+
+        with override_settings(NEUROA2A_TRAVEL_USER_ID=str(user.id)):
+            with patch(
+                "orchestration.connectors.travel_events_connector.TravelEventsConnector._fetch",
+                new=AsyncMock(
+                    return_value={
+                        "results": [
+                            {
+                                "id": "event_abc",
+                                "provider": "Ticketmaster",
+                                "title": "Nairobi Tour",
+                                "category": "music",
+                                "start_datetime": "2026-08-10T18:00:00Z",
+                                "end_datetime": "",
+                                "location": "Nairobi",
+                                "venue": "KICC",
+                                "price_ksh": 1000,
+                                "ticket_url": "https://ticketmaster.com/e/abc",
+                                "image_url": "",
+                                "rating": 4.5,
+                                "attendees": 0,
+                            }
+                        ],
+                        "metadata": {"provider": "ticketmaster"},
+                    }
+                ),
+            ) as fetch_events, patch(
+                "travel.neuroa2a._llm_extract_travel_intent",
+                new=AsyncMock(return_value=None),
+            ):
+                response = await sync_to_async(client.post)(
+                    "/api/neuroa2a/travel/run/",
+                    {"user_prompt": "What can I do in Nairobi on August 10, 2026?"},
+                    HTTP_AUTHORIZATION="Bearer secret",
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "success")
+        result = str(response.data["result"])
+        self.assertIn("Found 1 events option", result)
+        fetch_events.assert_awaited_once()

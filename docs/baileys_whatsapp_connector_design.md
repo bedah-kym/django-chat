@@ -418,5 +418,4 @@ async def check_whatsapp_health():
 - Message delivery rates
 - User engagement metrics
 - Cost savings tracking
-- Performance monitoring</content>
-<parameter name="filePath">c:\Users\user\Desktop\Dev2\MATHIA-PROJECT\Backend\orchestration\connectors\baileys_whatsapp_connector.py
+- Performance monitoring

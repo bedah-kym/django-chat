@@ -156,7 +156,7 @@ class Event(models.Model):
     ticket_price_ksh = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     ticket_url = models.URLField(blank=True, null=True)
 
-    provider = models.CharField(max_length=100)  # Eventbrite, local scraper, etc.
+    provider = models.CharField(max_length=100)  # Ticketmaster, local scraper, etc.
     provider_id = models.CharField(max_length=255)
 
     image_url = models.URLField(blank=True, null=True)
@@ -190,7 +190,7 @@ class SearchCache(models.Model):
         ('amadeus', 'Amadeus'),
         ('duffel', 'Duffel'),
         ('karibu', 'Karibu Taxi'),
-        ('eventbrite', 'Eventbrite'),
+        ('ticketmaster', 'Ticketmaster'),
     ]
 
     query_hash = models.CharField(max_length=64, db_index=True)  # SHA256 of query

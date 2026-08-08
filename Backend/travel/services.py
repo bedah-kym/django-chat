@@ -231,7 +231,7 @@ class ItineraryBuilder:
                     start_datetime=start_dt,
                     price_ksh=event.get('price_ksh', 0),
                     status='planned',
-                    metadata={'provider': 'eventbrite', 'booking_url': event.get('ticket_url')}
+                    metadata={'provider': 'ticketmaster', 'booking_url': event.get('ticket_url')}
                 )
                 items_added += 1
 

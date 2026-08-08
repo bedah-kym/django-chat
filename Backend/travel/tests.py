@@ -155,7 +155,7 @@ class EventModelTests(TestCase):
             start_datetime=timezone.now() + timedelta(days=10),
             location_name='Safari Park',
             location_country='Kenya',
-            provider='Eventbrite',
+            provider='Ticketmaster',
             provider_id='evt_001'
         )
         self.assertEqual(event.title, 'Kenya Jazz Festival')
@@ -169,7 +169,7 @@ class EventModelTests(TestCase):
             start_datetime=timezone.now() + timedelta(days=3),
             location_name='Village Market',
             location_country='Kenya',
-            provider='Eventbrite',
+            provider='Ticketmaster',
             provider_id='evt_002'
         )
         self.assertIn('Food Fair', str(event))
