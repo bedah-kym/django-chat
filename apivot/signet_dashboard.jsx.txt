@@ -1,0 +1,545 @@
+import { useState, useEffect, useRef } from "react";
+import * as d3 from "d3";
+
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+
+const NODES = [
+  { id:"acc_001", type:"account", handle:"@KE_Wakili",        tier:"macro", tags:["red_pill_pipeline","anti_institution"],        followers:89400,  posts:342, confidence:0.91, platform:"x" },
+  { id:"acc_002", type:"account", handle:"@NairobiTruth_KE",  tier:"macro", tags:["firehose_falsehood","political_disinfo"],       followers:124000, posts:891, confidence:0.87, platform:"x" },
+  { id:"acc_003", type:"account", handle:"@Rift_Patriot",     tier:"mid",   tags:["identity_wedge","coordinated_inauthentic"],     followers:34200,  posts:214, confidence:0.78, platform:"x" },
+  { id:"acc_004", type:"account", handle:"@254_Analyst",      tier:"mid",   tags:["political_disinfo"],                            followers:22100,  posts:156, confidence:0.65, platform:"x" },
+  { id:"acc_005", type:"account", handle:"@KenyaWatchdog",    tier:"mid",   tags:["appeal_to_victimhood"],                         followers:18700,  posts:203, confidence:0.72, platform:"x" },
+  { id:"acc_006", type:"account", handle:"@MtaaAnalyst",      tier:"mid",   tags:["red_pill_pipeline"],                            followers:15300,  posts:178, confidence:0.81, platform:"x" },
+  { id:"acc_007", type:"account", handle:"@SavannahPulse",    tier:"mid",   tags:["coordinated_inauthentic"],                      followers:28900,  posts:445, confidence:0.69, platform:"x" },
+  { id:"acc_008", type:"account", handle:"@citizen_k254",     tier:"micro", tags:[],                                               followers:892,    posts:34,  confidence:0.30, platform:"x" },
+  { id:"acc_009", type:"account", handle:"@nairobi_mwananchi",tier:"micro", tags:["appeal_to_victimhood"],                         followers:2100,   posts:67,  confidence:0.44, platform:"x" },
+  { id:"acc_010", type:"account", handle:"@eastafrica_now",   tier:"micro", tags:[],                                               followers:1340,   posts:23,  confidence:0.28, platform:"x" },
+  { id:"acc_011", type:"account", handle:"@ke_observer_9",    tier:"micro", tags:["coordinated_inauthentic"],                      followers:445,    posts:89,  confidence:0.83, platform:"x" },
+  { id:"acc_012", type:"account", handle:"@kenyapolitics24",  tier:"micro", tags:["coordinated_inauthentic"],                      followers:677,    posts:112, confidence:0.79, platform:"x" },
+  { id:"nar_001", type:"narrative", label:"Election System Compromised",    tags:["election_integrity","coordinated_amplified"],    reach:234000, confidence:0.88, status:"active"  },
+  { id:"nar_002", type:"narrative", label:"IMF Debt Trap Narrative",        tags:["economic_fear","firehose_falsehood"],            reach:189000, confidence:0.82, status:"active"  },
+  { id:"nar_003", type:"narrative", label:"Foreign NGO Interference",       tags:["anti_institution","political_disinfo"],          reach:145000, confidence:0.74, status:"decaying"},
+  { id:"nar_004", type:"narrative", label:"Ethnic Land Grievance Reframe",  tags:["identity_wedge","appeal_to_victimhood"],         reach:98000,  confidence:0.91, status:"active"  },
+  { id:"nar_005", type:"narrative", label:"Vaccine Microchip Revival",      tags:["health_misinfo"],                                reach:67000,  confidence:0.95, status:"decaying"},
+  { id:"tag_001", type:"hashtag", label:"#KenyaDecides", volume:45200, velocity:"high"   },
+  { id:"tag_002", type:"hashtag", label:"#IMFGoHome",    volume:38900, velocity:"high"   },
+  { id:"tag_003", type:"hashtag", label:"#RutoMustGo",   volume:89400, velocity:"peak"   },
+  { id:"tag_004", type:"hashtag", label:"#WakiliSpeaks", volume:12300, velocity:"medium" },
+  { id:"tag_005", type:"hashtag", label:"#254Truth",     volume:8900,  velocity:"low"    },
+];
+
+const EDGES = [
+  { source:"acc_001", target:"nar_001", type:"SEEDS"           },
+  { source:"acc_002", target:"nar_002", type:"SEEDS"           },
+  { source:"acc_001", target:"nar_004", type:"SEEDS"           },
+  { source:"acc_003", target:"nar_004", type:"SEEDS"           },
+  { source:"acc_002", target:"nar_003", type:"SEEDS"           },
+  { source:"acc_004", target:"nar_001", type:"AMPLIFIES"       },
+  { source:"acc_005", target:"nar_001", type:"AMPLIFIES"       },
+  { source:"acc_006", target:"nar_002", type:"AMPLIFIES"       },
+  { source:"acc_007", target:"nar_002", type:"AMPLIFIES"       },
+  { source:"acc_007", target:"nar_003", type:"AMPLIFIES"       },
+  { source:"acc_011", target:"nar_001", type:"AMPLIFIES"       },
+  { source:"acc_012", target:"nar_001", type:"AMPLIFIES"       },
+  { source:"acc_009", target:"nar_004", type:"AMPLIFIES"       },
+  { source:"acc_008", target:"nar_002", type:"AMPLIFIES"       },
+  { source:"acc_005", target:"nar_005", type:"AMPLIFIES"       },
+  { source:"acc_001", target:"tag_001", type:"TAGGED_WITH"     },
+  { source:"acc_001", target:"tag_004", type:"TAGGED_WITH"     },
+  { source:"acc_002", target:"tag_002", type:"TAGGED_WITH"     },
+  { source:"acc_002", target:"tag_003", type:"TAGGED_WITH"     },
+  { source:"acc_003", target:"tag_003", type:"TAGGED_WITH"     },
+  { source:"acc_004", target:"tag_001", type:"TAGGED_WITH"     },
+  { source:"acc_005", target:"tag_003", type:"TAGGED_WITH"     },
+  { source:"acc_006", target:"tag_002", type:"TAGGED_WITH"     },
+  { source:"acc_007", target:"tag_005", type:"TAGGED_WITH"     },
+  { source:"acc_011", target:"tag_001", type:"TAGGED_WITH"     },
+  { source:"acc_012", target:"tag_001", type:"TAGGED_WITH"     },
+  { source:"nar_001", target:"tag_001", type:"SPREADS_VIA"     },
+  { source:"nar_002", target:"tag_002", type:"SPREADS_VIA"     },
+  { source:"nar_004", target:"tag_003", type:"SPREADS_VIA"     },
+  { source:"acc_011", target:"acc_012", type:"PART_OF_NETWORK" },
+  { source:"acc_004", target:"acc_005", type:"PART_OF_NETWORK" },
+];
+
+const ACTIVITY = [
+  { time:"09:41", alert:true,  text:"Coordination detected: @ke_observer_9 ↔ @kenyapolitics24 — 94% posting overlap over 72hrs" },
+  { time:"09:38", alert:false, text:"[Election System Compromised] velocity +34% in 6hrs — 3 new amplifiers detected" },
+  { time:"09:22", alert:false, text:"@NairobiTruth_KE seeded new claim: 'foreign observers pre-scripted outcome'" },
+  { time:"09:11", alert:false, text:"#RutoMustGo reached peak velocity — 89,400 posts, 67% from accounts <6 months old" },
+  { time:"08:55", alert:true,  text:"New cluster forming around [Ethnic Land Grievance Reframe] — 4 new micro accounts in 2hrs" },
+  { time:"08:33", alert:false, text:"[Vaccine Microchip Revival] decaying — reach down 42% over 48hrs" },
+  { time:"08:14", alert:false, text:"@KE_Wakili posted 14 times in 3hrs — cadence anomaly flagged" },
+];
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+const HIGH_THREAT_TAGS = new Set(["coordinated_inauthentic","firehose_falsehood","red_pill_pipeline"]);
+
+function nodeColor(n) {
+  if (n.type === "hashtag")   return n.velocity === "peak" ? "#F59E0B" : "#B45309";
+  if (n.type === "narrative") return n.status === "active"  ? "#EF4444" : "#78350F";
+  if (n.tags?.some(t => HIGH_THREAT_TAGS.has(t))) return "#EF4444";
+  if (n.tags?.length > 0)    return "#F59E0B";
+  return "#3B82F6";
+}
+
+function nodeRadius(n) {
+  if (n.type === "hashtag")   return 7;
+  if (n.type === "narrative") return 15;
+  if (n.tier === "macro")     return 22;
+  if (n.tier === "mid")       return 14;
+  return 8;
+}
+
+function edgeColor(e) {
+  const map = { SEEDS:"#F59E0B", AMPLIFIES:"#3B82F6", TAGGED_WITH:"#2D3748",
+                SPREADS_VIA:"#EF4444", PART_OF_NETWORK:"#8B5CF6" };
+  return map[e.type] || "#374151";
+}
+
+function getConnections(nodeId) {
+  return EDGES.filter(e => e.source === nodeId || e.target === nodeId);
+}
+
+// ─── COMPONENTS ───────────────────────────────────────────────────────────────
+
+function Stat({ label, value, color = "#E2E8F0" }) {
+  return (
+    <div style={{ padding:"8px 10px", background:"#111827", border:"1px solid #1F2937" }}>
+      <div style={{ fontSize:"8px", color:"#4B5563", letterSpacing:"1.5px", marginBottom:"4px" }}>{label}</div>
+      <div style={{ fontSize:"13px", color, fontWeight:"bold", fontFamily:"'Courier New',monospace" }}>{value}</div>
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+
+export default function SigNet() {
+  const svgRef       = useRef(null);
+  const containerRef = useRef(null);
+  const [selected,   setSelected]   = useState(null);
+  const [hovered,    setHovered]    = useState(null);
+  const [dims,       setDims]       = useState({ w:800, h:600 });
+  const [filters,    setFilters]    = useState({ account:true, narrative:true, hashtag:true });
+
+  // Resize observer
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(([entry]) =>
+      setDims({ w: entry.contentRect.width, h: entry.contentRect.height })
+    );
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // D3 graph
+  useEffect(() => {
+    if (!svgRef.current || dims.w < 10) return;
+    const { w, h } = dims;
+
+    const svg = d3.select(svgRef.current);
+    svg.selectAll("*").remove();
+
+    const visNodes = NODES.filter(n => filters[n.type]);
+    const visIds   = new Set(visNodes.map(n => n.id));
+    const visEdges = EDGES.filter(e => visIds.has(e.source) && visIds.has(e.target));
+
+    const nodes = visNodes.map(n => ({ ...n }));
+    const edges = visEdges.map(e => ({ ...e }));
+
+    // ── defs ──────────────────────────────────────────────────────────────────
+    const defs = svg.append("defs");
+
+    // glow filters
+    [["amber","#F59E0B"],["red","#EF4444"],["blue","#3B82F6"],["purple","#8B5CF6"]].forEach(([name, col]) => {
+      const f = defs.append("filter").attr("id", `glow-${name}`).attr("x","-50%").attr("y","-50%").attr("width","200%").attr("height","200%");
+      f.append("feGaussianBlur").attr("in","SourceGraphic").attr("stdDeviation","4").attr("result","blur");
+      const merge = f.append("feMerge");
+      merge.append("feMergeNode").attr("in","blur");
+      merge.append("feMergeNode").attr("in","SourceGraphic");
+    });
+
+    // arrow markers
+    [["SEEDS","#F59E0B"],["AMPLIFIES","#3B82F6"],["SPREADS_VIA","#EF4444"]].forEach(([type, col]) => {
+      defs.append("marker")
+        .attr("id",`arrow-${type}`).attr("viewBox","0 -5 10 10")
+        .attr("refX",22).attr("refY",0)
+        .attr("markerWidth",5).attr("markerHeight",5).attr("orient","auto")
+        .append("path").attr("d","M0,-5L10,0L0,5").attr("fill", col).attr("opacity",0.6);
+    });
+
+    // ── root group + zoom ─────────────────────────────────────────────────────
+    const root = svg.append("g");
+    svg.call(
+      d3.zoom().scaleExtent([0.25,4])
+        .on("zoom", ev => root.attr("transform", ev.transform))
+    );
+
+    // ── simulation ───────────────────────────────────────────────────────────
+    const sim = d3.forceSimulation(nodes)
+      .force("link",    d3.forceLink(edges).id(d => d.id).distance(d => {
+        if (d.type === "PART_OF_NETWORK") return 55;
+        if (d.type === "SEEDS")           return 110;
+        return 85;
+      }).strength(0.25))
+      .force("charge",  d3.forceManyBody().strength(d => {
+        if (d.type === "narrative") return -500;
+        if (d.tier === "macro")     return -350;
+        if (d.tier === "mid")       return -200;
+        return -120;
+      }))
+      .force("center",  d3.forceCenter(w / 2, h / 2))
+      .force("collide", d3.forceCollide(d => nodeRadius(d) + 14));
+
+    // ── edges ────────────────────────────────────────────────────────────────
+    const link = root.append("g").selectAll("line").data(edges).join("line")
+      .attr("stroke",         d => edgeColor(d))
+      .attr("stroke-width",   d => d.type === "SEEDS" ? 1.8 : d.type === "PART_OF_NETWORK" ? 1.5 : 1)
+      .attr("stroke-opacity", d => d.type === "TAGGED_WITH" ? 0.15 : 0.45)
+      .attr("stroke-dasharray", d => d.type === "PART_OF_NETWORK" ? "5,4" : null)
+      .attr("marker-end",     d => ["SEEDS","AMPLIFIES","SPREADS_VIA"].includes(d.type) ? `url(#arrow-${d.type})` : null);
+
+    // ── nodes ────────────────────────────────────────────────────────────────
+    const nodeG = root.append("g").selectAll("g").data(nodes).join("g")
+      .attr("cursor","pointer")
+      .call(
+        d3.drag()
+          .on("start", (ev, d) => { if (!ev.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+          .on("drag",  (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+          .on("end",   (ev, d) => { if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
+      )
+      .on("click",      (ev, d) => { ev.stopPropagation(); setSelected(d); })
+      .on("mouseenter", (ev, d) => {
+        setHovered(d);
+        const col = d.type === "hashtag" ? "amber" : d.type === "narrative" ? "red" : "blue";
+        d3.select(ev.currentTarget).selectAll("circle,rect,path")
+          .style("filter", `url(#glow-${col})`).attr("opacity",1);
+      })
+      .on("mouseleave", (ev, d) => {
+        setHovered(null);
+        d3.select(ev.currentTarget).selectAll("circle,rect,path")
+          .style("filter", null).attr("opacity", 0.82);
+      });
+
+    // Draw shapes per node type
+    nodeG.each(function(d) {
+      const el  = d3.select(this);
+      const r   = nodeRadius(d);
+      const col = nodeColor(d);
+
+      if (d.type === "narrative") {
+        const s = r * 1.5;
+        // outer pulse ring
+        if (d.status === "active") {
+          el.append("rect")
+            .attr("width", s*2+12).attr("height", s*2+12)
+            .attr("x", -s-6).attr("y", -s-6).attr("rx", 4)
+            .attr("transform","rotate(45)")
+            .attr("fill","none").attr("stroke", col)
+            .attr("stroke-width", 0.5).attr("opacity", 0.25);
+        }
+        el.append("rect")
+          .attr("width", s*2).attr("height", s*2)
+          .attr("x",-s).attr("y",-s).attr("rx",3)
+          .attr("transform","rotate(45)")
+          .attr("fill", col).attr("fill-opacity", 0.12)
+          .attr("stroke", col).attr("stroke-width", 1.5).attr("opacity", 0.82);
+      } else if (d.type === "hashtag") {
+        el.append("path")
+          .attr("d", d3.symbol().type(d3.symbolTriangle).size(r*r*3.5)())
+          .attr("fill", col).attr("fill-opacity", 0.2)
+          .attr("stroke", col).attr("stroke-width", 1).attr("opacity", 0.82);
+      } else {
+        // Confidence arc ring (background)
+        el.append("circle").attr("r", r+6)
+          .attr("fill","none").attr("stroke","#1F2937").attr("stroke-width",1);
+        // Confidence arc (filled portion)
+        if (d.confidence > 0) {
+          const circ = 2 * Math.PI * (r+6);
+          el.append("circle").attr("r", r+6)
+            .attr("fill","none").attr("stroke", col).attr("stroke-width", 1.2)
+            .attr("stroke-dasharray", `${circ * d.confidence} ${circ * (1-d.confidence)}`)
+            .attr("stroke-dashoffset", circ * 0.25)
+            .attr("opacity", 0.4);
+        }
+        // Main circle
+        el.append("circle").attr("r", r)
+          .attr("fill", col).attr("fill-opacity", 0.1)
+          .attr("stroke", col).attr("stroke-width", d.tier === "macro" ? 2 : 1.5)
+          .attr("opacity", 0.82);
+        // Center dot for macro
+        if (d.tier === "macro") {
+          el.append("circle").attr("r", 4).attr("fill", col).attr("opacity", 0.6);
+        }
+      }
+
+      // Label
+      el.append("text")
+        .text(() => {
+          if (d.type === "account")   return d.handle;
+          if (d.type === "narrative") return d.label.length > 20 ? d.label.slice(0,18)+"…" : d.label;
+          return d.label;
+        })
+        .attr("dy", r + 14)
+        .attr("text-anchor","middle")
+        .attr("font-size",  d.tier === "macro" ? "10px" : "8.5px")
+        .attr("font-family","'Courier New',monospace")
+        .attr("fill", d.type === "narrative" && d.status === "active" ? "#FCA5A5" : d.tier === "macro" ? "#CBD5E1" : "#475569")
+        .attr("pointer-events","none");
+    });
+
+    // ── tick ─────────────────────────────────────────────────────────────────
+    sim.on("tick", () => {
+      link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+      nodeG.attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+
+    svg.on("click", () => setSelected(null));
+    return () => sim.stop();
+  }, [dims, filters]);
+
+  const toggleFilter = type => setFilters(p => ({ ...p, [type]: !p[type] }));
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"100vh",
+      background:"#07090C", color:"#E2E8F0", fontFamily:"'Courier New',monospace", overflow:"hidden" }}>
+
+      {/* ── TOP BAR ─────────────────────────────────────────────────────────── */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+        padding:"0 20px", height:"46px", background:"#0D1117",
+        borderBottom:"1px solid #1F2937", flexShrink:0 }}>
+
+        <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
+          <span style={{ color:"#F59E0B", fontSize:"14px", letterSpacing:"4px", fontWeight:"bold" }}>SIGNET</span>
+          <div style={{ width:1, height:18, background:"#1F2937" }} />
+          <span style={{ fontSize:"9px", color:"#374151", letterSpacing:"2.5px" }}>SOCIAL INTELLIGENCE PLATFORM</span>
+        </div>
+
+        <div style={{ display:"flex", alignItems:"center", gap:"20px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
+            <div style={{ width:6, height:6, borderRadius:"50%", background:"#10B981", boxShadow:"0 0 8px #10B981" }} />
+            <span style={{ fontSize:"9px", color:"#374151", letterSpacing:"1.5px" }}>COLLECTING</span>
+          </div>
+          <span style={{ fontSize:"9px", color:"#374151" }}>
+            {NODES.filter(n=>n.type==="account").length} ACCOUNTS &nbsp;·&nbsp;
+            {NODES.filter(n=>n.type==="narrative").length} NARRATIVES &nbsp;·&nbsp;
+            {EDGES.length} EDGES
+          </span>
+          <div style={{ background:"#1C0A0A", border:"1px solid #7F1D1D",
+            color:"#FCA5A5", fontSize:"9px", padding:"3px 10px", letterSpacing:"1.5px" }}>
+            ⚠ 2 ALERTS
+          </div>
+        </div>
+      </div>
+
+      {/* ── BODY ────────────────────────────────────────────────────────────── */}
+      <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+
+        {/* LEFT SIDEBAR */}
+        <div style={{ width:175, background:"#0D1117", borderRight:"1px solid #1F2937",
+          padding:"16px 12px", flexShrink:0, display:"flex", flexDirection:"column", gap:22, overflowY:"auto" }}>
+
+          <div>
+            <div style={{ fontSize:"8px", color:"#374151", letterSpacing:"2px", marginBottom:10 }}>NODE FILTERS</div>
+            {[{type:"account",color:"#3B82F6",label:"ACCOUNTS"},{type:"narrative",color:"#EF4444",label:"NARRATIVES"},{type:"hashtag",color:"#F59E0B",label:"HASHTAGS"}].map(f => (
+              <div key={f.type} onClick={() => toggleFilter(f.type)} style={{
+                display:"flex", alignItems:"center", gap:8, padding:"6px 8px", marginBottom:4,
+                cursor:"pointer", border:`1px solid ${filters[f.type] ? f.color+"50" : "#1F2937"}`,
+                background: filters[f.type] ? f.color+"12" : "transparent",
+                opacity: filters[f.type] ? 1 : 0.35, transition:"all 0.15s"
+              }}>
+                <div style={{ width:8, height:8, borderRadius:"50%", background:f.color }} />
+                <span style={{ fontSize:"9px", letterSpacing:"1.5px", color:"#94A3B8" }}>{f.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div style={{ fontSize:"8px", color:"#374151", letterSpacing:"2px", marginBottom:10 }}>EDGE TYPES</div>
+            {[{t:"SEEDS",c:"#F59E0B"},{t:"AMPLIFIES",c:"#3B82F6"},{t:"SPREADS VIA",c:"#EF4444"},
+              {t:"TAGGED WITH",c:"#2D3748"},{t:"COORDINATION",c:"#8B5CF6",dash:true}].map(e => (
+              <div key={e.t} style={{ display:"flex", alignItems:"center", gap:8, padding:"4px 6px", marginBottom:2 }}>
+                <div style={{ width:16, height:2, background:e.c,
+                  borderTop: e.dash ? `1.5px dashed ${e.c}` : "none",
+                  background: e.dash ? "transparent" : e.c }} />
+                <span style={{ fontSize:"8px", letterSpacing:"1px", color:"#374151" }}>{e.t}</span>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div style={{ fontSize:"8px", color:"#374151", letterSpacing:"2px", marginBottom:10 }}>THREAT DIST.</div>
+            {[{l:"HIGH",c:"#EF4444",n:2},{l:"MEDIUM",c:"#F59E0B",n:5},{l:"LOW",c:"#3B82F6",n:5}].map(t => (
+              <div key={t.l} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 6px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <div style={{ width:6, height:6, background:t.c }} />
+                  <span style={{ fontSize:"9px", color:"#4B5563" }}>{t.l}</span>
+                </div>
+                <span style={{ fontSize:"11px", color:t.c, fontWeight:"bold" }}>{t.n}</span>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div style={{ fontSize:"8px", color:"#374151", letterSpacing:"2px", marginBottom:10 }}>PLATFORMS</div>
+            {[{l:"X / TWITTER",c:"#94A3B8",active:true},{l:"TELEGRAM",c:"#4B5563",active:false},{l:"FACEBOOK",c:"#4B5563",active:false}].map(p => (
+              <div key={p.l} style={{ display:"flex", alignItems:"center", gap:8, padding:"4px 6px", opacity:p.active?1:0.3 }}>
+                <div style={{ width:6, height:6, borderRadius:"50%", background:p.active?"#10B981":"#374151" }} />
+                <span style={{ fontSize:"8px", color:p.active?"#64748B":"#374151", letterSpacing:"1px" }}>{p.l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* GRAPH CANVAS */}
+        <div ref={containerRef} style={{ flex:1, position:"relative", overflow:"hidden" }}>
+          {/* subtle grid */}
+          <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+            backgroundImage:"linear-gradient(rgba(31,41,55,0.25) 1px,transparent 1px),linear-gradient(90deg,rgba(31,41,55,0.25) 1px,transparent 1px)",
+            backgroundSize:"48px 48px",
+            maskImage:"radial-gradient(ellipse 80% 80% at 50% 50%,transparent 20%,black 100%)"
+          }} />
+
+          <svg ref={svgRef} width="100%" height="100%" style={{ background:"transparent" }} />
+
+          {/* hover tooltip */}
+          {hovered && (
+            <div style={{ position:"absolute", top:14, left:"50%", transform:"translateX(-50%)",
+              background:"#111827", border:"1px solid #1F2937", padding:"6px 14px",
+              fontSize:"10px", color:"#94A3B8", pointerEvents:"none",
+              whiteSpace:"nowrap", letterSpacing:"1px", zIndex:10 }}>
+              {hovered.type === "account"   && `${hovered.handle} · ${hovered.tier?.toUpperCase()} · ${hovered.followers?.toLocaleString()} followers`}
+              {hovered.type === "narrative" && `${hovered.label} · REACH ${hovered.reach?.toLocaleString()} · ${hovered.status?.toUpperCase()}`}
+              {hovered.type === "hashtag"   && `${hovered.label} · ${hovered.volume?.toLocaleString()} posts · ${hovered.velocity?.toUpperCase()}`}
+            </div>
+          )}
+
+          {/* empty state */}
+          {!NODES.filter(n => filters[n.type]).length && (
+            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
+              justifyContent:"center", color:"#374151", fontSize:"11px", letterSpacing:"2px" }}>
+              NO NODES VISIBLE — ENABLE FILTERS
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT DETAIL PANEL */}
+        <div style={{ width: selected ? 265 : 0, background:"#0D1117",
+          borderLeft: selected ? "1px solid #1F2937" : "none",
+          transition:"width 0.2s ease", overflow:"hidden", flexShrink:0 }}>
+          {selected && (
+            <div style={{ padding:16, width:265 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                <span style={{ fontSize:"8px", color:"#374151", letterSpacing:"2px" }}>{selected.type.toUpperCase()} PROFILE</span>
+                <button onClick={() => setSelected(null)}
+                  style={{ background:"none", border:"none", color:"#4B5563", cursor:"pointer", fontSize:18, lineHeight:1, padding:0 }}>×</button>
+              </div>
+
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:13, fontWeight:"bold", color:nodeColor(selected), marginBottom:4, wordBreak:"break-all" }}>
+                  {selected.handle || selected.label}
+                </div>
+                <div style={{ fontSize:"9px", color:"#374151", letterSpacing:"1px" }}>
+                  {selected.platform?.toUpperCase() || "—"} &nbsp;·&nbsp;
+                  {(selected.tier || selected.status || selected.velocity || "—").toUpperCase()}
+                </div>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:14 }}>
+                {selected.type === "account" && <>
+                  <Stat label="FOLLOWERS"  value={selected.followers?.toLocaleString()} />
+                  <Stat label="POSTS"      value={selected.posts} />
+                  <Stat label="CONFIDENCE" value={`${Math.round((selected.confidence||0)*100)}%`}
+                    color={selected.confidence > 0.75 ? "#EF4444" : selected.confidence > 0.5 ? "#F59E0B" : "#3B82F6"} />
+                  <Stat label="EDGES"      value={getConnections(selected.id).length} />
+                </>}
+                {selected.type === "narrative" && <>
+                  <Stat label="REACH"      value={selected.reach?.toLocaleString()} />
+                  <Stat label="STATUS"     value={selected.status?.toUpperCase()}
+                    color={selected.status === "active" ? "#EF4444" : "#F59E0B"} />
+                  <Stat label="CONFIDENCE" value={`${Math.round((selected.confidence||0)*100)}%`} color="#EF4444" />
+                  <Stat label="AMPLIFIERS" value={getConnections(selected.id).filter(e=>e.type==="AMPLIFIES").length} />
+                </>}
+                {selected.type === "hashtag" && <>
+                  <Stat label="VOLUME"   value={selected.volume?.toLocaleString()} />
+                  <Stat label="VELOCITY" value={selected.velocity?.toUpperCase()}
+                    color={selected.velocity === "peak" ? "#EF4444" : "#F59E0B"} />
+                </>}
+              </div>
+
+              {selected.tags?.length > 0 && (
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:"8px", color:"#374151", letterSpacing:"1.5px", marginBottom:8 }}>TAGS</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                    {selected.tags.map(tag => (
+                      <div key={tag} style={{ fontSize:"8px", padding:"2px 7px",
+                        background: HIGH_THREAT_TAGS.has(tag) ? "#1C0A0A" : "#111827",
+                        color: HIGH_THREAT_TAGS.has(tag) ? "#FCA5A5" : "#F59E0B",
+                        border:`1px solid ${HIGH_THREAT_TAGS.has(tag) ? "#7F1D1D" : "#374151"}` }}>
+                        {tag.replace(/_/g," ")}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div style={{ fontSize:"8px", color:"#374151", letterSpacing:"1.5px", marginBottom:8 }}>
+                  CONNECTIONS ({getConnections(selected.id).length})
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:180, overflowY:"auto" }}>
+                  {getConnections(selected.id).map((edge, i) => {
+                    const otherId = edge.source === selected.id ? edge.target : edge.source;
+                    const other   = NODES.find(n => n.id === otherId);
+                    const dir     = edge.source === selected.id ? "→" : "←";
+                    return (
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8,
+                        padding:"4px 7px", background:"#111827", border:"1px solid #1A2234",
+                        cursor:"pointer" }}
+                        onClick={() => setSelected(other)}>
+                        <div style={{ width:8, height:1, background:edgeColor(edge), flexShrink:0 }} />
+                        <span style={{ color:"#64748B", flex:1, overflow:"hidden",
+                          textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:"9px" }}>
+                          {dir} {other?.handle || other?.label || otherId}
+                        </span>
+                        <span style={{ color:"#1F2937", fontSize:"8px", flexShrink:0 }}>
+                          {edge.type.split("_")[0]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ACTIVITY FEED ───────────────────────────────────────────────────── */}
+      <div style={{ height:105, background:"#0D1117", borderTop:"1px solid #1F2937",
+        padding:"8px 0 0", flexShrink:0 }}>
+        <div style={{ fontSize:"8px", color:"#374151", letterSpacing:"2px", padding:"0 16px 7px" }}>
+          ACTIVITY FEED
+        </div>
+        <div style={{ display:"flex", gap:8, paddingLeft:16, overflowX:"auto",
+          paddingBottom:12, scrollbarWidth:"none" }}>
+          {ACTIVITY.map((item, i) => (
+            <div key={i} style={{ flexShrink:0, width:275, padding:"7px 10px",
+              background: item.alert ? "#110A0A" : "#0D1117",
+              border:`1px solid ${item.alert ? "#7F1D1D" : "#1F2937"}` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                {item.alert && <span style={{ color:"#EF4444", fontSize:"8px", letterSpacing:"1px" }}>⚠ ALERT</span>}
+                <span style={{ fontSize:"8px", color:"#374151" }}>{item.time}</span>
+              </div>
+              <div style={{ fontSize:"9px", color: item.alert ? "#FCA5A5" : "#4B5563", lineHeight:1.5 }}>
+                {item.text}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

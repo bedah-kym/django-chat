@@ -1,0 +1,23 @@
+.loader {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-md) 0;
+  min-height: 20px;
+}
+
+.spinner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

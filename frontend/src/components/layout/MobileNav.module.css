@@ -1,0 +1,38 @@
+.nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .nav {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    z-index: 80;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    min-block-size: var(--bottom-nav-height);
+    padding-block-end: var(--safe-area-bottom);
+    background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+    border-block-start: 1px solid var(--border-color);
+    backdrop-filter: blur(20px);
+  }
+
+  .item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--text-subtle);
+    font-size: 10px;
+    font-weight: var(--font-weight-medium);
+  }
+
+  .active {
+    color: var(--accent-strong);
+  }
+
+  .label {
+    font-size: 10px;
+  }
+}

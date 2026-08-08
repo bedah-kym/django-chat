@@ -1,0 +1,686 @@
+/* ============================================
+   VOICE NOTES & AUDIO UI
+   ============================================ */
+
+.recording-overlay {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 15px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.05);
+    animation: slideUp 0.3s ease-out;
+    width: min(720px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* On small screens the overlay should be fixed near the bottom so it doesn't
+   push content or overflow the viewport. */
+@media (max-width: 768px) {
+    .recording-overlay {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        border-radius: 12px;
+        z-index: 2000;
+        padding: 12px;
+        align-items: center;
+    }
+
+    #recording-waveform {
+        display: none;
+    }
+}
+
+[data-theme="dark"] .recording-overlay {
+    background: rgba(25, 25, 25, 0.85);
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Quick action modal */
+.mathia-action-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(6px);
+}
+
+.mathia-action-modal-content {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    padding: 18px;
+    width: 420px;
+    max-width: 90vw;
+    color: #222;
+}
+
+.mathia-action-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.mathia-action-modal .close-modal {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #555;
+}
+
+.mathia-action-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.mathia-action-form input,
+.mathia-action-form select,
+.mathia-action-form textarea {
+    border: 1px solid #d5d5d5;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+}
+
+.mathia-action-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.mathia-action-modal .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.mathia-action-modal .btn-primary,
+.mathia-action-modal .btn-secondary {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.mathia-action-modal .btn-primary {
+    background: linear-gradient(135deg, #4f8dfd, #7aa8ff);
+    color: #fff;
+}
+
+.mathia-action-modal .btn-secondary {
+    background: #f2f2f2;
+    color: #444;
+}
+
+.mathia-action-modal .btn-primary:hover {
+    filter: brightness(0.95);
+}
+
+.mathia-action-modal .btn-secondary:hover {
+    background: #e7e7e7;
+}
+
+.recording-pulse {
+    width: 12px;
+    height: 12px;
+    background: #ff4757;
+    border-radius: 50%;
+    margin-right: 15px;
+    animation: pulseRed 1.5s infinite;
+}
+
+@keyframes pulseRed {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(255, 71, 87, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+    }
+}
+
+.recording-timer {
+    font-weight: 600;
+    font-family: 'Courier New', Courier, monospace;
+    min-width: 50px;
+}
+
+#recording-waveform {
+    flex-grow: 1;
+    height: 30px;
+    margin: 0 20px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 15px;
+}
+
+.recording-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Voice Button */
+#voice-record-btn {
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#voice-record-btn.recording {
+    transform: scale(1.2);
+    background: rgba(255, 71, 87, 0.1) !important;
+}
+
+/* Audio Message Bubble */
+.voice-bubble {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    border-radius: 18px;
+    background: rgba(102, 126, 234, 0.15);
+    min-width: 200px;
+}
+
+.play-btn {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+}
+
+.voice-waveform {
+    flex-grow: 1;
+    height: 25px;
+}
+
+.voice-duration {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.voice-transcript {
+    font-style: italic;
+    font-size: 0.9em;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    opacity: 0.8;
+}
+
+[data-theme="dark"] .voice-transcript {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* AI Message Styling */
+.mathia-message {
+    background: rgba(102, 126, 234, 0.25);
+    backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
+    color: #1b1b1b;
+    /* dark readable text */
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.mathia-message .mathia-content {
+    text-shadow: 0 0 6px rgba(102, 126, 234, 0.3);
+}
+
+[data-theme="dark"] .mathia-message {
+    background: linear-gradient(135deg, #4a5dc7 0%, #5a3a82 100%) !important;
+    box-shadow: 0 8px 20px rgba(74, 93, 199, 0.4);
+}
+
+.mathia-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.mathia-badge i {
+    animation: robotPulse 2s ease-in-out infinite;
+}
+
+@keyframes robotPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.15);
+    }
+}
+
+.mathia-content {
+    line-height: 1.5;
+}
+
+/* AI Thinking Animation */
+.mathia-thinking {
+    animation: slideInLeft 0.3s ease;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.ai-thinking-animation {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #667eea;
+    font-weight: 500;
+}
+
+[data-theme="dark"] .ai-thinking-animation {
+    color: #8a9ff5;
+}
+
+.ai-thinking-animation i {
+    font-size: 1.2em;
+    animation: robotBounce 1s ease-in-out infinite;
+}
+
+@keyframes robotBounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.thinking-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.thinking-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #667eea;
+    animation: thinkingDot 1.4s ease-in-out infinite;
+}
+
+[data-theme="dark"] .thinking-dots span {
+    background: #8a9ff5;
+}
+
+.thinking-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.thinking-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.thinking-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes thinkingDot {
+
+    0%,
+    100% {
+        transform: scale(0.6);
+        opacity: 0.3;
+        filter: blur(1px);
+    }
+
+    50% {
+        transform: scale(1.3);
+        opacity: 1;
+        filter: blur(0);
+        box-shadow: 0 0 8px rgba(102, 126, 234, 0.6);
+    }
+}
+
+/* Autocomplete Dropdown */
+.mathia-autocomplete {
+    position: absolute;
+    bottom: 70px;
+    left: 60px;
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: slideUp 0.2s ease;
+}
+
+[data-theme="dark"] .mathia-autocomplete {
+    background: #2a2a2a;
+    border-color: #4a5dc7;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.autocomplete-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.autocomplete-item i {
+    color: #667eea;
+    font-size: 1.1em;
+}
+
+.autocomplete-item strong {
+    color: #667eea;
+}
+
+/* Quick Prompts Panel */
+.mathia-quick-prompts {
+    position: absolute;
+    bottom: 80px;
+    /* above input field */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 600px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px) saturate(160%);
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    animation: fadeIn 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.chat-container {
+    overflow: hidden;
+}
+
+.mathia-quick-prompts.active {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    padding: 16px;
+}
+
+
+[data-theme="dark"] .mathia-quick-prompts {
+    background: linear-gradient(135deg, rgba(74, 93, 199, 0.1) 0%, rgba(90, 58, 130, 0.1) 100%);
+    border-color: rgba(74, 93, 199, 0.3);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.quick-prompts-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #667eea;
+}
+
+[data-theme="dark"] .quick-prompts-header {
+    color: #8a9ff5;
+}
+
+.quick-prompts-header i {
+    font-size: 1.2em;
+}
+
+.btn-close-prompts {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.2s;
+}
+
+.btn-close-prompts:hover {
+    color: #667eea;
+}
+
+.quick-prompts-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.quick-prompt-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: white;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #333;
+}
+
+[data-theme="dark"] .quick-prompt-btn {
+    background: #2a2a2a;
+    color: #e8eaed;
+    border-color: rgba(74, 93, 199, 0.3);
+}
+
+.quick-prompt-btn:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.quick-prompt-btn i {
+    font-size: 1em;
+}
+
+/* AI Error Styling */
+.ai-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    border-radius: 8px;
+    color: #ff6b6b;
+}
+
+.ai-error i {
+    font-size: 1.1em;
+}
+
+/* Slide in animation for AI messages */
+.mathia-message-item {
+    animation: slideInMessage 0.4s ease;
+}
+
+@keyframes slideInMessage {
+    from {
+        opacity: 0;
+        transform: translateX(-30px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+.mathia-message-item.slide-in {
+    animation: slideInMessage 0.4s ease;
+}
+
+/* Mobile Responsiveness */
+@media only screen and (max-width: 767px) {
+    .mathia-quick-prompts {
+        bottom: 80px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        width: 90% !important;
+        max-width: 600px !important;
+        margin: 0 !important;
+        padding: 15px !important;
+        max-height: calc(100vh - 160px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mathia-quick-prompts.active {
+        padding: 15px !important;
+    }
+
+    .quick-prompts-header {
+        margin-bottom: 12px !important;
+        font-size: 1rem !important;
+    }
+
+    .quick-prompts-list {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    .quick-prompt-btn {
+        font-size: 0.9em !important;
+        padding: 12px 15px !important;
+        min-height: 48px !important;
+        /* Larger touch target */
+        justify-content: flex-start !important;
+    }
+
+    .quick-prompt-btn i {
+        font-size: 1.2em !important;
+    }
+
+    .btn-close-prompts {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        padding: 0.5rem !important;
+    }
+
+    .mathia-autocomplete {
+        left: 10px !important;
+        right: 10px !important;
+        bottom: 80px !important;
+        width: auto !important;
+        max-width: calc(100vw - 20px) !important;
+    }
+
+    .autocomplete-item {
+        padding: 12px 16px !important;
+        min-height: 44px !important;
+    }
+
+    .mathia-message {
+        max-width: 90% !important;
+    }
+
+    .mathia-badge {
+        font-size: 0.75em !important;
+        padding: 4px 10px !important;
+    }
+
+    .mathia-content {
+        font-size: 1em !important;
+        line-height: 1.5 !important;
+    }
+
+    /* AI thinking animation adjustments */
+    .ai-thinking-animation {
+        font-size: 1em !important;
+    }
+}
+
+body.ai-only-room .invite-user-action {
+    display: none !important;
+}
+
+body.ai-only-room #inviteUserModal {
+    display: none;
+}

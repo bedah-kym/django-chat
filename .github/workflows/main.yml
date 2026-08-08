@@ -1,0 +1,111 @@
+name: MATHIA CI/CD
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black bandit safety
+        pip install -r requirements.txt
+        
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings.
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+    - name: Security scan with Bandit
+      run: |
+        # -ll -ii = fail only on Medium+ severity AND Medium+ confidence findings.
+        # Default (no filter) drowns the signal in Low-severity style flags
+        # (try/except/pass, magic strings) and never gates anything actionable.
+        # Real Medium+ findings still fail the build; suppress legitimate
+        # exceptions inline with `# nosec BXXX - reason`.
+        bandit -r . -x ./tests,./venv --skip B101 -ll -ii
+        
+    - name: Run Django Tests
+      env:
+        DATABASE_URL: sqlite:///db.sqlite3
+        DJANGO_SECRET_KEY: test-key-not-for-prod
+        REDIS_URL: redis://localhost:6379/0
+        # DEBUG=True for tests bypasses the production-only env guards
+        # in settings.py (e.g. the DJANGO_CSRF_TRUSTED_ORIGINS check)
+        # without affecting test behavior — Django still uses an isolated
+        # test database and ignores DEBUG for security-sensitive paths.
+        DJANGO_DEBUG: 'True'
+        # Fernet key consumed by users/encryption.py for Chatroom
+        # encryption_key generation (triggered transitively by every
+        # User.create_user via the create_user_profile post_save signal).
+        # Test-only key; not a secret.
+        ENCRYPTION_KEY: vOKs0QoK_MI8RWj1vmW-nXWrvZiK8C_PspNOglndRjY=
+      run: |
+        cd Backend
+        python manage.py test --settings=Backend.settings_test
+
+    - name: Run agent unit tests
+      run: |
+        python -m unittest discover -s agents/kali_pentest_agent/tests -v
+
+  build-and-deploy:
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ghcr.io/${{ github.repository }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    # Example: Trigger Railway Deployment (Uncomment and set RAILWAY_TOKEN in repository secrets)
+    # - name: Deploy to Railway
+    #   run: |
+    #     npm install -g @railway/cli
+    #     railway up --detach --service web
+    #   env:
+    #     RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

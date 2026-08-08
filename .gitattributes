@@ -1,0 +1,8 @@
+# Force LF line endings on shell scripts so `sh`/dash on Linux containers
+# never sees `set -e\r` etc. This is what crashed scripts/railway/celery_worker.sh
+# on a Windows checkout (Exited 2, "Illegal option -" on set -e).
+*.sh        text eol=lf
+*.bash      text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf

@@ -1,0 +1,173 @@
+{% extends 'payments/base.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Overview | Mathia Pay{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-6">
+    <div>
+        <h2 class="h3 fw-bold tracking-tight">Dashboard</h2>
+        <p class="text-muted">Overview of your financial activity.</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#depositModal">
+            <i class="fas fa-plus me-2"></i> Deposit Funds
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Balance Card -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header pb-2">
+                <h5 class="card-title text-sm font-medium text-muted">Total Balance</h5>
+            </div>
+            <div class="card-content pt-0">
+                <div class="d-flex align-items-baseline">
+                    <span class="fs-2 fw-bold">KES {{ balance|intcomma }}</span>
+                </div>
+                <p class="text-xs text-muted mt-1">
+                    {% if last_tx_at %}
+                    Last activity {{ last_tx_at|date:"M d, Y H:i" }}
+                    {% else %}
+                    No transactions yet
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Invoices Card -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header pb-2">
+                <h5 class="card-title text-sm font-medium text-muted">Active Invoices</h5>
+            </div>
+            <div class="card-content pt-0">
+                <div class="d-flex align-items-baseline">
+                    <span class="fs-2 fw-bold">{{ active_invoices }}</span>
+                </div>
+                <p class="text-xs text-muted mt-1">
+                    Pending {{ pending_invoices }}{% if overdue_invoices %} · Overdue {{ overdue_invoices }}{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Credits -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header pb-2">
+                <h5 class="card-title text-sm font-medium text-muted">Total Credits</h5>
+            </div>
+            <div class="card-content pt-0">
+                <div class="d-flex align-items-baseline">
+                    <span class="fs-2 fw-bold">{{ currency }} {{ total_revenue|intcomma }}</span>
+                </div>
+                <p class="text-xs text-muted mt-1">{{ credit_count }} credits recorded</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Transaction Chart -->
+    <div class="col-md-7">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title">Overview</h5>
+                <p class="card-description">Monthly transaction volume.</p>
+            </div>
+            <div class="card-content">
+                <canvas id="transactionChart" height="240"
+                    data-labels='[{% for tx in transactions reversed %}"{{ tx.date|date:'M d' }}"{% if not forloop.last %},{% endif %}{% endfor %}]'
+                    data-values='[{% for tx in transactions reversed %}{{ tx.amount }}{% if not forloop.last %},{% endif %}{% endfor %}]'></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-md-5">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title">Recent Transactions</h5>
+                <p class="card-description">Latest wallet activity.</p>
+            </div>
+            <div class="card-content p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <tbody>
+                            {% for tx in transactions %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-medium">{{ tx.description|truncatechars:20 }}</span>
+                                        <span class="text-xs text-muted">{{ tx.date|date:"M d" }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <span class="fw-bold fs-6 {% if tx.amount > 0 %}text-success{% endif %}">
+                                        {% if tx.amount > 0 %}+{% endif %}{{ tx.amount|intcomma }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center py-4 text-muted">No recent activity</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deposit Modal (Cleaned up) -->
+<div class="modal fade" id="depositModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: var(--radius);">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold">Deposit Funds</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="depositForm" data-deposit-url="{% url 'payments:initiate_deposit' %}" data-status-url="{% url 'payments:deposit_status' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-sm fw-medium">Phone Number (Optional)</label>
+                        <input type="tel" name="phone" class="form-control" placeholder="2547...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-sm fw-medium">Amount (KES)</label>
+                        <input type="number" name="amount" class="form-control" min="1" value="1000" required>
+                    </div>
+
+                    <div class="alert bg-secondary text-secondary-foreground text-sm border-0 mb-4">
+                        <i class="fas fa-info-circle me-1"></i>
+                        {% if platform_fee %}
+                        Includes <strong>{{ currency }} {{ platform_fee|intcomma }}</strong> platform fee.
+                        {% else %}
+                        Platform fee will be shown before confirmation.
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary" id="btnDeposit">
+                            Initiate Payment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'payments/js/wallet_dashboard.js' %}" defer></script>
+{% endblock %}

@@ -1,10 +1,47 @@
 
 from django.urls import path
 from . import views
+from . import context_api
+from . import contact_api
+from . import linked_rooms_api
+from . import message_actions
+from . import voice_views
 
-app_name="chatbot"
+app_name = "chatbot"
 urlpatterns = [
-    path('home/<int:room_name>/',views.home,name="bot-home"),
-    path('redirect/',views.welcomepage,name="redirect_to_home"),
+    path('home/<int:room_name>/', views.home, name="bot-home"),
+    path('redirect/', views.welcomepage, name="redirect_to_home"),
+    path('create/', views.create_room, name="create_room"),
+    path('invite/', views.invite_user, name='invite_user'),
+    path('api/notifications/status/', views.notification_status, name='notification-status'),
+    path('api/rooms/<int:room_id>/read/', views.mark_room_read, name='mark-room-read'),
+    path('rooms/<int:room_id>/export/', views.export_chat, name='export-chat'),
 
+    # Context API
+    path('api/rooms/<int:room_id>/context/', context_api.get_room_context, name='room-context'),
+    path('api/rooms/<int:room_id>/notes/', context_api.add_note, name='add-note'),
+
+    # Linked Rooms API
+    path('api/rooms/<int:room_id>/linked/', linked_rooms_api.list_or_link_rooms, name='linked-rooms'),
+    path('api/rooms/<int:room_id>/linked/<int:target_room_id>/', linked_rooms_api.unlink_room, name='unlink-room'),
+
+    # Contact API
+    path('api/contacts/', contact_api.list_create_contacts, name='contacts-list'),
+    path('api/contacts/<int:contact_id>/', contact_api.update_delete_contact, name='contact-detail'),
+    path('api/contacts/search/', contact_api.search_contacts, name='contacts-search'),
+
+    # Message Actions API
+    path('api/rooms/<int:room_id>/messages/<int:message_id>/pin/', message_actions.pin_message_to_notes, name='pin-message'),
+    path('api/rooms/<int:room_id>/messages/<int:message_id>/reply/', message_actions.reply_to_message, name='reply-message'),
+    path('api/rooms/<int:room_id>/messages/<int:message_id>/retry/', message_actions.retry_ai_message, name='retry-message'),
+    path('api/rooms/<int:room_id>/messages/<int:message_id>/feedback/', message_actions.submit_message_feedback, name='message-feedback'),
+    path('api/rooms/<int:room_id>/actions/', message_actions.get_action_receipts, name='action-receipts'),
+    path('api/rooms/<int:room_id>/documents/upload/', message_actions.upload_document_to_ai, name='upload-document'),
+    path('api/rooms/<int:room_id>/documents/quota/', message_actions.get_upload_quota, name='upload-quota'),
+    path('api/rooms/<int:room_id>/attachments/upload/', message_actions.upload_chat_attachment, name='upload-attachment'),
+    path('api/documents/<int:document_id>/status/', message_actions.document_status, name='document-status'),
+
+    # Voice API
+    path('api/rooms/<int:room_id>/voice/upload/', voice_views.upload_voice_note, name='upload-voice-note'),
+    path('api/messages/<int:message_id>/voice/status/', voice_views.get_voice_status, name='voice-status'),
 ]

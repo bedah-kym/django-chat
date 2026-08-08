@@ -1,0 +1,429 @@
+.panel {
+  width: var(--context-panel-width);
+  height: calc(100vh - var(--header-height));
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--blur-bg);
+  -webkit-backdrop-filter: var(--blur-bg);
+  border-left: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.closeBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.closeBtn:hover {
+  background: var(--bg-light);
+  color: var(--text-color);
+}
+
+/* Accordion */
+.accordion {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.section {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px var(--space-lg);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-color);
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.sectionHeader:hover {
+  background: var(--bg-light);
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.sectionHeader[data-state="open"] .chevron {
+  transform: rotate(180deg);
+}
+
+.sectionContent {
+  overflow: hidden;
+}
+
+.sectionContent[data-state="open"] {
+  animation: slideDown 0.2s ease;
+}
+
+.sectionContent[data-state="closed"] {
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+.sectionBody {
+  padding: 0 var(--space-lg) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* Contacts */
+.contactCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  transition: box-shadow var(--transition-fast);
+}
+
+.contactCard:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.contactAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--secondary-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  flex-shrink: 0;
+}
+
+.contactName {
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+}
+
+.contactDetail {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Notes */
+.noteCard {
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  transition: box-shadow var(--transition-fast);
+}
+
+.noteCard:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.pinnedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--warning-color);
+  font-weight: var(--font-weight-medium);
+}
+
+.noteText {
+  font-size: 13px;
+  margin: var(--space-xs) 0;
+  line-height: 1.5;
+}
+
+.noteTime {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Actions */
+.actionCard {
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  transition: box-shadow var(--transition-fast);
+}
+
+.actionCard:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.actionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.actionName {
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+}
+
+.actionStatus {
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+.completed {
+  background: rgba(40, 167, 69, 0.15);
+  color: var(--success-color);
+}
+
+.pending {
+  background: rgba(255, 193, 7, 0.15);
+  color: var(--warning-color);
+}
+
+.failed {
+  background: rgba(220, 53, 69, 0.15);
+  color: var(--danger-color);
+}
+
+.actionDetail {
+  font-size: 12px;
+  margin: var(--space-xs) 0;
+  color: var(--text-muted);
+}
+
+.actionTime {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Linked Rooms */
+.linkedRoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  font-size: 13px;
+  color: var(--primary-color);
+}
+
+/* Summary */
+.summaryText {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-color);
+}
+
+.summaryText p + p {
+  margin-top: var(--space-sm);
+}
+
+/* Add Button */
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--primary-color);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-xs) 0;
+}
+
+.addBtn:hover {
+  text-decoration: underline;
+}
+
+/* Compose form (Add Note / Add Contact) */
+.composeForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-block-start: 6px;
+}
+
+.composeRow {
+  display: flex;
+  gap: 6px;
+}
+
+.composeSelect,
+.composeInput,
+.composeText {
+  font-family: var(--font-family);
+  font-size: 12px;
+  color: var(--text-color);
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.composeSelect {
+  flex: 1;
+  text-transform: capitalize;
+}
+
+.composeText {
+  min-block-size: 64px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.composeSelect:focus,
+.composeInput:focus,
+.composeText:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.composeActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.composeCancel,
+.composeSave {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.composeCancel {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.composeCancel:hover:not(:disabled) {
+  background: var(--bg-light);
+  color: var(--text-color);
+}
+
+.composeSave {
+  color: #fff;
+  background: var(--primary-color);
+}
+
+.composeSave:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.composeSave:disabled,
+.composeCancel:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Unlink button on linked-room rows */
+.linkRemove {
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  background: transparent;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.linkRemove:hover {
+  color: var(--critical-color);
+  background: var(--bg-light);
+}
+
+/* AI Memory section */
+.memoryHeading {
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-block: 8px 4px;
+}
+
+.memoryHeading:first-child {
+  margin-block-start: 0;
+}
+
+.memoryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  margin-block-end: 4px;
+}
+
+.memoryKey {
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+}
+
+.memoryValue {
+  font-size: 12px;
+  color: var(--text-color);
+  line-height: 1.4;
+}
+
+.memoryDate {
+  font-size: 10px;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}

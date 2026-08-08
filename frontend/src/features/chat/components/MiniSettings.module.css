@@ -1,0 +1,105 @@
+.trigger {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+}
+
+.trigger:hover { background: var(--bg-light); color: var(--text-color); }
+
+.panel {
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--blur-bg);
+  -webkit-backdrop-filter: var(--blur-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: var(--space-md);
+  width: 260px;
+  z-index: 100;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-md);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.row:last-child { margin-bottom: 0; }
+
+.label {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+}
+
+.themeBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  width: 100%;
+  justify-content: center;
+}
+
+.themeBtn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.slider {
+  flex: 1;
+  accent-color: var(--primary-color);
+  height: 4px;
+}
+
+.sliderValue {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}
+
+.densityBtns {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-light);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.densityBtn {
+  flex: 1;
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.densityActive {
+  background: var(--chat-bg);
+  color: var(--text-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.arrow { fill: var(--chat-bg); }

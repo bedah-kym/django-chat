@@ -1,0 +1,183 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary "Global navigation" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: M
+        - generic [ref=e10]:
+          - generic [ref=e11]: MATHIA
+          - generic [ref=e12]: os/1.0
+        - button "Collapse sidebar" [ref=e13] [cursor=pointer]:
+          - img [ref=e14]
+      - navigation [ref=e16]:
+        - link "Home" [ref=e19] [cursor=pointer]:
+          - /url: /app/home
+          - img [ref=e21]
+          - generic [ref=e24]: Home
+        - generic [ref=e25]:
+          - generic [ref=e26]: Intelligence
+          - link "Social Intel" [ref=e28] [cursor=pointer]:
+            - /url: /app/signet
+            - img [ref=e30]
+            - generic [ref=e37]: Social Intel
+          - link "Security" [ref=e39] [cursor=pointer]:
+            - /url: /app/security
+            - img [ref=e41]
+            - generic [ref=e43]: Security
+        - generic [ref=e44]:
+          - generic [ref=e45]: Work
+          - link "Dev" [ref=e47] [cursor=pointer]:
+            - /url: /app/dev
+            - img [ref=e49]
+            - generic [ref=e53]: Dev
+          - link "Business/Ops" [ref=e55] [cursor=pointer]:
+            - /url: /app/ops
+            - img [ref=e57]
+            - generic [ref=e61]: Business/Ops
+      - button "Open user menu" [ref=e63] [cursor=pointer]:
+        - generic [ref=e64]: U
+        - generic [ref=e65]:
+          - generic [ref=e66]: User
+          - generic [ref=e67]: Personal
+    - generic [ref=e68]:
+      - banner [ref=e69]:
+        - generic [ref=e71]:
+          - heading "Home" [level=1] [ref=e72]
+          - paragraph [ref=e73]: Today's focus across every workspace.
+        - generic [ref=e74]:
+          - button "Dark mode" [ref=e75] [cursor=pointer]:
+            - img [ref=e76]
+          - button "Search" [ref=e78] [cursor=pointer]:
+            - img [ref=e79]
+          - button "Notifications" [ref=e82] [cursor=pointer]:
+            - img [ref=e83]
+      - main [ref=e86]:
+        - generic [ref=e89]:
+          - generic [ref=e91]:
+            - paragraph [ref=e92]: Global overview
+            - heading "Operations Home" [level=1] [ref=e93]
+            - paragraph [ref=e94]: Operational overview across workspaces, rooms, and pending actions.
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - generic [ref=e99]:
+                - generic [ref=e100]: Unread items
+                - generic [ref=e101]: "0"
+                - generic [ref=e102]: Messages, drafts, and operator actions waiting.
+              - generic [ref=e103]:
+                - generic [ref=e104]: Critical findings
+                - generic [ref=e105]: "0"
+                - generic [ref=e106]: Open issues requiring validation or escalation.
+              - generic [ref=e107]:
+                - generic [ref=e108]: Active engagements
+                - generic [ref=e109]: "0"
+                - generic [ref=e110]: Authorized jobs currently in progress.
+              - generic [ref=e111]:
+                - generic [ref=e112]: Available cash
+                - generic [ref=e113]: KES 0
+                - generic [ref=e114]: Operational balance available for work this week.
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e118]:
+                  - generic [ref=e119]: Priority queue
+                  - heading "What needs action next" [level=2] [ref=e120]
+                  - paragraph [ref=e121]: Highest-value operator moves across the product.
+                - generic [ref=e122]:
+                  - link "Review active engagement is running and still has a critical issue ready for validation." [ref=e123] [cursor=pointer]:
+                    - /url: /app/security/pentest
+                    - strong [ref=e124]: Review active engagement
+                    - text: is running and still has a critical issue ready for validation.
+                  - link "Confirm workspace defaults Locale, currency, direction, and density are now configurable at the shell level." [ref=e125] [cursor=pointer]:
+                    - /url: /app/settings
+                    - strong [ref=e126]: Confirm workspace defaults
+                    - text: Locale, currency, direction, and density are now configurable at the shell level.
+              - generic [ref=e127]:
+                - generic [ref=e129]:
+                  - generic [ref=e130]: Live status
+                  - heading "Current system state" [level=2] [ref=e131]
+                  - paragraph [ref=e132]: Fast read before you enter a workspace.
+                - generic [ref=e133]:
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: Security
+                    - generic [ref=e136]: 0 critical
+                  - generic [ref=e137]:
+                    - generic [ref=e138]: Unread rooms
+                    - generic [ref=e139]: 0 unread
+                  - generic [ref=e140]:
+                    - generic [ref=e141]: Wallet
+                    - generic [ref=e142]: KES 0
+            - generic [ref=e143]:
+              - generic [ref=e145]:
+                - generic [ref=e146]: Workspaces
+                - heading "Jump into a workspace" [level=2] [ref=e147]
+                - paragraph [ref=e148]: Use the shell to choose the correct context, not to read a presentation.
+              - generic [ref=e149]:
+                - link "Social Intel Stable Accounts, narratives, hashtags, and disinformation tracking. Open" [ref=e150] [cursor=pointer]:
+                  - /url: /app/signet
+                  - generic [ref=e151]:
+                    - generic [ref=e152]:
+                      - generic [ref=e153]: Social Intel
+                      - generic [ref=e154]: Stable
+                    - paragraph [ref=e155]: Accounts, narratives, hashtags, and disinformation tracking.
+                  - generic [ref=e156]:
+                    - text: Open
+                    - img [ref=e157]
+                - link "Security Stable Pentests, bug bounty programs, findings, and approvals. Open" [ref=e159] [cursor=pointer]:
+                  - /url: /app/security
+                  - generic [ref=e160]:
+                    - generic [ref=e161]:
+                      - generic [ref=e162]: Security
+                      - generic [ref=e163]: Stable
+                    - paragraph [ref=e164]: Pentests, bug bounty programs, findings, and approvals.
+                  - generic [ref=e165]:
+                    - text: Open
+                    - img [ref=e166]
+                - link "Dev Stable Repos, builds, deployments, and engineering workflows. Open" [ref=e168] [cursor=pointer]:
+                  - /url: /app/dev
+                  - generic [ref=e169]:
+                    - generic [ref=e170]:
+                      - generic [ref=e171]: Dev
+                      - generic [ref=e172]: Stable
+                    - paragraph [ref=e173]: Repos, builds, deployments, and engineering workflows.
+                  - generic [ref=e174]:
+                    - text: Open
+                    - img [ref=e175]
+                - link "Business/Ops Stable Reminders and day-to-day operations. Open" [ref=e177] [cursor=pointer]:
+                  - /url: /app/ops
+                  - generic [ref=e178]:
+                    - generic [ref=e179]:
+                      - generic [ref=e180]: Business/Ops
+                      - generic [ref=e181]: Stable
+                    - paragraph [ref=e182]: Reminders and day-to-day operations.
+                  - generic [ref=e183]:
+                    - text: Open
+                    - img [ref=e184]
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - generic [ref=e189]:
+                  - generic [ref=e190]: Signals
+                  - heading "What changed most recently" [level=2] [ref=e191]
+                  - paragraph [ref=e192]: Read this first if you only have two minutes.
+                - generic [ref=e193]:
+                  - generic [ref=e194]:
+                    - strong [ref=e195]: Approval waiting
+                    - generic [ref=e196]: High-risk enumeration step for still needs confirmation.
+                  - generic [ref=e197]:
+                    - strong [ref=e198]: Draft bounty report
+                    - generic [ref=e199]: 0 report draft is ready for refinement and submission.
+                  - generic [ref=e200]:
+                    - strong [ref=e201]: Unread coordination
+                    - generic [ref=e202]: 0 unread room messages still need triage across the product.
+              - generic [ref=e203]:
+                - generic [ref=e205]:
+                  - generic [ref=e206]: Next actions
+                  - heading "Suggested moves" [level=2] [ref=e207]
+                  - paragraph [ref=e208]: Fast entry points for the most likely operator path.
+                - generic [ref=e209]:
+                  - link "Open security overview" [ref=e210] [cursor=pointer]:
+                    - /url: /app/security
+                  - link "Start a new engagement" [ref=e211] [cursor=pointer]:
+                    - /url: /app/security/pentest/new
+                  - link "Set locale, direction, and workspace defaults" [ref=e212] [cursor=pointer]:
+                    - /url: /app/settings

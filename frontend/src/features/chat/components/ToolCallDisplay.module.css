@@ -1,0 +1,65 @@
+.block {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  overflow: hidden;
+  margin: var(--space-sm) 0;
+  font-size: 13px;
+}
+
+.calling {
+  border-color: var(--warning-color);
+  background: rgba(255, 149, 0, 0.04);
+}
+
+.result {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  padding: var(--space-sm) var(--space-md);
+  margin: 0;
+  overflow-x: auto;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-height: 200px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cancelled {
+  opacity: 0.6;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--text-color);
+}
+
+.toolName {
+  font-weight: var(--font-weight-medium);
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+}
+
+.statusLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,378 @@
+"""Travel app views (REST API endpoints)"""
+import logging
+import datetime
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.contrib import messages
+
+from .models import Itinerary, ItineraryItem, Event
+from .serializers import ItinerarySerializer, ItineraryItemSerializer, EventSerializer
+
+logger = logging.getLogger(__name__)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+async def search_travel(request):
+    """
+    Search for travel items (buses, hotels, flights, transfers, events)
+
+    POST /api/travel/search/
+    {
+        "search_type": "buses|hotels|flights|transfers|events",
+        "parameters": {...}
+    }
+    """
+    try:
+        from orchestration.mcp_router import get_mcp_router
+
+        search_type = request.data.get('search_type')
+        parameters = request.data.get('parameters', {})
+
+        router = get_mcp_router()
+
+        # Map search_type to connector action
+        action_map = {
+            'buses': 'search_buses',
+            'hotels': 'search_hotels',
+            'flights': 'search_flights',
+            'transfers': 'search_transfers',
+            'events': 'search_events',
+        }
+
+        action = action_map.get(search_type)
+        if not action:
+            return Response(
+                {'error': f'Unknown search type: {search_type}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Route to connector
+        context = {
+            'user_id': request.user.id,
+            'room_id': request.data.get('room_id')
+        }
+
+        result = await router.route(
+            intent={'action': action, 'parameters': parameters},
+            user_context=context
+        )
+
+        return Response(result)
+
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def itinerary_list_api(request):
+    """
+    GET: List user's itineraries
+    POST: Create new itinerary
+    """
+    if request.method == 'GET':
+        itineraries = Itinerary.objects.filter(user=request.user)
+        serializer = ItinerarySerializer(itineraries, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = ItinerarySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def itinerary_detail(request, itinerary_id):
+    """
+    GET: Retrieve itinerary
+    PUT: Update itinerary
+    DELETE: Delete itinerary
+    """
+    itinerary = get_object_or_404(Itinerary, id=itinerary_id, user=request.user)
+
+    if request.method == 'GET':
+        serializer = ItinerarySerializer(itinerary)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = ItinerarySerializer(itinerary, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        itinerary.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def itinerary_items(request, itinerary_id):
+    """
+    GET: List items in itinerary
+    POST: Add item to itinerary
+    """
+    itinerary = get_object_or_404(Itinerary, id=itinerary_id, user=request.user)
+
+    if request.method == 'GET':
+        items = itinerary.items.all().order_by('sort_order', 'start_datetime')
+        serializer = ItineraryItemSerializer(items, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = ItineraryItemSerializer(data=request.data)
+        if serializer.is_valid():
+            # `itinerary` is not a serializer field — attach it on save so the
+            # FK is set (otherwise create() hits a NOT NULL violation).
+            serializer.save(itinerary=itinerary)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def book_itinerary_item(request, item_id):
+    """Deep-link handoff 'booking': attach a real provider checkout URL, record a
+    BookingReference, and mark the item booked. No payment happens here — the
+    traveller completes purchase on the provider's site via the returned URL.
+    """
+    from .models import BookingReference
+    from .booking_links import build_booking_link
+
+    item = get_object_or_404(ItineraryItem, id=item_id, itinerary__user=request.user)
+    url, provider_label = build_booking_link(item)
+
+    booking, _ = BookingReference.objects.get_or_create(
+        itinerary_item=item,
+        defaults={'provider': item.provider or provider_label, 'provider_booking_id': f'handoff-{item.id}'},
+    )
+    booking.provider = item.provider or provider_label
+    booking.booking_url = url
+    booking.status = 'pending'  # pending until the user completes checkout on the provider
+    if not booking.provider_booking_id:
+        booking.provider_booking_id = f'handoff-{item.id}'
+    booking.save()
+
+    item.status = 'booked'
+    item.booking_url = url
+    item.save(update_fields=['status', 'booking_url'])
+
+    return Response(ItineraryItemSerializer(item).data)
+
+
+def ensure_itinerary_chatroom(itinerary):
+    """Get or lazily create the per-trip Mathia chatroom and return it.
+
+    Adds the trip owner plus the 'mathia' AI member so the consumer treats the
+    room as a 1:1 AI room (Mathia replies to every message without an @mention).
+    """
+    from chatbot.models import Chatroom, Member
+    from django.contrib.auth.models import User as AuthUser
+
+    if itinerary.chatroom_id:
+        return itinerary.chatroom
+
+    room = Chatroom.objects.create(name=f"Trip: {itinerary.title}"[:120], domain='travel')
+
+    owner_member, _ = Member.objects.get_or_create(User=itinerary.user)
+    room.participants.add(owner_member)
+
+    try:
+        mathia_user = AuthUser.objects.get(username='mathia')
+        mathia_member, _ = Member.objects.get_or_create(User=mathia_user)
+        room.participants.add(mathia_member)
+    except AuthUser.DoesNotExist:
+        logger.warning("Mathia user not found; trip chatroom %s created without AI participant", room.id)
+
+    itinerary.chatroom = room
+    itinerary.save(update_fields=['chatroom'])
+    return room
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def itinerary_chatroom(request, itinerary_id):
+    """Return (creating on first access) the per-trip Mathia chatroom + participants."""
+    itinerary = get_object_or_404(Itinerary, id=itinerary_id, user=request.user)
+    room = ensure_itinerary_chatroom(itinerary)
+
+    participants = []
+    for member in room.participants.select_related('User').all():
+        u = member.User
+        participants.append({
+            'username': u.username,
+            'displayName': u.get_full_name() or u.username,
+            'isOnline': False,
+            'lastSeen': member.last_seen.isoformat() if member.last_seen else None,
+        })
+
+    return Response({'chatroom_id': room.id, 'participants': participants})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_events(request):
+    """
+    Search for events
+    Query params: location, category, date_range
+    """
+    try:
+        location = request.query_params.get('location')
+        category = request.query_params.get('category')
+
+        events = Event.objects.all()
+
+        if location:
+            events = events.filter(location_country__icontains=location)
+
+        if category:
+            events = events.filter(category__icontains=category)
+
+        serializer = EventSerializer(events, many=True)
+        return Response(serializer.data)
+
+    except Exception as e:
+        logger.error(f"Event search error: {e}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# --- HTML Views ---
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+
+
+@login_required
+def plan_trip_wizard(request):
+    """Render the Trip Planning Wizard"""
+    if request.method == 'POST':
+        destination = request.POST.get('destination', '').strip()
+        start_date_raw = request.POST.get('start_date', '').strip()
+        end_date_raw = request.POST.get('end_date', '').strip()
+        budget_band = request.POST.get('budget', '').strip()
+        interests_raw = request.POST.get('interests', '').strip()
+
+        if not destination or not start_date_raw or not end_date_raw:
+            messages.error(request, "Destination and dates are required.")
+            return render(request, 'travel/plan_trip.html')
+
+        try:
+            start_date = datetime.date.fromisoformat(start_date_raw)
+            end_date = datetime.date.fromisoformat(end_date_raw)
+        except ValueError:
+            messages.error(request, "Please provide valid dates.")
+            return render(request, 'travel/plan_trip.html')
+
+        if end_date < start_date:
+            messages.error(request, "End date must be after the start date.")
+            return render(request, 'travel/plan_trip.html')
+
+        start_dt = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+        end_dt = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
+
+        interests = [i for i in interests_raw.split(',') if i]
+
+        itinerary = Itinerary.objects.create(
+            user=request.user,
+            title=f"Trip to {destination}",
+            description=f"Trip planning for {destination}.",
+            region='worldwide',
+            start_date=start_dt,
+            end_date=end_dt,
+            metadata={
+                'destination': destination,
+                'budget_band': budget_band,
+                'interests': interests,
+            },
+        )
+        return redirect('travel:view_itinerary', itinerary_id=itinerary.id)
+
+    return render(request, 'travel/plan_trip.html')
+
+
+@login_required
+def itinerary_list(request):
+    """Render the Itinerary List (user-friendly UI)"""
+    itineraries = Itinerary.objects.filter(user=request.user).order_by('-created_at')
+    now = timezone.now()
+    upcoming_count = itineraries.filter(start_date__gte=now, status__in=['draft', 'active']).count()
+    completed_count = itineraries.filter(status='completed').count()
+    return render(
+        request,
+        'travel/itinerary_list.html',
+        {
+            'itineraries': itineraries,
+            'upcoming_count': upcoming_count,
+            'completed_count': completed_count,
+        },
+    )
+
+
+@login_required
+def view_itinerary(request, itinerary_id):
+    """Render the Itinerary Detail View"""
+    itinerary = get_object_or_404(Itinerary, id=itinerary_id, user=request.user)
+    destination = itinerary.metadata.get('destination') if isinstance(itinerary.metadata, dict) else None
+    travelers = None
+    if isinstance(itinerary.metadata, dict):
+        travelers = itinerary.metadata.get('travelers')
+    return render(
+        request,
+        'travel/itinerary_detail.html',
+        {
+            'itinerary': itinerary,
+            'destination': destination,
+            'travelers': travelers or 1,
+        },
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def archive_itinerary(request, itinerary_id):
+    """Archive an itinerary"""
+    itinerary = get_object_or_404(Itinerary, id=itinerary_id, user=request.user)
+    itinerary.status = 'archived'
+    itinerary.save()
+    # Redirect if HTML request, else JSON
+    if request.accepted_renderer.format == 'html':
+        return redirect('travel:itinerary_list')
+    return Response({'status': 'success', 'message': 'Itinerary archived'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_itinerary_view(request, itinerary_id):
+    """Delete an itinerary (Hard Delete)"""
+    itinerary = get_object_or_404(Itinerary, id=itinerary_id, user=request.user)
+    itinerary.delete()
+    if request.accepted_renderer.format == 'html':
+        return redirect('travel:itinerary_list')
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_itinerary_item_view(request, item_id):
+    """Delete an itinerary item"""
+    item = get_object_or_404(ItineraryItem, id=item_id, itinerary__user=request.user)
+    itinerary_id = item.itinerary.id
+    item.delete()
+    if request.accepted_renderer.format == 'html':
+        return redirect('travel:view_itinerary', itinerary_id=itinerary_id)
+    return Response(status=status.HTTP_204_NO_CONTENT)

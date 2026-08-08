@@ -8,7 +8,7 @@ https://docs.djangoproject.com/en/4.1/howto/deployment/asgi/
 """
 
 import os
-from channels.routing import ProtocolTypeRouter,URLRouter
+from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
 from channels.auth import AuthMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
@@ -18,13 +18,14 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Backend.settings')
 django_asgi_app = get_asgi_application()
 
 import chatbot.routing
+import notifications.routing
 
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AllowedHostsOriginValidator(
-            AuthMiddlewareStack(URLRouter(chatbot.routing.websocket_urlpatterns))
-        ),
+        "websocket": AuthMiddlewareStack(URLRouter(
+            chatbot.routing.websocket_urlpatterns
+            + notifications.routing.websocket_urlpatterns
+        )),
     }
 )
-

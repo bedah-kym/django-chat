@@ -1,0 +1,39 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) 0;
+  gap: var(--space-md);
+}
+
+.row + .row {
+  border-top: 1px solid var(--border-color);
+}
+
+.label {
+  font-size: 13px;
+  color: var(--text-color);
+  min-width: 140px;
+}
+
+.channels {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.chipOn {
+  background: var(--primary-subtle);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}

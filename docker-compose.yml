@@ -1,0 +1,149 @@
+services:
+  redis:
+    image: redis:7-alpine
+    environment:
+      - TZ=${TZ:-Africa/Nairobi}
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db:
+    image: postgres:15-alpine
+    command: postgres -c log_timezone=Africa/Nairobi
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Africa/Nairobi}
+      - PGTZ=${TZ:-Africa/Nairobi}
+      - POSTGRES_USER=${POSTGRES_USER:-mathia_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mathia_password}
+      - POSTGRES_DB=${POSTGRES_DB:-mathia_db}
+      - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -h db -p 5432 -U mathia_user -d mathia_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  web:
+    build: .
+    image: mathia-web:latest
+    command: sh -c "python /app/wait_for_db.py && gunicorn Backend.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 4"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Africa/Nairobi}
+      - DJANGO_ALLOWED_HOSTS=*
+      - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
+      - HF_API_TOKEN=${HF_API_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USER_AGENT=${REDDIT_USER_AGENT}
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID:-}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH:-}
+      - TELEGRAM_SESSION_STRING=${TELEGRAM_SESSION_STRING:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_DEFAULT_CHANNELS=${TELEGRAM_DEFAULT_CHANNELS:-}
+      - CALENDLY_CLIENT_ID=${CALENDLY_CLIENT_ID}
+      - Webhook_signing_key=${Webhook_signing_key}
+      - CALENDLY_CLIENT_SECRET=${CALENDLY_CLIENT_SECRET}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - GIPHY_API_KEY=${GIPHY_API_KEY}
+      - EXCHANGE_RATE_API_KEY=${EXCHANGE_RATE_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    image: mathia-web:latest
+    command: sh -c "python /app/wait_for_db.py && cd /app/Backend && exec celery -A Backend worker -l info --pool prefork --concurrency 1 --max-tasks-per-child 200 --max-memory-per-child 250000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Africa/Nairobi}
+      - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USER_AGENT=${REDDIT_USER_AGENT}
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID:-}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH:-}
+      - TELEGRAM_SESSION_STRING=${TELEGRAM_SESSION_STRING:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_DEFAULT_CHANNELS=${TELEGRAM_DEFAULT_CHANNELS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    image: mathia-web:latest
+    command: sh -c "python /app/wait_for_db.py && celery -A Backend beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Africa/Nairobi}
+      - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID:-}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH:-}
+      - TELEGRAM_SESSION_STRING=${TELEGRAM_SESSION_STRING:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_DEFAULT_CHANNELS=${TELEGRAM_DEFAULT_CHANNELS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  temporal_worker:
+    image: mathia-web:latest
+    command: sh -c "python /app/wait_for_db.py && python /app/Backend/manage.py start_temporal_worker"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Africa/Nairobi}
+      - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DATABASE_URL=postgres://mathia_user:mathia_password@db:5432/mathia_db
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

@@ -3,11 +3,14 @@ import json
 import requests
 
 
-url ="http://127.0.0.1:8800/api/chatterbot/"
+url = "http://127.0.0.1:8800/api/chatterbot/"
+
+
 def post():
-    #headers={"Authorization":f"token {token}"}
-    r = requests.post(url,json=({'text': "hi,how are you doing?",}))
+    # headers={"Authorization":f"token {token}"}
+    r = requests.post(url, json=({'text': "hi,how are you doing?", }))
     print (r.json())
+
 
 post()
 """

@@ -1,0 +1,205 @@
+"""Workflow capabilities catalog and validation helpers."""
+from __future__ import annotations
+
+import json
+from typing import Dict, Tuple
+
+from orchestration.action_catalog import build_capabilities_catalog
+
+from .runtime import APPROVAL_TIMEOUT_POLICIES
+
+
+SYSTEM_CAPABILITIES = build_capabilities_catalog()
+
+
+def get_capabilities_prompt() -> str:
+    lines = [
+        "You are a workflow automation assistant.",
+        "Only use the services/actions listed below.",
+        "Gmail is user-connected (send-only). WhatsApp is system-owned.",
+        "Webhooks are service-specific only.",
+        "If a workflow includes withdrawals, require a safety policy with allowed_phone_numbers and max_withdraw_amount.",
+        "",
+        "Available Integrations:",
+        json.dumps(SYSTEM_CAPABILITIES, indent=2),
+        "",
+        "Output JSON ONLY in this shape:",
+        "{",
+        '  "assistant_message": "...",',
+        '  "workflow_definition": { ... } or null,',
+        '  "needs_confirmation": true|false',
+        "}",
+        "",
+        "Workflow definition schema:",
+        "{",
+        '  "workflow_name": "...",',
+        '  "workflow_description": "...",',
+        '  "triggers": [ ... ],',
+        '  "steps": [',
+        '    {"id": "step_1", "service": "...", "action": "...", "params": {...}, "depends_on": ["step_0"], "condition": "...", "requires_approval": false, "approval_message": "...", "approval_timeout_minutes": 60, "on_timeout": "cancel", "safe_to_replay": false, "timeout_seconds": 300, "max_attempts": 3}',
+        "  ],",
+        '  "policy": {"allowed_phone_numbers": [...], "max_withdraw_amount": 0} // only if withdrawals',
+        "}",
+    ]
+    return "\n".join(lines)
+
+
+def validate_workflow_definition(workflow_def: Dict) -> Tuple[bool, str]:
+    if not isinstance(workflow_def, dict):
+        return False, "Workflow definition must be a JSON object"
+
+    services = {s["service"]: s for s in SYSTEM_CAPABILITIES["integrations"]}
+
+    for key in ["workflow_name", "workflow_description", "triggers", "steps"]:
+        if key not in workflow_def:
+            return False, f"Missing '{key}'"
+
+    triggers = workflow_def.get("triggers", [])
+    if not isinstance(triggers, list):
+        return False, "Triggers must be a list"
+
+    for trigger in triggers:
+        if not isinstance(trigger, dict):
+            return False, "Each trigger must be an object"
+
+        trigger_type = trigger.get("trigger_type")
+        service = trigger.get("service")
+        event = trigger.get("event")
+
+        if (not trigger_type and not service and not event) or trigger_type == "manual":
+            continue
+        if not service:
+            continue
+
+        if service == "schedule" or event == "cron":
+            cron = trigger.get("cron") or (trigger.get("config") or {}).get("cron")
+            if not cron:
+                return False, "Schedule trigger requires 'cron'"
+            continue
+
+        if service not in services:
+            return False, f"Unknown trigger service: {service}"
+
+        service_def = services[service]
+        valid_events = [t["event"] for t in service_def.get("triggers", [])]
+        if event not in valid_events:
+            return False, f"Invalid trigger event: {event}"
+
+    steps = workflow_def.get("steps", [])
+    if not isinstance(steps, list):
+        return False, "Steps must be a list"
+
+    step_ids = []
+    for idx, step in enumerate(steps):
+        if not isinstance(step, dict):
+            return False, "Each step must be an object"
+        step_id = step.get("id") or step.get("action") or f"step_{idx + 1}"
+        step_ids.append(step_id)
+    if len(set(step_ids)) != len(step_ids):
+        return False, "Step ids must be unique"
+
+    index_map = {step_id: idx for idx, step_id in enumerate(step_ids)}
+
+    for step in steps:
+        service = step.get("service")
+        action = step.get("action")
+        step_id = step.get("id") or step.get("action")
+
+        if service not in services:
+            return False, f"Unknown service: {service}"
+
+        service_def = services[service]
+        valid_actions = [a["name"] for a in service_def.get("actions", [])]
+        if action not in valid_actions:
+            return False, f"Invalid action: {action}"
+
+        action_def = next((a for a in service_def.get("actions", []) if a["name"] == action), None)
+        if action_def:
+            required = [k for k, v in action_def.get("params", {}).items() if v.get("required")]
+            params = step.get("params") or {}
+            if not isinstance(params, dict):
+                return False, f"Params for step '{step.get('id')}' must be an object"
+            for param in required:
+                if param not in params:
+                    return False, f"Missing param '{param}' in step '{step.get('id')}'"
+
+        depends_on = step.get("depends_on")
+        if depends_on is not None:
+            if not isinstance(depends_on, list):
+                return False, f"depends_on must be a list in step '{step_id}'"
+            for dep in depends_on:
+                if not isinstance(dep, str):
+                    return False, f"depends_on entries must be strings in step '{step_id}'"
+                if dep not in index_map:
+                    return False, f"Unknown dependency '{dep}' in step '{step_id}'"
+                if index_map.get(dep, -1) >= index_map.get(step_id, -1):
+                    return False, f"Dependency '{dep}' must appear before step '{step_id}'"
+
+        condition = step.get("condition")
+        if condition is not None and not isinstance(condition, str):
+            return False, f"condition must be a string in step '{step_id}'"
+
+        requires_approval = step.get("requires_approval")
+        if requires_approval is not None and not isinstance(requires_approval, bool):
+            return False, f"requires_approval must be a boolean in step '{step_id}'"
+
+        approval_message = step.get("approval_message")
+        if approval_message is not None and not isinstance(approval_message, str):
+            return False, f"approval_message must be a string in step '{step_id}'"
+
+        approval_timeout = step.get("approval_timeout_minutes")
+        if approval_timeout is not None:
+            try:
+                approval_timeout = int(approval_timeout)
+            except (TypeError, ValueError):
+                return False, f"approval_timeout_minutes must be an integer in step '{step_id}'"
+            if approval_timeout <= 0:
+                return False, f"approval_timeout_minutes must be positive in step '{step_id}'"
+
+        on_timeout = step.get("on_timeout")
+        if on_timeout is not None and str(on_timeout).strip().lower() not in APPROVAL_TIMEOUT_POLICIES:
+            allowed = ", ".join(sorted(APPROVAL_TIMEOUT_POLICIES))
+            return False, f"on_timeout must be one of {allowed} in step '{step_id}'"
+
+        safe_to_replay = step.get("safe_to_replay")
+        if safe_to_replay is not None and not isinstance(safe_to_replay, bool):
+            return False, f"safe_to_replay must be a boolean in step '{step_id}'"
+
+        timeout_seconds = step.get("timeout_seconds")
+        if timeout_seconds is not None:
+            try:
+                timeout_seconds = int(timeout_seconds)
+            except (TypeError, ValueError):
+                return False, f"timeout_seconds must be an integer in step '{step_id}'"
+            if timeout_seconds <= 0:
+                return False, f"timeout_seconds must be positive in step '{step_id}'"
+
+        max_attempts = step.get("max_attempts")
+        if max_attempts is not None:
+            try:
+                max_attempts = int(max_attempts)
+            except (TypeError, ValueError):
+                return False, f"max_attempts must be an integer in step '{step_id}'"
+            if max_attempts <= 0:
+                return False, f"max_attempts must be positive in step '{step_id}'"
+
+        idempotency_key_source = step.get("idempotency_key_source")
+        if idempotency_key_source is not None and not isinstance(idempotency_key_source, str):
+            return False, f"idempotency_key_source must be a string in step '{step_id}'"
+
+    if _requires_withdraw_policy(workflow_def):
+        policy = workflow_def.get("policy") or {}
+        if not policy.get("allowed_phone_numbers"):
+            return False, "Withdrawals require policy.allowed_phone_numbers"
+        max_amount = policy.get("max_withdraw_amount")
+        if max_amount is None or max_amount == "":
+            return False, "Withdrawals require policy.max_withdraw_amount"
+
+    return True, None
+
+
+def _requires_withdraw_policy(workflow_def: Dict) -> bool:
+    for step in workflow_def.get("steps", []):
+        if step.get("service") == "payments" and step.get("action") == "withdraw":
+            return True
+    return False

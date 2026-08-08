@@ -1,0 +1,325 @@
+.page {
+  max-inline-size: 1080px;
+  margin: 0 auto;
+  padding: 56px 32px 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  font-family: var(--tv-body);
+  color: var(--tv-text);
+}
+
+/* ---------------- header ---------------- */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tv-accent);
+}
+
+.title {
+  margin: 6px 0 8px;
+  font-family: var(--tv-display);
+  font-size: 56px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  font-variation-settings: "opsz" 96, "SOFT" 50, "WONK" 0;
+  color: var(--tv-text);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--tv-text-soft);
+  max-inline-size: 540px;
+}
+
+.planBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: var(--tv-radius-pill);
+  background: var(--tv-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  transition: background var(--transition-fast), transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  box-shadow: 0 6px 18px rgba(224, 120, 86, 0.28);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.planBtn:hover {
+  background: var(--tv-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(224, 120, 86, 0.34);
+}
+
+/* ---------------- section ---------------- */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline: 2px;
+}
+
+.sectionIcon {
+  color: var(--tv-text-soft);
+}
+
+.sectionLabel {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tv-text-soft);
+}
+
+.sectionCount {
+  margin-inline-start: 4px;
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: var(--tv-radius-pill);
+  background: var(--tv-surface-soft);
+  color: var(--tv-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- cards grid ---------------- */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+/* ---------------- card ---------------- */
+.card {
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius-lg);
+  box-shadow: var(--tv-shadow-card);
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: var(--tv-shadow-lift);
+  border-color: color-mix(in srgb, var(--tv-accent) 30%, var(--tv-line));
+}
+
+/* The "lifted" Today card spans full width and gets a softer wash. */
+.cardLifted {
+  grid-column: 1 / -1;
+  box-shadow: var(--tv-shadow-lift);
+}
+
+.cardLifted .cardHero {
+  block-size: 140px;
+}
+
+.cardLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Hero gradient mesh — driven by the tone token on the card */
+.cardHero {
+  position: relative;
+  block-size: 96px;
+  background: linear-gradient(135deg, var(--tv-hero-a, #f4a06b) 0%, var(--tv-hero-b, #e07856) 100%);
+  overflow: hidden;
+}
+
+.cardHeroMesh {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(255, 255, 255, 0.34) 0%, transparent 36%),
+    radial-gradient(circle at 78% 72%, rgba(0, 0, 0, 0.10) 0%, transparent 42%);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.cardBody {
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.todayTag {
+  position: absolute;
+  inset-block-start: -14px;
+  inset-inline-end: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--tv-radius-pill);
+  background: var(--tv-today);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(47, 111, 79, 0.32);
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cardDestination {
+  margin: 0;
+  font-family: var(--tv-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  font-variation-settings: "opsz" 32, "SOFT" 40;
+  color: var(--tv-text);
+}
+
+.cardLifted .cardDestination {
+  font-size: 28px;
+}
+
+.cardWindow {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tv-text-faint);
+  padding-block-start: 4px;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--tv-text-soft);
+  margin-block-start: 2px;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.metaDot {
+  color: var(--tv-text-faint);
+}
+
+.cardCost {
+  margin-block-start: 6px;
+  font-family: var(--tv-display);
+  font-size: 16px;
+  font-weight: 600;
+  font-variation-settings: "opsz" 20;
+  color: var(--tv-text);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- loading / empty ---------------- */
+.loading {
+  padding: 96px 0;
+  text-align: center;
+  color: var(--tv-text-faint);
+  font-size: 15px;
+}
+
+.empty {
+  margin: 24px auto 0;
+  max-inline-size: 480px;
+  padding: 56px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius-lg);
+  box-shadow: var(--tv-shadow-card);
+}
+
+.emptyIcon {
+  inline-size: 56px;
+  block-size: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tv-accent-soft);
+  color: var(--tv-accent);
+}
+
+.emptyTitle {
+  margin: 4px 0 0;
+  font-family: var(--tv-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 32, "SOFT" 40;
+  color: var(--tv-text);
+}
+
+.emptyBody {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--tv-text-soft);
+  max-inline-size: 380px;
+}
+
+/* ---------------- responsive ---------------- */
+@media (max-width: 720px) {
+  .page {
+    padding: 32px 18px 80px;
+    gap: 28px;
+  }
+
+  .title {
+    font-size: 40px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .planBtn {
+    align-self: flex-start;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}

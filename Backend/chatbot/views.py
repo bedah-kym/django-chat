@@ -1,113 +1,548 @@
-from django.shortcuts import render,redirect,get_object_or_404
-from django.urls import reverse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils.safestring import mark_safe
-from .models import Chatroom,Message
-import json 
-from django.http import JsonResponse
+from .models import Chatroom, Message, Member, RoomReadState, Reminder
+import json
+from django.http import JsonResponse, StreamingHttpResponse
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.core.cache import cache
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from datetime import datetime, time
 
 from django.conf import settings
 import os
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from .notification_utils import get_unread_room_count
 
+
+def _ensure_default_room(user):
+    """
+    Create a default general room for the user if none exists.
+    Adds Mathia when available and seeds a welcome message.
+    """
+    User = get_user_model()
+    with transaction.atomic():
+        existing = Chatroom.objects.filter(participants__User=user).first()
+        if existing:
+            return existing
+
+        user_member, _ = Member.objects.get_or_create(User=user)
+        new_room = Chatroom.objects.create()
+        new_room.participants.add(user_member)
+
+        try:
+            mathia_user = User.objects.get(username='mathia')
+            mathia_member, _ = Member.objects.get_or_create(User=mathia_user)
+            new_room.participants.add(mathia_member)
+
+            msg = Message.objects.create(
+                member=mathia_member,
+                content="Welcome to your new General room! I'm here to help.",
+                timestamp=timezone.now()
+            )
+            new_room.chats.add(msg)
+        except User.DoesNotExist:
+            # Bot user not provisioned yet; room still created for the user
+            pass
+
+        cache.delete(f"user_rooms:{user.id}")
+        return new_room
+
+
+def _is_ai_only_room_members(members):
+    has_mathia = any(m.User.username == 'mathia' for m in members)
+    human_members = [m for m in members if m.User.username != 'mathia']
+    return has_mathia and len(human_members) == 1
+
+
+def home(request, room_name):
+    return redirect(f"/app/ops/chat/{room_name}")
 
 
 @login_required
-def home(request,room_name):
-    chatrooms = Chatroom.objects.all()
-    room = Chatroom.objects.get(id=room_name)
-    room_members = room.participants.all()
+def legacy_home(request, room_name):
+    # Security Fix: Only show rooms where the user is a participant
+    # OPTIMIZATION: Use prefetch_related to fetch participants and their users in one go
+    chatrooms = Chatroom.objects.filter(
+        participants__User=request.user
+    ).prefetch_related('participants', 'participants__User')
+
+    # Pre-process chatrooms to get the correct display name for the sidebar
+    chatrooms_data = []
+    for room in chatrooms:
+        # Get all members of the room
+        members = list(room.participants.all())
+
+        # Determine the display name
+        display_name = "Unknown Room"
+        avatar_url = "https://ui-avatars.com/api/?name=U&background=4f8cff&color=fff&size=128"
+
+        # Check if it's a "General" room with Mathia
+        mathia_member = next((m for m in members if m.User.username == 'mathia'), None)
+        other_members = [m for m in members if m.User != request.user]
+
+        if mathia_member and len(members) <= 2:
+            display_name = "General (AI)"
+            avatar_url = "/static/img/mathia-avatar.svg"
+        elif len(other_members) == 0:
+            display_name = "Private Room (You)"
+        elif len(other_members) == 1:
+            display_name = other_members[0].User.username
+            try:
+                avatar_url = other_members[0].User.profile.get_avatar_url()
+            except Exception:
+                pass
+        else:
+            display_name = ", ".join([m.User.username for m in other_members[:2]])
+            if len(other_members) > 2:
+                display_name += f" +{len(other_members)-2}"
+            import urllib.parse
+            avatar_url = f"https://ui-avatars.com/api/?name={urllib.parse.quote(display_name[:2])}&background=4f8cff&color=fff&size=128"
+
+        chatrooms_data.append({
+            'id': room.id,
+            'name': display_name,
+            'avatar': avatar_url
+        })
+
+    # Security Fix: Ensure user can only access a room they belong to
+    room = get_object_or_404(Chatroom, id=room_name, participants__User=request.user)
+
+    room_members = list(room.participants.all())
     # each room has two members the user and the other user we need to get the name of the other user to display
-    other_member = room_members.exclude(User=request.user).first()
+    other_member = next((m for m in room_members if m.User != request.user), None)
+    current_room_name = other_member.User.username if other_member else "Unknown User"
+
+    # Override current room name if it's Mathia
+    if other_member and other_member.User.username == 'mathia':
+        current_room_name = "General (AI)"
+    is_ai_room = _is_ai_only_room_members(room_members)
+    # Invites allowed in private/group rooms — not in AI-only rooms
+    can_invite = not is_ai_room
+
+    # Current room avatar
+    if other_member and other_member.User.username == 'mathia':
+        current_room_avatar = "/static/img/mathia-avatar.svg"
+    elif other_member:
+        try:
+            current_room_avatar = other_member.User.profile.get_avatar_url()
+        except Exception:
+            current_room_avatar = "https://ui-avatars.com/api/?name=U&background=4f8cff&color=fff&size=128"
+    else:
+        current_room_avatar = "https://ui-avatars.com/api/?name=U&background=4f8cff&color=fff&size=128"
+
     return render(
-        request,"chatbot/chatbase.html",
+        request, "chatbot/chatbase.html",
         {
-        "room_name":mark_safe(json.dumps(room_name)),
-        "username":mark_safe(json.dumps(request.user.username)),
-        "chatrooms":chatrooms,
-        "room_member":other_member if other_member else "Unknown User",
+            "room_name": mark_safe(json.dumps(room_name)),  # nosec B308 B703 - room_name from authenticated URL kwarg; tracked for json_script template-tag migration
+            "room_id": room.id,
+            "username": mark_safe(json.dumps(request.user.username)),  # nosec B308 B703 - Django default username validator excludes <>& chars; no XSS vector
+            "chatrooms": chatrooms_data,  # Passing processed data
+            "room_member": current_room_name,
+            "is_ai_room": is_ai_room,
+            "can_invite": can_invite,
+            "room_avatar": current_room_avatar,
         }
     )
 
 
+import uuid
+import logging
+from django.http import Http404
+
+logger = logging.getLogger(__name__)
+
+# File upload security configuration
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+ALLOWED_FILE_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.gif', '.mp3', '.wav'}
+
+
+@login_required
 def upload_file(request):
-    if request.method == 'POST':
-        try:
-            # Retrieve the uploaded file from the request
-            uploaded_file = request.FILES.get('file')
+    """
+    Securely upload files with validation and safe naming.
 
-            if not uploaded_file:
-                return JsonResponse({'error': 'No file provided'}, status=400)
-
-            # Save the file to the uploads directory
-            file_path = os.path.join(settings.MEDIA_ROOT, uploaded_file.name)
-            with open(file_path, 'wb+') as destination:
-                for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
-
-            # Construct the file URL
-            file_url = os.path.join(settings.MEDIA_URL, uploaded_file.name)
-
-            # Return the file URL in the JSON response
-            return JsonResponse({'fileUrl': file_url}, status=200)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    else:
+    Security features:
+    - File type whitelist validation
+    - File size limit enforcement
+    - Secure random filename generation (prevents path traversal)
+    - Checks upload directory exists/is writable
+    """
+    if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+    try:
+        # Get uploaded file
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return JsonResponse({'error': 'No file provided'}, status=400)
+
+        # Validate file size
+        if uploaded_file.size > MAX_FILE_SIZE:
+            return JsonResponse(
+                {'error': f'File too large. Maximum size is {MAX_FILE_SIZE / (1024*1024):.0f}MB'},
+                status=413
+            )
+
+        # Validate file extension (whitelist approach)
+        original_filename = uploaded_file.name
+        ext = os.path.splitext(original_filename)[1].lower()
+        if ext not in ALLOWED_FILE_EXTENSIONS:
+            return JsonResponse(
+                {'error': f'File type not allowed. Allowed types: {", ".join(ALLOWED_FILE_EXTENSIONS)}'},
+                status=400
+            )
+
+        # Generate safe random filename to prevent path traversal attacks
+        safe_filename = f"{uuid.uuid4()}{ext}"
+
+        # Determine upload directory (user-specific or type-specific)
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'documents')
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Construct safe file path
+        file_path = os.path.join(upload_dir, safe_filename)
+
+        # Verify path is within MEDIA_ROOT (security check)
+        resolved_path = os.path.abspath(file_path)
+        resolved_media_root = os.path.abspath(settings.MEDIA_ROOT)
+        if not resolved_path.startswith(resolved_media_root):
+            logger.error(f"Path traversal attempt detected: {file_path}")
+            return JsonResponse({'error': 'Invalid file path'}, status=400)
+
+        # Save file in chunks (safer for large files)
+        with open(file_path, 'wb+') as destination:
+            for chunk in uploaded_file.chunks():
+                destination.write(chunk)
+
+        # Log successful upload
+        logger.info(f"File uploaded successfully: user={request.user.id}, size={uploaded_file.size}, type={ext}")
+
+        # Construct file URL
+        file_url = os.path.join(settings.MEDIA_URL, 'documents', safe_filename)
+
+        return JsonResponse({'fileUrl': file_url}, status=200)
+
+    except Exception as e:
+        logger.error(f"File upload error: user={request.user.id}, error={str(e)}")
+        return JsonResponse({'error': 'File upload failed'}, status=500)
 
 
 def welcomepage(request):
-    if request.user.is_authenticated:
-        return redirect(reverse("chatbot:bot-home",kwargs={"room_name":2}))
-    return redirect("users:login")
+    if not request.user.is_authenticated:
+        return redirect("users:login")
+
+    # Try to find the user's first room; if none, create a default one atomically.
+    first_room = Chatroom.objects.filter(participants__User=request.user).first()
+    if not first_room:
+        first_room = _ensure_default_room(request.user)
+
+    return redirect(f"/app/ops/chat/{first_room.id}")
+
+
+@login_required
+def create_room(request):
+    """
+    API/View to create a new room.
+    Support POST for creation, GET for showing a form if needed (we'll use modal/API mainly).
+    Types: 'general' (with Mathia), 'private' (just user for now)
+    """
+    room_type = request.POST.get('room_type') or request.GET.get('room_type') or 'general'
+
+    User = get_user_model()
+    user_member, _ = Member.objects.get_or_create(User=request.user)
+
+    # If the user already has a room and we're not forcing a new one, reuse it to avoid duplicates.
+    if request.method == 'GET':
+        existing = Chatroom.objects.filter(participants__User=request.user).first()
+        if existing:
+            return redirect(f"/app/ops/chat/{existing.id}")
+
+    with transaction.atomic():
+        new_room = Chatroom.objects.create()
+        new_room.participants.add(user_member)
+
+        if room_type == 'general':
+            # Add Mathia
+            try:
+                mathia_user = User.objects.get(username='mathia')
+                mathia_member, _ = Member.objects.get_or_create(User=mathia_user)
+                new_room.participants.add(mathia_member)
+
+                # Welcome message
+                msg = Message.objects.create(
+                    member=mathia_member,
+                    content="Welcome to your new General room! I'm here to help.",
+                    timestamp=timezone.now()
+                )
+                new_room.chats.add(msg)
+
+            except User.DoesNotExist:
+                pass
+
+    cache.delete(f"user_rooms:{request.user.id}")
+    return redirect(f"/app/ops/chat/{new_room.id}")
+
+
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def invite_user(request):
+    """
+    Invite a user to a room via email.
+
+    Accepts JSON or form-encoded { room_id, email }. Uses DRF token auth so the
+    SPA can call it with the standard Authorization: Token header.
+
+    Security features:
+    - Email format validation
+    - Room ownership/membership check
+    - Prevents self-invitations
+    - Prevents duplicate adds
+    """
+    try:
+        room_id = str(request.data.get('room_id', '')).strip()
+        email = str(request.data.get('email', '')).strip().lower()
+
+        # Input validation
+        if not room_id or not email:
+            return JsonResponse({'status': 'error', 'message': 'Missing room_id or email'}, status=400)
+
+        # Validate room_id is an integer
+        try:
+            room_id = int(room_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'status': 'error', 'message': 'Invalid room_id'}, status=400)
+
+        # Validate email format
+        try:
+            validate_email(email)
+        except ValidationError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid email format'}, status=400)
+
+        # Security Check: Ensure requester is in the room
+        room = get_object_or_404(Chatroom, id=room_id, participants__User=request.user)
+
+        members = list(room.participants.select_related('User'))
+        if _is_ai_only_room_members(members):
+            return JsonResponse(
+                {'status': 'error', 'message': 'Invites are disabled in AI-only rooms'},
+                status=400
+            )
+
+        # Prevent inviting yourself
+        if email == request.user.email:
+            return JsonResponse({'status': 'info', 'message': 'You cannot invite yourself to a room'}, status=400)
+
+        User = get_user_model()
+        try:
+            invited_user = User.objects.get(email=email)
+
+            # Check if user is already in the room
+            if room.participants.filter(User=invited_user).exists():
+                return JsonResponse({'status': 'info', 'message': 'User is already in the room'})
+
+            # Add user to room
+            invited_member, _ = Member.objects.get_or_create(User=invited_user)
+            room.participants.add(invited_member)
+
+            logger.info(f"User {request.user.id} invited {invited_user.id} to room {room_id}")
+            return JsonResponse({'status': 'success', 'message': f'Added {invited_user.username} to the room'})
+
+        except User.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'User with this email does not exist'}, status=404)
+
+    except Http404:
+        return JsonResponse({'status': 'error', 'message': 'Room not found or you do not have access'}, status=403)
+    except Exception as e:
+        logger.error(f"Error inviting user: {str(e)}")
+        return JsonResponse({'status': 'error', 'message': 'An error occurred'}, status=500)
+
+
+@login_required
+@require_GET
+def notification_status(request):
+    exclude_room_id = request.GET.get('exclude_room_id')
+    try:
+        exclude_room_id = int(exclude_room_id) if exclude_room_id else None
+    except (TypeError, ValueError):
+        exclude_room_id = None
+
+    unread_rooms = get_unread_room_count(request.user, exclude_room_id=exclude_room_id)
+    pending_reminders = Reminder.objects.filter(user=request.user, status='pending').count()
+
+    return JsonResponse({
+        "unread_rooms": unread_rooms,
+        "pending_reminders": pending_reminders,
+    })
+
+
+@login_required
+@require_POST
+def mark_room_read(request, room_id):
+    room = get_object_or_404(Chatroom, id=room_id, participants__User=request.user)
+    now = timezone.now()
+    RoomReadState.objects.update_or_create(
+        user=request.user,
+        room=room,
+        defaults={"last_read_at": now},
+    )
+    return JsonResponse({"status": "ok", "last_read_at": now.isoformat()})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def export_chat(request, room_id):
+    room = get_object_or_404(Chatroom, id=room_id, participants__User=request.user)
+
+    range_mode = request.POST.get("range") or request.GET.get("range") or "all"
+    start_raw = request.POST.get("start_date") or request.GET.get("start_date") or ""
+    end_raw = request.POST.get("end_date") or request.GET.get("end_date") or ""
+    wants_download = request.method == "POST" or request.GET.get("download") == "1"
+
+    if not wants_download:
+        return render(
+            request,
+            "chatbot/chat_export.html",
+            {
+                "room": room,
+                "range": range_mode,
+                "start_date": start_raw,
+                "end_date": end_raw,
+                "error": "",
+            },
+        )
+
+    start_date = parse_date(start_raw) if start_raw else None
+    end_date = parse_date(end_raw) if end_raw else None
+    if range_mode == "custom":
+        if not start_date or not end_date:
+            return render(
+                request,
+                "chatbot/chat_export.html",
+                {
+                    "room": room,
+                    "range": range_mode,
+                    "start_date": start_raw,
+                    "end_date": end_raw,
+                    "error": "Please provide both start and end dates.",
+                },
+            )
+        if end_date < start_date:
+            return render(
+                request,
+                "chatbot/chat_export.html",
+                {
+                    "room": room,
+                    "range": range_mode,
+                    "start_date": start_raw,
+                    "end_date": end_raw,
+                    "error": "End date must be on or after the start date.",
+                },
+            )
+
+    messages = room.chats.select_related("member", "member__User").order_by("timestamp")
+    tz = timezone.get_current_timezone()
+    if range_mode == "custom" and start_date and end_date:
+        start_dt = timezone.make_aware(datetime.combine(start_date, time.min), tz)
+        end_dt = timezone.make_aware(datetime.combine(end_date, time.max), tz)
+        messages = messages.filter(timestamp__gte=start_dt, timestamp__lte=end_dt)
+
+    try:
+        from .tasks import _get_room_cipher, _decrypt_message_content
+    except Exception:
+        _get_room_cipher = None
+        _decrypt_message_content = None
+
+    cipher = _get_room_cipher(room) if _get_room_cipher else None
+
+    if range_mode == "custom" and start_date and end_date:
+        range_label = f"{start_date.isoformat()} to {end_date.isoformat()}"
+    else:
+        range_label = "all history"
+
+    export_date = timezone.now().date().isoformat()
+    filename = f"chat-room-{room.id}-{export_date}.md"
+
+    def _extract_plain_content(raw_content):
+        if not raw_content or not isinstance(raw_content, str):
+            return ""
+        try:
+            parsed = json.loads(raw_content)
+        except (json.JSONDecodeError, TypeError):
+            return raw_content
+        if isinstance(parsed, dict):
+            if "data" in parsed and "nonce" in parsed:
+                return ""
+            content = parsed.get("content")
+            if isinstance(content, str):
+                return content
+        return raw_content
+
+    def _stream_lines():
+        yield "# Chat Export\n"
+        yield f"Room ID: {room.id}\n"
+        yield f"Exported by: {request.user.username}\n"
+        yield f"Range: {range_label}\n"
+        yield f"Timezone: {timezone.get_current_timezone_name()}\n"
+        yield f"Generated: {timezone.now().isoformat()}\n\n"
+
+        current_day = None
+        for msg in messages.iterator(chunk_size=2000):
+            ts = timezone.localtime(msg.timestamp, tz)
+            day_label = ts.date().isoformat()
+            if day_label != current_day:
+                current_day = day_label
+                yield f"\n## {day_label}\n"
+
+            sender = "Unknown"
+            if msg.member and getattr(msg.member, "User", None):
+                sender = msg.member.User.username
+
+            content = ""
+            if _decrypt_message_content:
+                content = _decrypt_message_content(msg, cipher) or ""
+            if not content and msg.voice_transcript:
+                content = msg.voice_transcript
+            if not content:
+                content = _extract_plain_content(msg.content)
+
+            content = (content or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+            time_label = ts.strftime("%H:%M:%S")
+            if not content:
+                yield f"[{time_label}] {sender}: [empty]\n"
+                continue
+
+            if "\n" in content:
+                yield f"[{time_label}] {sender}:\n"
+                for line in content.split("\n"):
+                    yield f"  {line}\n"
+            else:
+                yield f"[{time_label}] {sender}: {content}\n"
+
+    response = StreamingHttpResponse(_stream_lines(), content_type="text/markdown; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 def get_last_10messages(chatid):
-    chatroom = get_object_or_404(Chatroom,id=chatid)
+    chatroom = get_object_or_404(Chatroom, id=chatid)
     return chatroom.chats.order_by('-timestamp').all()
 
 
 def get_current_chatroom(chatid):
-    chatroom = get_object_or_404(Chatroom,id=chatid)
+    chatroom = get_object_or_404(Chatroom, id=chatid)
     return chatroom
+
 
 def get_chatroom_participants(chatroom):
     return chatroom.participants.all()
-
-
-"""def get_mathia_reply():#should return the dict message like in chatsocket
-    
-    content = MathiaReply.objects.last()
-    message = content.message
-    sender = content.sender
-    command = content.command
-    chatid = content.chatid
-    return {
-                'message': message,
-                'from': sender,
-                'command':command,
-                "chatid": chatid
-    }"""
-
-def get_mathia_reply():
-    """ this is a feature to connect a bot for a specific room using botlibre api so
-    users can talk to this bot.
-    """
-    #should return the dict message like in chatsocket
-    import requests
-    text=Message.objects.last()
-    text= text.content
-    url= 'https://www.botlibre.com/rest/json/chat'
-    r = requests.post(url,json=(
-        {"application":"2127403001275571408", "instance":"165","message":text}
-        ))
-    reply=r.json()
-    message = reply['message']
-    sender = 'mathia'
-    command = "new_message"
-    chatid = 3
-    return {
-                'message': message,
-                'from': sender,
-                'command':command,
-                "chatid": chatid
-    }

@@ -1,0 +1,237 @@
+/* ---------------- expanded panel ---------------- */
+.panel {
+  position: sticky;
+  inset-block-start: 16px;
+  block-size: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  box-shadow: var(--tv-shadow-card);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-block-end: 1px solid var(--tv-line);
+  flex-shrink: 0;
+}
+
+.headerId {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-inline-size: 0;
+}
+
+.headerName {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--tv-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tv-text);
+}
+
+.headerName svg {
+  color: var(--tv-accent);
+}
+
+.headerSub {
+  font-size: 11px;
+  color: var(--tv-text-faint);
+}
+
+.collapseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: var(--tv-radius-pill);
+  color: var(--tv-text-soft);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.collapseBtn:hover {
+  background: var(--tv-surface-soft);
+  color: var(--tv-text);
+}
+
+/* ---------------- collapsed rail ---------------- */
+.rail {
+  position: sticky;
+  inset-block-start: 16px;
+  block-size: calc(100vh - 96px);
+  inline-size: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  box-shadow: var(--tv-shadow-card);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.rail:hover {
+  border-color: color-mix(in srgb, var(--tv-accent) 30%, var(--tv-line));
+  box-shadow: var(--tv-shadow-lift);
+}
+
+.railLabel {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tv-text-soft);
+}
+
+/* ---------------- thread ---------------- */
+.thread {
+  flex: 1;
+  min-block-size: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msgRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  max-inline-size: 100%;
+}
+
+.own {
+  flex-direction: row-reverse;
+}
+
+.msgAvatar {
+  flex-shrink: 0;
+}
+
+.userAv {
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tv-accent-soft);
+  color: var(--tv-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--tv-surface-soft);
+  border: 1px solid var(--tv-line);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--tv-text);
+  max-inline-size: 84%;
+  overflow-wrap: anywhere;
+}
+
+.bubbleAi {
+  background: var(--tv-surface);
+}
+
+.bubbleOwn {
+  background: var(--tv-accent);
+  border-color: var(--tv-accent);
+  color: #fff;
+}
+
+.bubbleText {
+  white-space: pre-wrap;
+}
+
+.cursor {
+  display: inline-block;
+  inline-size: 7px;
+  block-size: 14px;
+  margin-inline-start: 2px;
+  background: var(--tv-accent);
+  border-radius: 1px;
+  vertical-align: text-bottom;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to { visibility: hidden; }
+}
+
+/* ---------------- empty + status ---------------- */
+.empty {
+  margin: auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+}
+
+.emptyTitle {
+  margin: 4px 0 0;
+  font-family: var(--tv-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--tv-text);
+}
+
+.emptyBody {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--tv-text-soft);
+  max-inline-size: 240px;
+}
+
+.status {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-size: 13px;
+  color: var(--tv-text-soft);
+  text-align: center;
+}
+
+/* ---------------- responsive: stack below the trip when columns collapse ---------------- */
+@media (max-width: 920px) {
+  .panel {
+    position: static;
+    block-size: 70vh;
+  }
+
+  .rail {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    flex-direction: row;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .railLabel {
+    writing-mode: horizontal-tb;
+  }
+}

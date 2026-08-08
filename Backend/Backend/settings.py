@@ -9,30 +9,90 @@ https://docs.djangoproject.com/en/4.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
-import os    
+from decimal import Decimal
+import os
 from pathlib import Path
+import dj_database_url
+from celery.schedules import crontab
+# load environment variables from project .env
+try:
+    from dotenv import load_dotenv
+    # .env is located one level above the Backend folder (project root)
+    # BASE_DIR is defined below so load using file path after BASE_DIR or use parent placeholder
+except Exception:
+    load_dotenv = lambda *a, **k: None
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env_path = BASE_DIR.parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
+
+# attempt to load .env from project root (one level above BASE_DIR)
+try:
+    load_dotenv(str(BASE_DIR.parent / '.env'))
+except Exception:
+    pass
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-%d^b+-inenf1oia#mc_^4dhd&^o9nhhtd@lwy02%^&@5fkervl'
+# CRITICAL: SECRET_KEY must be set via environment variable in production
+# CRITICAL: SECRET_KEY must be set via environment variable in production
+# CRITICAL: SECRET_KEY must be set via environment variable in production
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes'):
+        # Development fallback - still unique per deployment
+        import secrets
+        SECRET_KEY = secrets.token_urlsafe(50)
+        print(f"⚠️  WARNING: Using auto-generated SECRET_KEY. Set DJANGO_SECRET_KEY in .env for consistency.")
+        print(f"Generated key: {SECRET_KEY}")
+    else:
+        raise ValueError(
+            "CRITICAL SECURITY ERROR: DJANGO_SECRET_KEY environment variable must be set in production. "
+            "Generate one with: python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\""
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok-free.app']
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 
-CSRF_TRUSTED_ORIGINS = ['https://8a74-197-232-61-221.ngrok-free.app']
+# CSRF & CORS configuration - be explicit and restrictive
+# you can set a comma-separated list in .env, e.g. DJANGO_CSRF_TRUSTED_ORIGINS=https://example.com,https://app.example.com
+CSRF_TRUSTED_ORIGINS_STRING = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+if not CSRF_TRUSTED_ORIGINS_STRING and not DEBUG:
+    raise ValueError(
+        "SECURITY WARNING: DJANGO_CSRF_TRUSTED_ORIGINS must be explicitly set in production. "
+        "Set it in .env as a comma-separated list of allowed origins (e.g., https://example.com)"
+    )
+CSRF_TRUSTED_ORIGINS = [url.strip() for url in CSRF_TRUSTED_ORIGINS_STRING.split(',') if url.strip()] if CSRF_TRUSTED_ORIGINS_STRING else []
+
+# Additional CSRF security
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Calendly app credentials (set in .env)
+CALENDLY_CLIENT_ID = os.environ.get('CALENDLY_CLIENT_ID')
+CALENDLY_CLIENT_SECRET = os.environ.get('CALENDLY_CLIENT_SECRET')
+CALENDLY_WEBHOOK_SIGNING_KEY = (
+    os.environ.get('CALENDLY_WEBHOOK_SIGNING_KEY')
+    or os.environ.get('Webhook_signing_key')
+)
+
+# IntaSend webhook secret for signature verification
+INTASEND_WEBHOOK_SECRET = os.environ.get('INTASEND_WEBHOOK_SECRET')
 
 # Application definition
 
 INSTALLED_APPS = [
     'daphne',
+    # Admin UI Enhancement (must be before django.contrib.admin)
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,18 +103,58 @@ INSTALLED_APPS = [
     'chatbot',
     'users',
     'Api',
+    'orchestration',
+    'travel',
+    'payments',
+    'workflows',
+    'notifications',
+    'signet',
+    'pentest',
+    'bugbounty',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_celery_beat',
+    'django_celery_results',
+
+    # Sites (required by allauth)
+    'django.contrib.sites',
+
+    # Allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.linkedin_oauth2',
+    'allauth.socialaccount.providers.twitter',
+
+    # Import/Export
+    'import_export',
+
+    # Security
+    'axes',
+    'django_ratelimit',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.TrialExpiryMiddleware',
+    'chatbot.middleware.EnsureMemberMiddleware',  # Auto-create Member objects
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # Security Middleware
+    'axes.middleware.AxesMiddleware',  # Brute force protection
+    'csp.middleware.CSPMiddleware',   # Content Security Policy
+
+    # Allauth Account Middleware
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'Backend.urls'
@@ -78,62 +178,21 @@ TEMPLATES = [
 WSGI_APPLICATION = 'Backend.wsgi.application'
 
 ASGI_APPLICATION = "Backend.asgi.application"
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
-        },
-    },
-}
 
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+# Database
+# https://docs.djangoproject.com/en/4.1/ref/settings/#databases
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL', 'sqlite:///' + str(BASE_DIR / 'db.sqlite3')),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
-
-CACHES = {
-  "default": {
-    "BACKEND": "django_redis.cache.RedisCache",
-    "LOCATION": "redis://127.0.0.1:6379/1",
-    "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-  }
-}
-
-# Password validation
-# https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-MEDIA_URL = '/uploads/'  # Base URL for media files
-MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')  # Directory to store uploaded files
-
-STATIC_URL = 'static/'
-LOGIN_REDIRECT_URL = 'chatbot:redirect_to_home'
-LOGIN_URL='users:login'
-LOGOUT_REDIRECT_URL = 'users:login'
-
-# Internationalization
-# https://docs.djangoproject.com/en/4.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
 
@@ -144,33 +203,471 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.1/howto/static-files/
+# Redis configuration for Celery, Caching, and Channels
+# Read Redis URL from environment so containers use the Compose service hostname
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', REDIS_URL)
+
+# Temporal configuration for workflow execution
+TEMPORAL_HOST = os.environ.get('TEMPORAL_HOST', 'localhost:7233')
+TEMPORAL_NAMESPACE = os.environ.get('TEMPORAL_NAMESPACE', 'default')
+TEMPORAL_TASK_QUEUE = os.environ.get('TEMPORAL_TASK_QUEUE', 'user-workflows')
+TEMPORAL_DISABLED = os.environ.get('TEMPORAL_DISABLED', 'False').lower() in ('1', 'true', 'yes')
+
+# Workflow safety limits
+WORKFLOW_WITHDRAW_MAX = Decimal(os.environ.get('WORKFLOW_WITHDRAW_MAX', '10000'))
+
+# Travel connectors: allow mock fallbacks in dev only
+TRAVEL_ALLOW_FALLBACK = os.environ.get('TRAVEL_ALLOW_FALLBACK', str(DEBUG)).lower() in ('1', 'true', 'yes')
+
+# Celery Results
+CELERY_RESULT_BACKEND = 'django-db'  # Using Django DB for results
+CELERY_CACHE_BACKEND = 'django-cache'
+CELERY_TASK_IGNORE_RESULT = os.environ.get('CELERY_TASK_IGNORE_RESULT', 'True').lower() in ('1', 'true', 'yes')
+
+# Celery serialization
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+# Celery execution
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
+CELERY_WORKER_CONCURRENCY = int(os.environ.get('CELERY_CONCURRENCY', 1))
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = int(os.environ.get('CELERY_WORKER_MAX_TASKS_PER_CHILD', 200))
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = int(os.environ.get('CELERY_WORKER_MAX_MEMORY_PER_CHILD', 250000))  # KiB
+CELERY_RESULT_EXPIRES = int(os.environ.get('CELERY_RESULT_EXPIRES', 3600))  # 1 hour
+
+# Django Cache with local Redis
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+# Channels Layer with local Redis
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    },
+}
+
+# Celery Beat Schedule
+MODERATION_ENABLED = os.environ.get('MODERATION_ENABLED')
+if MODERATION_ENABLED is None:
+    MODERATION_ENABLED = bool(os.environ.get('HF_API_TOKEN', ''))
+else:
+    MODERATION_ENABLED = MODERATION_ENABLED.lower() in ('1', 'true', 'yes')
+
+MODERATION_FLUSH_SECONDS = int(os.environ.get('MODERATION_FLUSH_SECONDS', 600))
+REMINDER_SWEEP_SECONDS = int(os.environ.get('REMINDER_SWEEP_SECONDS', 3600))
+WORKFLOW_REPLAY_SCHEDULE_SECONDS = int(os.environ.get('WORKFLOW_REPLAY_SCHEDULE_SECONDS', 300))
+
+# CELERY_BEAT_SCHEDULE is defined ONCE, lower in this file (search for
+# "Celery Beat Schedule"). A duplicate assignment used to live here and was
+# silently clobbered by that later one (the duplication existed since
+# 2026-03-06), which left check-due-reminders, send-trial-summary, the
+# moderation flush/cleanup tasks and workflow replay unscheduled. Removed
+# 2026-06-16 and merged into the single block below.
+
+# AI Moderation Settings
+MODERATION_BATCH_SIZE = 10
+MODERATION_BATCH_TIMEOUT = 5
+MODERATION_FLAG_THRESHOLD = 3
+HF_API_TOKEN = os.environ.get('HF_API_TOKEN', '')
+HF_MONTHLY_LIMIT = 10000  # e.g., 10,000 tokens per month
+
+# External API Keys for Connectors
+OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '')
+GIPHY_API_KEY = os.environ.get('GIPHY_API_KEY', '')
+EXCHANGE_RATE_API_KEY = os.environ.get('EXCHANGE_RATE_API_KEY', '')
+GMAIL_OAUTH_CLIENT_ID = os.environ.get('GMAIL_OAUTH_CLIENT_ID') or os.environ.get('GOOGLE_CLIENT_ID')
+GMAIL_OAUTH_CLIENT_SECRET = os.environ.get('GMAIL_OAUTH_CLIENT_SECRET') or os.environ.get('GOOGLE_CLIENT_SECRET')
+GMAIL_OAUTH_REDIRECT_URI = os.environ.get('GMAIL_OAUTH_REDIRECT_URI', '')
+GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send'
+
+# SIGNET — Reddit collector credentials
+REDDIT_CLIENT_ID = os.environ.get('REDDIT_CLIENT_ID', '')
+REDDIT_CLIENT_SECRET = os.environ.get('REDDIT_CLIENT_SECRET', '')
+REDDIT_USER_AGENT = os.environ.get('REDDIT_USER_AGENT', '')
+# Optional user-context auth (script-app password grant) — enables account-scoped
+# reads: subscribed + active subreddits. App-only auth cannot see these.
+REDDIT_USERNAME = os.environ.get('REDDIT_USERNAME', '')
+REDDIT_PASSWORD = os.environ.get('REDDIT_PASSWORD', '')
+
+# SIGNET - Telegram collector credentials.
+# API ID/HASH come from https://my.telegram.org/apps. For public-channel
+# history collection in workers, provide TELEGRAM_SESSION_STRING from a
+# pre-authorized user session. TELEGRAM_BOT_TOKEN is supported for chats the bot
+# can access, but it cannot passively observe arbitrary public channels.
+TELEGRAM_API_ID = os.environ.get('TELEGRAM_API_ID', '')
+TELEGRAM_API_HASH = os.environ.get('TELEGRAM_API_HASH', '')
+TELEGRAM_SESSION_STRING = os.environ.get('TELEGRAM_SESSION_STRING', '')
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_DEFAULT_CHANNELS = [
+    c.strip() for c in os.environ.get('TELEGRAM_DEFAULT_CHANNELS', '').split(',')
+    if c.strip()
+]
+
+SIGNET_PROJECTION_WINDOW_DAYS = int(os.environ.get('SIGNET_PROJECTION_WINDOW_DAYS', '3'))
+SIGNET_PROJECT_DEBOUNCE_SECONDS = int(os.environ.get('SIGNET_PROJECT_DEBOUNCE_SECONDS', '120'))
+
+# ── SIGNET Coordination layer (Chunk 1) ──────────────────────────────
+SIGNET_COORD_T_MINUTES = int(os.environ.get('SIGNET_COORD_T_MINUTES', '15'))
+SIGNET_COORD_JACCARD_THRESHOLD = float(os.environ.get('SIGNET_COORD_JACCARD_THRESHOLD', '0.6'))
+SIGNET_COORD_MIN_CLUSTER_SIZE = int(os.environ.get('SIGNET_COORD_MIN_CLUSTER_SIZE', '3'))
+SIGNET_COORD_MIN_CLUSTER_SCORE = float(os.environ.get('SIGNET_COORD_MIN_CLUSTER_SCORE', '0.5'))
+
+# LLM cost guards
+LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', 700))  # hard ceiling per call
+LLM_PROMPT_CHAR_LIMIT = int(os.environ.get('LLM_PROMPT_CHAR_LIMIT', 4000))  # truncate user prompt to this many chars
+# Per-user hourly LLM token quota. Off in dev (DEBUG) so batch jobs like the
+# SIGNET tagging eval / soak don't starve; on by default in prod as a cost guard.
+LLM_TOKEN_QUOTA_ENABLED = os.environ.get(
+    'LLM_TOKEN_QUOTA_ENABLED', 'False' if DEBUG else 'True'
+).lower() in ('1', 'true', 'yes')
+LLM_TOKEN_LIMIT_PER_USER_PER_HOUR = int(os.environ.get('LLM_TOKEN_LIMIT_PER_USER_PER_HOUR', 50000))
+LLM_CACHE_ENABLED = os.environ.get('LLM_CACHE_ENABLED', 'True').lower() in ('1', 'true', 'yes')
+LLM_CACHE_TTL_SECONDS = int(os.environ.get('LLM_CACHE_TTL_SECONDS', 600))
+LLM_CACHE_MIN_TEMP = float(os.environ.get('LLM_CACHE_MIN_TEMP', 0.3))
+
+# Manager agent LLM fallback
+MANAGER_LLM_ENABLED = os.environ.get('MANAGER_LLM_ENABLED', 'True').lower() in ('1', 'true', 'yes')
+
+# Password validation
+# https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'OPTIONS': {'user_attributes': ['email', 'username', 'first_name', 'last_name']}
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12}  # Increased from default 8 for better security
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# Session security
+SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+# Lax to allow WS/session cookies after redirects in dev; keep secure via HTTPS in prod
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+MEDIA_URL = '/uploads/'  # Base URL for media files
+MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')  # Directory to store uploaded files
+
+R2_ENABLED = os.environ.get('R2_ENABLED', 'False').lower() in ('1', 'true', 'yes')
+if R2_ENABLED:
+    AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
+    AWS_S3_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL')
+    AWS_S3_REGION_NAME = os.environ.get('R2_REGION', 'auto')
+    AWS_S3_ADDRESSING_STYLE = 'path'
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+
+    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY or not AWS_STORAGE_BUCKET_NAME or not AWS_S3_ENDPOINT_URL:
+        raise ValueError('R2 is enabled but required R2_* settings are missing.')
+
+    AWS_S3_CUSTOM_DOMAIN = os.environ.get('R2_PUBLIC_BASE_URL', '')
+    if AWS_S3_CUSTOM_DOMAIN:
+        AWS_S3_CUSTOM_DOMAIN = AWS_S3_CUSTOM_DOMAIN.replace('https://', '').replace('http://', '')
+        MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+    else:
+        MEDIA_URL = f"{AWS_S3_ENDPOINT_URL.rstrip('/')}/{AWS_STORAGE_BUCKET_NAME}/"
+
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+LOGIN_REDIRECT_URL = 'users:dashboard'
+LOGIN_URL = 'users:login'
+LOGOUT_REDIRECT_URL = 'users:login'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-ASGI_APPLICATION = "Backend.asgi.application"
-
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.TokenAuthentication",
-    
+
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly"
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
-    "PAGE_SIZE": 5
+    "PAGE_SIZE": 5,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "Api.throttling.GlobalApiThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "10/minute",
+        "global_api": "60/minute",  # Default fallback, overridden by class logic
+        "ai_request": "10/day"      # Default fallback
+    }
 }
-
 
 
 # Chat rate limit (messages per minute)
 CHAT_RATE_LIMIT = 30
 
+# Pentest Kali Agent — disabled-by-default shared-token auth (5B)
+PENTEST_AGENT_ENABLED = os.environ.get("PENTEST_AGENT_ENABLED", "False").lower() in ("1", "true", "yes")
+PENTEST_AGENT_SHARED_TOKEN = os.environ.get("PENTEST_AGENT_SHARED_TOKEN", "")
+PENTEST_AGENT_ALLOWED_IDS = [
+    item.strip()
+    for item in os.environ.get("PENTEST_AGENT_ALLOWED_IDS", "").split(",")
+    if item.strip()
+]
+
+# neuroA2A marketplace endpoint auth. Keep disabled until explicitly configured.
+NEUROA2A_SHARED_TOKEN = os.environ.get("NEUROA2A_SHARED_TOKEN", "")
+NEUROA2A_TRAVEL_USER_ID = os.environ.get("NEUROA2A_TRAVEL_USER_ID", "")
+
+# ==========================================
+# AUTHENTICATION & SECURITY CONFIGURATION
+# ==========================================
+
+# ==========================================
+# AUTHENTICATION & SECURITY CONFIGURATION
+# ==========================================
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SITE_ID = 1
+
+# --- Allauth Settings (Latest Format) ---
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_SESSION_REMEMBER = True
+SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_ADAPTER = 'users.social_adapter.InviteGatedSocialAdapter'
+
+# Social Providers
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', 'dummy_google_client_id'),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', 'dummy_google_secret'),
+        }
+    },
+    'github': {
+        'SCOPE': ['user', 'read:org'],
+        'APP': {
+            'client_id': os.environ.get('GITHUB_CLIENT_ID', 'dummy_github_client_id'),
+            'secret': os.environ.get('GITHUB_CLIENT_SECRET', 'dummy_github_secret'),
+        }
+    },
+    'linkedin_oauth2': {
+        'SCOPE': ['r_liteprofile', 'r_emailaddress'],
+        'APP': {
+            'client_id': os.environ.get('LINKEDIN_CLIENT_ID', 'dummy_linkedin_id'),
+            'secret': os.environ.get('LINKEDIN_CLIENT_SECRET', 'dummy_linkedin_secret'),
+        }
+    },
+    'twitter': {
+        'APP': {
+            'client_id': os.environ.get('TWITTER_CLIENT_ID', 'dummy_twitter_id'),
+            'secret': os.environ.get('TWITTER_CLIENT_SECRET', 'dummy_twitter_secret'),
+        }
+    }
+}
+
+
+# --- AXES (Brute Force Protection) - Enhanced Security ---
+from datetime import timedelta
+
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(hours=2)
+AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
+AXES_RESET_ON_SUCCESS = True
+AXES_VERBOSE = True
+AXES_ENABLE_ADMIN = True
+
+
+# --- CSP (Content Security Policy) ---
+# --- CSP (Content Security Policy) ---
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net")
+CSP_SCRIPT_SRC = ("'self'", "https://js.stripe.com", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net", "https://assets.calendly.com", "https://code.jquery.com", "https://cdnjs.cloudflare.com")
+CSP_IMG_SRC = ("'self'", "data:", "https://*")
+CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com")
+CSP_FRAME_SRC = ("'self'", "https://js.stripe.com")
+
+# --- HSTS (HTTP Strict Transport Security) ---
+# Enabled only when DEBUG is False to avoid local dev issues
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_HTTPONLY = True
+    # Keep CSRF cookie readable for JS fetch headers (pin notes, add notes)
+    CSRF_COOKIE_HTTPONLY = False
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# ==========================================
+# DJANGO-JAZZMIN ADMIN CONFIGURATION
+# ==========================================
+
+JAZZMIN_SETTINGS = {
+    "site_header": "MATHIA Admin",
+    "site_title": "MATHIA Administration",
+    "welcome_sign": "Welcome to MATHIA Administration",
+    "copyright": "MATHIA Platform",
+
+    # Dashboard and display settings
+    "show_ui_builder": False,
+    "use_google_fonts_cdn": True,
+
+    # Theme configuration
+    "theme": "default",  # Can be 'default', 'dark' or custom
+    "dark_mode_theme": "darkly",
+
+    # Colors
+    "user_avatar": None,
+
+    # Pagination
+    "pagination_per_page": 20,
+
+    # Admin site branding
+    "site_icon": None,  # Optional: add path to icon image
+    "has_search": True,
+    "search_model": "auth.User",
+
+    # Navigation
+    "show_sidebar": True,
+    "navigation_expanded": False,
+
+    # Search settings
+    "search_allow_url_search": True,
+
+    # Custom links in sidebar
+    "navigation": [
+        {"app": "users", "icon": "fas fa-users"},
+        {"app": "payments", "icon": "fas fa-credit-card"},
+        {"app": "travel", "icon": "fas fa-plane"},
+        {"app": "chatbot", "icon": "fas fa-comments"},
+        {"app": "workflows", "icon": "fas fa-project-diagram"},
+        {"app": "orchestration", "icon": "fas fa-cogs"},
+        {"app": "auth", "icon": "fas fa-lock"},
+    ],
+}
+
+# Jazzmin UI tweaks
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small": False,
+    "footer_small": False,
+    "body_small": False,
+    "brand_small": False,
+    "brand_colour": "navbar-primary",
+    "accent": "accent-primary",
+    "tooltip_class": "tooltip-primary",
+    "window_box_shadow_class": "card-shadow",
+}
+
+# Celery Beat Schedule
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'nightly_ledger_reconciliation': {
+        'task': 'payments.tasks.reconcile_ledger',
+        'schedule': crontab(hour=2, minute=0),
+    },
+    'daily_recurring_invoices': {
+        'task': 'payments.tasks.process_recurring_invoices',
+        'schedule': crontab(hour=1, minute=0),
+    },
+    'sweep-memory-notes': {
+        'task': 'chatbot.tasks.sweep_memory_notes',
+        'schedule': 21600.0,  # Every 6 hours
+    },
+    # Restored 2026-06-16 — these lived in an earlier CELERY_BEAT_SCHEDULE block
+    # that this one silently clobbered (duplicate assignment since 2026-03-06),
+    # so they had not been scheduling at all. Merged here.
+    'check-due-reminders': {
+        'task': 'chatbot.tasks.check_due_reminders',
+        'schedule': float(REMINDER_SWEEP_SECONDS),  # Safety sweep
+    },
+    'send-trial-summary': {
+        'task': 'users.tasks.send_trial_summary_task',
+        'schedule': crontab(hour=7, minute=0),  # every day at 07:00
+    },
+    # SIGNET collection heartbeat (every hour — fires for each running session)
+    'signet_collection_heartbeat': {
+        'task': 'signet.tasks.signet_heartbeat',
+        'schedule': 3600.0,
+    },
+    'signet_weekly_eval': {
+        'task': 'signet.tasks.signet_weekly_drift_check',
+        'schedule': crontab(day_of_week=1, hour=3, minute=0),  # Monday 3 AM
+    },
+}
+
+if MODERATION_ENABLED:
+    CELERY_BEAT_SCHEDULE.update({
+        'flush-moderation-batches': {
+            'task': 'chatbot.tasks.process_pending_batches',
+            'schedule': float(MODERATION_FLUSH_SECONDS),  # Batch moderation
+        },
+        'cleanup-old-batches': {
+            'task': 'chatbot.tasks.cleanup_old_moderation_batches',
+            'schedule': 86400.0,  # Daily
+        },
+    })
+
+if not TEMPORAL_DISABLED:
+    CELERY_BEAT_SCHEDULE.update({
+        'replay-deferred-workflows': {
+            'task': 'workflows.tasks.replay_deferred_workflows',
+            'schedule': float(WORKFLOW_REPLAY_SCHEDULE_SECONDS),  # Batch replays
+        },
+    })

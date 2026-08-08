@@ -1,0 +1,132 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  z-index: 1000;
+}
+
+.modal {
+  width: min(600px, 100%);
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.header,
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.close {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background: var(--bg-light);
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+.body {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field span,
+.evidenceLabel {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.evidenceRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.evidenceChip {
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  background: var(--bg-light);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.addFile {
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+}
+
+.estimate {
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.btnPrimary,
+.btnOutline {
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: var(--font-weight-medium);
+}
+
+.btnPrimary {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.btnOutline {
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}

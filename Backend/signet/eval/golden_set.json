@@ -1,0 +1,645 @@
+{
+  "description": "SIGNET tagging eval golden set — 60 labeled posts covering all 21 taxonomy tags",
+  "version": "1.0",
+  "threshold_agreement": 0.85,
+  "posts": [
+    {
+      "id": "g1",
+      "text": "Western media wants you to believe Kenya is collapsing. Don't fall for it. They've been running the same playbook since 2007. Wake up.",
+      "expected_tags": [
+        "anti_institution",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g2",
+      "text": "The finance bill is a trap. They're selling our country to the IMF and calling it 'development'. Every shilling of debt your grandchildren will pay.",
+      "expected_tags": [
+        "economic_fear",
+        "anti_institution"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "no specific identifiable false claim -> drop political_disinfo; the framing is anti-institution",
+      "_orig_expected_tags": [
+        "economic_fear",
+        "political_disinfo"
+      ]
+    },
+    {
+      "id": "g3",
+      "text": "LUO COMMUNITY WARNED: Ruto's government planning mass displacement in Kisumu. Share before they take it down. This is 2007 all over again.",
+      "expected_tags": [
+        "identity_wedge",
+        "firehose_falsehood"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "about ethnic-displacement fear, not election rigging -> drop election_integrity",
+      "_orig_expected_tags": [
+        "identity_wedge",
+        "firehose_falsehood",
+        "election_integrity"
+      ]
+    },
+    {
+      "id": "g4",
+      "text": "Mombasa port has been secretly leased to China for 99 years. The documents are circulating on WhatsApp. Kenyans need to wake up before there's nothing left.",
+      "expected_tags": [
+        "economic_fear",
+        "anti_institution",
+        "political_disinfo"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "one conspiracy claim, not rapid-fire -> drop firehose; the China-lease claim is political_disinfo",
+      "_orig_expected_tags": [
+        "economic_fear",
+        "anti_institution",
+        "firehose_falsehood"
+      ]
+    },
+    {
+      "id": "g5",
+      "text": "COVID vaccines are a population control experiment funded by Bill Gates. Look at the data from the US trials — the side effects are being hidden.",
+      "expected_tags": [
+        "health_misinfo",
+        "anti_institution"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g6",
+      "text": "Beautiful morning in Nairobi. The jacarandas are blooming along Uhuru Highway. Sometimes you just need to appreciate the little things.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g7",
+      "text": "Thread: Here's what actually happened at the IEBC server room on election night. I've compiled 47 screenshots, 12 video timestamps, and 3 whistleblower statements. This changes everything. 1/53",
+      "expected_tags": [
+        "election_integrity",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g8",
+      "text": "RT if you agree that the Kenyan judiciary is completely captured. They don't even pretend anymore. The Supreme Court ruling today proves it.",
+      "expected_tags": [
+        "anti_institution"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "coordinated_amplified is a SPREAD-PATTERN tag — not assessable from a single post's text",
+      "_orig_expected_tags": [
+        "anti_institution",
+        "coordinated_amplified"
+      ]
+    },
+    {
+      "id": "g9",
+      "text": "5G towers in Karen are causing the mysterious illnesses affecting cattle. Multiple farmers have reported the same pattern — cattle falling sick within weeks of tower installation.",
+      "expected_tags": [
+        "health_misinfo"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "false_equivalence is the wrong technique — this is a causal fallacy (5G->illness), not equivalence",
+      "_orig_expected_tags": [
+        "health_misinfo",
+        "false_equivalence"
+      ]
+    },
+    {
+      "id": "g10",
+      "text": "SHOCKING: Top government official caught on tape admitting election was rigged. The audio is everywhere but mainstream media won't touch it. They're all compromised.",
+      "expected_tags": [
+        "political_disinfo",
+        "anti_institution",
+        "firehose_falsehood"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g11",
+      "text": "My sister needs KSh 50,000 for emergency surgery at Kenyatta National Hospital. Please any help even 100 bob. M-Pesa 0712XXXXXX. God bless you.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g12",
+      "text": "These Gen Z protesters don't understand how politics works in this country. They think shouting on Twitter will change anything. Raila tried for 40 years. Nothing changed.",
+      "expected_tags": [],
+      "expected_tier": "low",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "appeal_to_victimhood misfits — it's a dismissive/defeatist opinion; arguably clean. YOUR CALL",
+      "_orig_expected_tags": [
+        "appeal_to_victimhood"
+      ]
+    },
+    {
+      "id": "g13",
+      "text": "All these accounts tweeting #RutoMustGo are bots. Look at the creation dates — all June 2024. Same script, same hashtags, same posting times. Coordinated by a foreign PR firm.",
+      "expected_tags": [
+        "political_disinfo",
+        "election_integrity"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "post ALLEGES astroturfing about a real movement -> it's the disinfo, not astroturfing itself",
+      "_orig_expected_tags": [
+        "astroturfing",
+        "coordinated_inauthentic",
+        "election_integrity"
+      ]
+    },
+    {
+      "id": "g14",
+      "text": "BREAKING: Indian businessman linked to Adani Group secretly acquired 40% of Kenya's tea sector through proxy companies. The evidence is in the Panama Papers. Kenyan media won't report this.",
+      "expected_tags": [
+        "economic_fear",
+        "political_disinfo",
+        "anti_institution"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g15",
+      "text": "You guys are all falling for the same trap again. Both sides are playing you. Ruto and Raila are cousins who went to the same school. The beef is staged. Wake up.",
+      "expected_tags": [
+        "false_equivalence",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "labels correct; tagger is BLIND to red_pill_pipeline ('both sides staged, wake up') -> prompt fix, not a label fix"
+    },
+    {
+      "id": "g16",
+      "text": "Looking for a good mechanic in Nairobi West. My Subaru Forester needs a timing belt replacement. Recommendations?",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g17",
+      "text": "100% of the comments on this post are bots. Not one real Kenyan would defend this government's record on unemployment. Check the profiles — all under 50 followers, all created in the last 3 weeks.",
+      "expected_tags": [
+        "astroturfing",
+        "coordinated_inauthentic"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g18",
+      "text": "Traditional medicine can cure diabetes. My grandmother treated hundreds of patients with herbal remedies. Big Pharma doesn't want you to know because they can't patent a tree.",
+      "expected_tags": [
+        "health_misinfo",
+        "anti_institution"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g19",
+      "text": "Kenyan police killed 47 protesters in June alone. The real number is higher because they're burying bodies in mass graves in Aberdare forest. I have coordinates.",
+      "expected_tags": [
+        "firehose_falsehood",
+        "political_disinfo",
+        "anti_institution"
+      ],
+      "expected_tier": "high",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "firehose defensible (47 dead + mass graves + coordinates stacked); tagger under-detected"
+    },
+    {
+      "id": "g20",
+      "text": "The Kenyan shilling will hit 200 to the dollar by December. Mark this post. The IMF conditions require currency float and the Central Bank has already depleted its reserves defending it.",
+      "expected_tags": [
+        "economic_fear"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g21",
+      "text": "Has anyone tried the new Ethiopian restaurant on Kimathi Street? I heard their injera is amazing. Thinking of going this weekend with the family.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g22",
+      "text": "KALENJIN COMMUNITY ALERT: Kikuyu business owners in Eldoret are being targeted. We have names and locations of the perpetrators. This is ethnic cleansing starting again.",
+      "expected_tags": [
+        "identity_wedge"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "single alarming claim, not rapid-fire -> drop firehose",
+      "_orig_expected_tags": [
+        "identity_wedge",
+        "firehose_falsehood"
+      ]
+    },
+    {
+      "id": "g23",
+      "text": "For years people said 'the courts are captured' and everyone called them conspiracy theorists. Today the Supreme Court literally ruled that the president can ignore court orders. Who's the conspiracy theorist now?",
+      "expected_tags": [
+        "anti_institution"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "polarised is an AUDIENCE-RESPONSE tag — not derivable from one post's text",
+      "_orig_expected_tags": [
+        "anti_institution",
+        "polarised"
+      ]
+    },
+    {
+      "id": "g24",
+      "text": "Samidoh's new album is actually decent. I didn't expect that production quality from a Mugithi artist. The collab with Bien really elevated the sound.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g25",
+      "text": "Notice how the same 5 Twitter accounts dominate every #KOT trending topic? Thread: here are the actual humans behind the bot networks. LinkedIn profiles, real names, political connections. 1/30",
+      "expected_tags": [
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "post EXPOSES coordination (doesn't do it); its own technique is the red-pill expose/'1/30 thread' framing",
+      "_orig_expected_tags": [
+        "coordinated_inauthentic",
+        "astroturfing",
+        "red_pill_pipeline"
+      ]
+    },
+    {
+      "id": "g26",
+      "text": "The media blackout on the teachers' strike is intentional. 340,000 teachers have been on strike for 3 weeks and not a single headline on Citizen or NTV. Ask yourself who owns those stations.",
+      "expected_tags": [
+        "anti_institution",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "tagger blind to red_pill ('ask yourself who owns those stations')"
+    },
+    {
+      "id": "g27",
+      "text": "Anyone know a good pediatrician in Kilimani? My daughter has had a persistent cough for two weeks and the clinic near us just prescribes antibiotics every time.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g28",
+      "text": "The Kenyan education system is designed to produce obedient workers, not thinkers. That's why they removed critical thinking from the 8-4-4 syllabus. The CBC is just repackaged colonial education.",
+      "expected_tags": [
+        "anti_institution",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "tagger blind to red_pill ('designed to produce obedient workers')"
+    },
+    {
+      "id": "g29",
+      "text": "ALERT: Voter registration numbers in Mt Kenya region have been artificially inflated by 1.2 million. Here are the IEBC register snapshots from February vs June. The math doesn't add up. SHARE WIDELY.",
+      "expected_tags": [
+        "election_integrity",
+        "political_disinfo"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "single evidenced claim, not rapid-fire -> drop firehose",
+      "_orig_expected_tags": [
+        "election_integrity",
+        "firehose_falsehood",
+        "political_disinfo"
+      ]
+    },
+    {
+      "id": "g30",
+      "text": "The World Economic Forum's 'Great Reset' agenda is being implemented in Kenya through the affordable housing levy. It's not about houses — it's about centralizing control over where and how Kenyans live.",
+      "expected_tags": [
+        "economic_fear",
+        "anti_institution",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "high",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "WEF Great Reset = textbook red-pill; tagger blind"
+    },
+    {
+      "id": "g31",
+      "text": "This is why Kenyans will never unite. A Kikuyu will steal from a Luo, a Luo will steal from a Kalenjin, and everyone claps. We deserve the politicians we elect.",
+      "expected_tags": [
+        "identity_wedge",
+        "appeal_to_victimhood"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g32",
+      "text": "Unpopular opinion: the Kenyan passport is actually getting stronger. I just traveled to 4 African countries visa-free. The e-visa system works. Things are changing quietly.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g33",
+      "text": "Somalia just signed an oil deal with Turkey that blocks Kenya's maritime border claim completely. Our government is sleeping. We're losing territory while the cabinet is busy fighting on Twitter.",
+      "expected_tags": [
+        "economic_fear",
+        "anti_institution"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g34",
+      "text": "This TikTok video of a Kenyan cop returning a lost wallet with all the money intact has 2M views. Every comment: 'See? Not all cops.' This is classic astroturfing. The account was created 4 days ago.",
+      "expected_tags": [
+        "astroturfing"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "drop coordinated_amplified (spread-pattern, not from text); astroturfing debatable (post alleges it)",
+      "_orig_expected_tags": [
+        "astroturfing",
+        "coordinated_amplified"
+      ]
+    },
+    {
+      "id": "g35",
+      "text": "I've lived in Nairobi for 30 years. The security situation has NEVER been this bad. Kidnappings, carjackings, break-ins — and the police do nothing. We're on our own.",
+      "expected_tags": [
+        "appeal_to_victimhood"
+      ],
+      "expected_tier": "low",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "appeal_to_victimhood defensible ('we're on our own' abandonment framing); tagger missed it"
+    },
+    {
+      "id": "g36",
+      "text": "EXPOSED: The 'youth empowerment' fund is a money laundering operation for the first family. Here are 17 shell companies registered to relatives of State House staff. Auditor General's report confirms irregularities.",
+      "expected_tags": [
+        "political_disinfo",
+        "anti_institution"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g37",
+      "text": "What's the best savings account for a kid's education fund in Kenya? Looking at Equity and KCB. Want something that beats inflation.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g38",
+      "text": "Every election year the same pattern: 6 months before voting, 'independent' polls show the establishment candidate surging. Same pollster, same methodology, same media outlets. It's predictive programming, not polling.",
+      "expected_tags": [
+        "election_integrity",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "lone post -> NOT coordinated_inauthentic; it's a red-pill pattern-claim",
+      "_orig_expected_tags": [
+        "election_integrity",
+        "coordinated_inauthentic",
+        "red_pill_pipeline"
+      ]
+    },
+    {
+      "id": "g39",
+      "text": "Fluoride in Nairobi water is making people docile and compliant. Compare crime rates before and after the water treatment plants were upgraded in 2019. The data is undeniable.",
+      "expected_tags": [
+        "health_misinfo"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "causal fallacy (fluoride->docility), not false_equivalence",
+      "_orig_expected_tags": [
+        "health_misinfo",
+        "false_equivalence"
+      ]
+    },
+    {
+      "id": "g40",
+      "text": "Counterpoint to the IMF narrative: Ghana defaulted, Zambia defaulted, Ethiopia is restructuring. Kenya's debt-to-GDP is actually lower than all three. The 'imminent collapse' framing is political, not economic.",
+      "expected_tags": [
+        "counter_narrative_forming"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "label correct (counter_narrative_forming); tagger INVERTED it, read as economic_fear/political_disinfo"
+    },
+    {
+      "id": "g41",
+      "text": "The reason this post has 15K likes but only 23 comments is because the engagement is botted. Look at the like-to-comment ratio — 650:1. Organic Kenyan political content averages 8:1. This is manufactured consent.",
+      "expected_tags": [
+        "coordinated_inauthentic",
+        "astroturfing"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g42",
+      "text": "Can anyone recommend a good wedding photographer in Mombasa? Budget around 150K. My sister is getting married in December and the quotes we're getting are insane.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g43",
+      "text": "Look at what happened to the activist who spoke out against land grabbing in Ruai. She's been 'disappeared' for 8 days. The government says they don't know where she is. Her family is terrified. We need international attention on this.",
+      "expected_tags": [
+        "anti_institution",
+        "political_disinfo"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g44",
+      "text": "Kenya's 2027 election will be decided by WhatsApp, not by rallies. The Kikuyu radio stations are already running coordinated messaging. I've mapped the network: 47 group admins, identical script, 900K+ reach.",
+      "expected_tags": [
+        "election_integrity",
+        "coordinated_inauthentic"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "drop political_disinfo (no clear false claim); post documents coordination",
+      "_orig_expected_tags": [
+        "election_integrity",
+        "coordinated_inauthentic",
+        "political_disinfo"
+      ]
+    },
+    {
+      "id": "g45",
+      "text": "Good morning. Running a 10K in Karura this Saturday. Anyone else signed up for the StanChart marathon? Training has been brutal.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g46",
+      "text": "Somaliland deserves recognition. 30 years of stable democracy while Mogadishu can't hold a village election. The AU silence is political cowardice.",
+      "expected_tags": [
+        "political_disinfo",
+        "identity_wedge"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "both labels weak — geopolitical opinion; tagger saw false_equivalence. YOUR CALL"
+    },
+    {
+      "id": "g47",
+      "text": "The drought in Northern Kenya isn't natural — it's climate engineering. HAARP installations in the Indian Ocean are redirecting rainfall. That's why it's been 4 failed rainy seasons. Wake up.",
+      "expected_tags": [
+        "firehose_falsehood",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "drop health_misinfo (HAARP/climate, not health) + false_equivalence; it's a red-pill conspiracy",
+      "_orig_expected_tags": [
+        "health_misinfo",
+        "false_equivalence",
+        "firehose_falsehood"
+      ]
+    },
+    {
+      "id": "g48",
+      "text": "My neighbor's teenage son got recruited into a cult disguised as a 'youth mentorship program' in Mathare. They isolate them from families, take their phones, teach them the government is the enemy. This is happening everywhere.",
+      "expected_tags": [
+        "anti_institution"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "post WARNS about a radicalization pipeline, doesn't do it -> drop red_pill_pipeline",
+      "_orig_expected_tags": [
+        "red_pill_pipeline",
+        "anti_institution"
+      ]
+    },
+    {
+      "id": "g49",
+      "text": "Thread: Deconstructing the 'Kenya is the next Sri Lanka' narrative. Actual budget data shows recurrent expenditure has DECREASED as a % of GDP for 3 consecutive years. The development budget increased. This isn't a crisis — it's a smear. 1/12",
+      "expected_tags": [
+        "counter_narrative_forming"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "label correct (counter_narrative_forming); tagger inverted it"
+    },
+    {
+      "id": "g50",
+      "text": "The reason you're seeing so many pro-government hashtags trending is because State House has a digital team of 200 people. They coordinate every morning at 6 AM. Here's their WhatsApp group screenshot.",
+      "expected_tags": [
+        "astroturfing",
+        "coordinated_inauthentic",
+        "political_disinfo"
+      ],
+      "expected_tier": "high"
+    },
+    {
+      "id": "g51",
+      "text": "Are Moringa seeds really that good for you, or is it just marketing? Been seeing ads everywhere. Any actual scientific studies?",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g52",
+      "text": "This is LITERALLY what happened in Zimbabwe before the land grabs. White farmers were demonized, 'war veterans' were mobilized, then overnight the farms were seized and the economy collapsed. Kenya is at step 2 of the exact same playbook.",
+      "expected_tags": [
+        "economic_fear",
+        "identity_wedge",
+        "false_equivalence"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g53",
+      "text": "The mainstream media's coverage of the Gen Z protests is textbook 'mockery' framing — they only show the dramatic clips, call them 'rowdy youth,' and never platform their actual demands. This isn't journalism, it's narrative control.",
+      "expected_tags": [
+        "mockery",
+        "anti_institution"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g54",
+      "text": "Religious leaders endorsing politicians from the pulpit — this is why Kenya is broken. The church has become a campaign platform. Sunday sermons are now political rallies with Bibles. Tax the churches.",
+      "expected_tags": [
+        "anti_institution"
+      ],
+      "expected_tier": "medium",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "polarised is audience-response — not from text",
+      "_orig_expected_tags": [
+        "anti_institution",
+        "polarised"
+      ]
+    },
+    {
+      "id": "g55",
+      "text": "CHEMICALS IN NAIROBI MILK CAUSING INFERTILITY — this has been shared 45K times on Facebook. Let me save you the panic: the 'study' they're citing is a 2004 paper about industrial effluent in Ruiru River near a factory, not about retail milk. Complete misinformation.",
+      "expected_tags": [
+        "counter_narrative_forming"
+      ],
+      "expected_tier": "medium"
+    },
+    {
+      "id": "g56",
+      "text": "Best nyama choma spot in Nairobi? Taking some visitors from Tanzania and I want to impress. Heard Olepolos is overrated now.",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g57",
+      "text": "WATCH: This video of Raila's motorcade being stoned in Kisii is going viral. But here's what they're not showing you — the crowd was paid KSh 500 each by a local MP candidate. Same faces appear at 3 different 'spontaneous' protests this month. Video evidence attached.",
+      "expected_tags": [
+        "political_disinfo",
+        "election_integrity"
+      ],
+      "expected_tier": "high",
+      "_review_category": "FIX (wrong technique label)",
+      "_review_note": "post ALLEGES staged protests -> it's the claim, not astroturfing/coordinated_inauthentic itself",
+      "_orig_expected_tags": [
+        "astroturfing",
+        "political_disinfo",
+        "coordinated_inauthentic"
+      ]
+    },
+    {
+      "id": "g58",
+      "text": "The Mount Kenya mafia runs this country. Since 1963, every major economic policy has benefited the same 12 families. The names haven't changed in 60 years. Independence was just a management transition.",
+      "expected_tags": [
+        "anti_institution",
+        "economic_fear",
+        "identity_wedge",
+        "red_pill_pipeline"
+      ],
+      "expected_tier": "high",
+      "_review_category": "KEEP (tagger blind spot -> prompt fix)",
+      "_review_note": "red_pill defensible ('independence was a management transition'); tagger blind"
+    },
+    {
+      "id": "g59",
+      "text": "Can someone explain how NHIF works now? Just got a job in private sector and HR is asking me to choose between NHIF and private insurance. Which is better for a family with two kids?",
+      "expected_tags": [],
+      "expected_tier": "low"
+    },
+    {
+      "id": "g60",
+      "text": "UNITED front against police brutality. We need ONE voice. Stop arguing about tribe and focus on the real enemy — a system that kills its own citizens with impunity. #SabaSaba",
+      "expected_tags": [],
+      "expected_tier": "medium",
+      "_review_category": "FLAG (audience/spread tag or debatable -> your call)",
+      "_review_note": "unified_amplification is audience-response; post is an ANTI-tribalism unity call — arguably clean. tagger badly misread (identity_wedge). YOUR CALL",
+      "_orig_expected_tags": [
+        "unified_amplification"
+      ]
+    }
+  ],
+  "_proposal_note": "Proposed corrections by Claude 2026-06-17. _review_category: 1=keep label, tagger blind spot; 2=label fixed; 3=flagged for your judgment. Review _orig_expected_tags vs expected_tags. Approve -> rename over golden_set.json."
+}

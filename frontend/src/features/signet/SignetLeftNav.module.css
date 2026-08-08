@@ -1,0 +1,61 @@
+/* SIGNET — vertical icon rail. */
+
+.rail {
+  inline-size: 40px;
+  background: var(--sg-panel-inset);
+  border-inline-end: 1px solid var(--sg-line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block-start: 14px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.item {
+  inline-size: 32px;
+  block-size: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  color: var(--sg-text-low);
+  border-inline-start: 2px solid transparent;
+  background: transparent;
+  transition:
+    color var(--transition-fast, 150ms ease),
+    background var(--transition-fast, 150ms ease);
+}
+.item:hover {
+  color: var(--sg-text-mid);
+}
+
+.itemActive {
+  color: var(--sg-signal);
+  border-inline-start-color: var(--sg-signal);
+  background: var(--sg-signal-soft);
+}
+.itemActive:hover {
+  color: var(--sg-signal);
+}
+
+.badge {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 4px;
+  min-inline-size: 14px;
+  block-size: 14px;
+  padding-inline: 3px;
+  border-radius: 7px;
+  background: var(--sg-high-soft);
+  border: 1px solid rgba(255, 92, 73, 0.5);
+  color: var(--sg-high);
+  font-family: var(--sg-display);
+  font-size: var(--sg-fs-2xs);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}

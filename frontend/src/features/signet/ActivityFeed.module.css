@@ -1,0 +1,72 @@
+/* SIGNET — horizontal activity strip. */
+
+.strip {
+  block-size: 105px;
+  background: var(--sg-panel);
+  border-block-start: 1px solid var(--sg-line);
+  padding-block-start: 8px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding-inline: 16px;
+  padding-block-end: 7px;
+}
+
+.track {
+  display: flex;
+  gap: 8px;
+  padding-inline-start: 16px;
+  padding-inline-end: 16px;
+  padding-block-end: 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sg-line-strong) transparent;
+}
+
+.card {
+  flex-shrink: 0;
+  inline-size: 275px;
+  padding: 8px 11px;
+  animation: sg-row-in 0.35s ease both;
+}
+
+.cardAlert {
+  background: var(--sg-high-soft);
+  border-color: rgba(255, 92, 73, 0.4);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-block-end: 5px;
+}
+
+.alertTag {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track);
+  color: var(--sg-high);
+  text-transform: uppercase;
+}
+
+.time {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  letter-spacing: var(--sg-track-tight);
+  color: var(--sg-text-low);
+  font-variant-numeric: tabular-nums;
+}
+
+.text {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  line-height: 1.5;
+  color: var(--sg-text-mid);
+}
+.textAlert {
+  color: var(--sg-high);
+}

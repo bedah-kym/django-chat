@@ -1,0 +1,28 @@
+.ref {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px var(--space-sm);
+  margin-bottom: 4px;
+  background: var(--primary-subtle);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--primary-color);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.ref:hover { background: var(--primary-subtle); }
+
+.author {
+  font-weight: var(--font-weight-semibold);
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

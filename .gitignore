@@ -138,3 +138,42 @@ GitHub.sublime-settings
 
 Backend/uploads/
 
+Backend/staticfiles/
+Backend/mediafiles/ 
+
+Backend/venv/
+Backend/staticfiles/
+Backend/mediafiles/
+mathia/
+e2e/
+Backend/celerybeat-schedule
+docs/
+tests/
+Security-docs/
+ssh-key-2026-02-01.key
+e2e/
+Security-docs/
+TEMP_ANALYSIS/
+chat-room-4.2.md
+.ai-collab/
+Microsoft/Windows/PowerShell/ModuleAnalysisCache
+Microsoft/Windows/PowerShell/ModuleAnalysisCache
+# Frontend (React/Vite) #
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+*.tsbuildinfo
+
+# Vite build output in Django staticfiles
+Backend/staticfiles/spa/
+Backend/chatbot/static/spa/
+
+# Local dev/session artifacts — secrets, logs, locks (never commit) #
+*-token.txt
+dev-token.txt
+frontend/dev-token.txt
+frontend/vite-log.txt
+.claude/scheduled_tasks.lock

@@ -1,411 +1,286 @@
 {% load static %}
 {% load humanize %}
+{% load notification_tags %}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8">
-
-
-    <title>MATHIA chat</title>
+    <title>Kwik Chat</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{% static 'css/chatbase.css' %}" rel="stylesheet">
+    <!-- AI Assistant Styles -->
+    <link rel="stylesheet" href="{% static 'css/ai-assistant.css' %}">
+
+    <!-- Wavesurfer.js for Audio Waveforms -->
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <!-- Context Panel Styles (Inlined for reliability) -->
+    <link href="{% static 'css/context-panel.css'%}" rel="stylesheet">
+    <!-- Message Actions Styles -->
+    <link href="{% static 'css/message-actions.css'%}" rel="stylesheet">
+    <!--favicon-->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <!-- Highlight.js CSS -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <!-- Driver.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css" />
     <style>
-        :root {
-            --primary-color: #4f8cff;
-            --secondary-color: #6c757d;
-            --bg-light: #f8f9fa;
-            --chat-bg: #ffffff;
-            --text-color: #000;
+        /* Custom styles for code blocks */
+        pre {
+            position: relative;
+            padding: 0.5em;
+            border-radius: 6px;
+            background: #282c34;
         }
 
-        [data-theme="dark"] {
-            --primary-color: #3a6ea5;
-            --secondary-color: #3c4043;
-            --bg-light: #202124;
-            --chat-bg: #303134;
-            --text-color: #e8eaed;
+        pre code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
         }
 
-        body {
-            background-color: var(--bg-light);
-            color: var(--text-color);
-            height: 100vh;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .chat-container {
-            max-height: 100vh;
-            background: var(--chat-bg);
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            border-radius: 15px;
-            transition: background 0.3s;
-        }
-
-        .people-list {
-            background: #fff;
-            border-right: 1px solid #eee;
-            height: 100vh;
-        }
-
-        .chat-list li {
-            padding: 10px;
-            border-radius: 10px;
-            margin: 5px 0;
+        .copy-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 2px 8px;
+            font-size: 12px;
+            color: #abb2bf;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 4px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background 0.2s;
         }
 
-        .chat-list li:hover {
-            background: var(--bg-light);
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        .chat-list .active {
-            background: var(--primary-color);
-            color: white;
+        .message img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 5px;
         }
 
-        .chat-header {
-            background: var(--chat-bg);
-            border-bottom: 1px solid #eee;
-            padding: 15px;
-            transition: background 0.3s;
+        .message p {
+            margin-bottom: 0.5rem;
         }
 
-        .chat-history {
-            height: calc(100vh - 180px);
-            overflow-y: auto;
-            padding: 20px;
-            background: var(--bg-light);
-            transition: background 0.3s;
+        .message p:last-child {
+            margin-bottom: 0;
         }
 
-        .message {
-            padding: 12px 18px;
-            border-radius: 18px;
-            margin-bottom: 15px;
-            max-width: 70%;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+        /* Quota UI Styles */
+        .quota-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 5px solid #ccc;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .quota-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .quota-card.good {
+            border-left-color: #2ecc71;
+        }
+
+        .quota-card.warning {
+            border-left-color: #f1c40f;
+        }
+
+        .quota-card.critical {
+            border-left-color: #e67e22;
+        }
+
+        .quota-card.exhausted {
+            border-left-color: #e74c3c;
+        }
+
+        .quota-progress {
+            height: 8px;
+            border-radius: 4px;
+            margin: 10px 0;
+            background-color: #e9ecef;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .quota-progress-bar {
+            height: 100%;
+            transition: width 0.6s ease;
+        }
+
+        /* Paginated History Styles */
+        .date-separator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1.5rem 0;
+            gap: 1rem;
+            opacity: 0.9;
             position: relative;
         }
 
-        .my-message {
-            background: var(--primary-color);
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .other-message {
-            background: white;
-            color: #333;
-            margin-right: auto;
-            border-bottom-left-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        [data-theme="dark"] .other-message {
-            background: #424242;
-            color: #fff;
-        }
-
-        .message-data {
-            margin-bottom: 8px;
-        }
-
-        .user-name {
-            font-size: 0.85em;
-            margin-top: 5px;
-            opacity: 0.8;
-        }
-
-        .time-sender,
-        .time-left {
-            font-size: 0.75em;
-            opacity: 0.7;
-        }
-
-        /* Ensure images in chat are properly sized */
-        .message img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .chat-message {
-            padding: 15px;
-            background: var(--chat-bg);
-            border-top: 1px solid #eee;
-            transition: background 0.3s;
-        }
-
-        #chat-message-input {
-            border-radius: 20px;
-            padding: 10px 20px;
-        }
-
-        #chat-message-submit {
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .avatar-img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        em-emoji-picker {
-            position: absolute;
-            bottom: 70px;
-            right: 20px;
-            z-index: 1000;
-        }
-
-        .dark-mode-toggle {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-            background: var(--primary-color);
-            color: var(--text-color);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .dark-mode-toggle:hover {
-            background: var(--secondary-color);
-        }
-
-        .typing-indicator {
-            background-color: var(--bg-light);
-            padding: 8px;
-            border-radius: 15px;
-            display: none;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .typing-indicator span {
-            height: 8px;
-            width: 8px;
-            margin: 0 2px;
-            background-color: #90949c;
-            display: block;
-            border-radius: 50%;
-            opacity: 0.4;
-            animation: typing 1s infinite;
-        }
-
-        .typing-indicator span:nth-child(1) {
-            animation-delay: 0s;
-        }
-
-        .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes typing {
-            0% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.5);
-            }
-
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        .file-preview {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            max-width: 300px;
-            background: var(--chat-bg);
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            display: none;
-            z-index: 1000;
-        }
-
-        .file-preview img {
-            max-width: 100%;
-            border-radius: 8px;
-        }
-
-        .file-preview .file-info {
-            display: flex;
-            align-items: center;
-            margin-top: 8px;
-        }
-
-        .file-preview .file-name {
+        .date-separator::before,
+        .date-separator::after {
+            content: '';
             flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
         }
 
-        .file-preview .close-preview {
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            padding: 5px;
+        body.dark-mode .date-separator::before,
+        body.dark-mode .date-separator::after {
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        .upload-progress {
-            height: 4px;
+        .separator-text {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6c757d;
+            font-weight: 600;
+            background: transparent;
+            padding: 2px 10px;
+        }
+
+        body.dark-mode .separator-text {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .history-sentinel {
+            height: 1px;
             width: 100%;
-            background: #eee;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 8px;
+            visibility: hidden;
         }
 
-        .upload-progress-bar {
-            height: 100%;
-            background: var(--primary-color);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-
-        .file-preview .preview-content {
+        .history-loader {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100px;
-            margin-bottom: 10px;
+            padding: 10px 0;
+            gap: 6px;
+            width: 100%;
+            height: 40px;
         }
 
-        .file-preview .preview-content img {
-            max-height: 100px;
-            max-width: 100%;
-            border-radius: 8px;
-        }
-
-        .file-preview .preview-content video {
-            max-height: 100px;
-            max-width: 100%;
-            border-radius: 8px;
-        }
-
-        .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #ccc;
-            transition: background 0.3s;
-        }
-
-        .status-dot.online {
-            background: #4caf50;
-        }
-
-        .status-dot.offline {
-            background: #f44336;
-        }
-
-        /* smaller for sidebar if you like */
-        .sidebar-dot {
+        .history-loader-dot {
             width: 8px;
             height: 8px;
-            margin-left: 4px;
+            border-radius: 50%;
+            background: #cbd5e0;
+            animation: history-pulse 1.4s ease-in-out infinite both;
+        }
+
+        body.dark-mode .history-loader-dot {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .history-loader-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .history-loader-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes history-pulse {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+                opacity: 0.5;
+            }
+
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
     </style>
-
 </head>
 
-<body>
+<body class="chat-page{% if is_ai_room %} ai-only-room{% endif %}">
     <button class="dark-mode-toggle" id="darkModeToggle" aria-label="Toggle dark mode">
         <i class="fas fa-moon"></i>
     </button>
+    <!-- Mobile people list toggle is implemented in the header (#menuToggle) to avoid duplicate toggles -->
     <div class="container-fluid p-0">
+        <!-- Backdrop for mobile people list -->
+        <div class="people-backdrop" id="peopleBackdrop"></div>
         <div class="row g-0">
             <div class="col-md-4 col-lg-3 people-list">
-                <div class="p-3">
-                    <div class="input-group mb-3">
-                        <span class="input-group-text bg-light border-0">
-                            <i class="fas fa-search text-muted"></i>
-                        </span>
-                        <input type="text" class="form-control border-0 bg-light" id="search"
-                            placeholder="Search messages...">
+                <div class="p-3 people-list-content">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="search-bar input-group flex-grow-1 me-2 mb-0">
+                            <span class="input-group-text p-3 bg-light border-0">
+                                <i class=""></i>
+                            </span>
+                            <input type="text" class="form-control border-0 bg-light" id="search"
+                                placeholder="Search People...">
+                            <span class="input-group-text bg-light border-0">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                        </div>
+                        <button class="btn btn-primary rounded-circle" data-bs-toggle="modal"
+                            data-bs-target="#createRoomModal" title="Create New Room">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
-
                     <ul class="list-unstyled chat-list">
                         {% for chatroom in chatrooms %}
-                        {% if chatroom.id != 2 %}
-                        <li class="clearfix {% if chatroom.id == room_name %}active{% endif %}">
-                            <a href="{% url 'chatbot:bot-home' chatroom.id %}"
-                                class="text-decoration-none {% if chatroom.id == room_name %}text-white{% else %}text-dark{% endif %}">
+                        <li class="clearfix {% if chatroom.id == room_name %}active{% endif %}"
+                            id="room-li-{{ chatroom.id }}">
+                            <a href="{% url 'chatbot:bot-home' chatroom.id %}" class="text-decoration-none"
+                                onclick="switchRoom(event, '{{ chatroom.id }}', '{{ chatroom.name|escapejs }}')">
                                 <div class="d-flex align-items-center">
-                                    <img src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                                        class="avatar-img me-2" alt="avatar">
+                                    <img src="{{ chatroom.avatar }}" class="avatar-img me-2" alt="avatar">
                                     <div>
                                         <div class="fw-bold">
-                                            {{ room_member }}
-                                            <span class="status-dot offline sidebar-dot"
-                                                data-user="{{ room_member }}"></span>
+                                            {{ chatroom.name }}
+                                            <!-- Valid user for status dot might be tricky in groups, 
+                                                 using display name for now if it's a single user -->
+                                            <span class="status-dot sidebar-dot" data-user="{{ chatroom.name }}"></span>
                                         </div>
                                     </div>
                                 </div>
                             </a>
                         </li>
-                        {% else %}
-                        <li class="clearfix {% if chatroom.id == room_name %}active{% endif %}">
-                            <a href="{% url 'chatbot:bot-home' chatroom.id %}"
-                                class="text-decoration-none {% if chatroom.id == room_name %}text-white{% else %}text-dark{% endif %}">
-                                <div class="d-flex align-items-center">
-                                    <img src="https://bootdey.com/img/Content/avatar/avatar1.png"
-                                        class="avatar-img me-2" alt="avatar">
-                                    <div>
-                                        <div class="fw-bold">MATHIA ROOM{{chatroom.id}} (LIVE CHAT ROOM)</div>
-                                        <div class="small">
-                                            <i class="fas fa-circle text-success me-1"></i>
-                                            online
-                                        </div>
-                                    </div>
-                                </div>
-                            </a>
-                        </li>
-                        {% endif %}
                         {% endfor %}
                     </ul>
+                </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <a href="{% url 'users:logout' %}" class="btn btn-outline-danger">
+                <div class="listbottom d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <a href="{% url 'users:logout' %}" class="btn btn-outline-danger btn-sm">
                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                         </a>
-                        <button class="btn btn-link text-muted">
-                            <i class="fas fa-cog fa-spin"></i>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <!-- FIXED: Changed to use data-bs-toggle to open Bootstrap modal -->
+                        <button type="button" class="btn btn-link btn-calendar me-2" title="My Calendar"
+                            data-bs-toggle="modal" data-bs-target="#calendarModal">
+                            <i class="fas fa-calendar-days"></i>
+                        </button>
+                        <button id="openSettings" class="btn btn-link">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button id="startTour" class="btn btn-link text-primary" title="Guided Tour">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                        </button>
+                        <button type="button" class="btn btn-link text-warning" title="Usage Quotas"
+                            onclick="fetchQuotas()">
+                            <i class="fas fa-chart-pie"></i>
                         </button>
                     </div>
                 </div>
@@ -413,36 +288,198 @@
 
             <div class="col-md-8 col-lg-9 chat-container">
                 <div class="chat-header">
+                    {% unread_rooms_count room_id as unread_rooms %}
+                    {% pending_reminders_count as pending_reminders %}
+                    {% with total_notifications=unread_rooms|add:pending_reminders %}
                     <div class="row align-items-center">
                         <div class="col-8">
                             <div class="d-flex align-items-center">
-                                <img src="https://bootdey.com/img/Content/avatar/avatar2.png" class="avatar-img me-3"
+                                <button class="toggle-btn d-md-none me-2" id="menuToggle">
+                                    <span class="hamburger"></span>
+                                </button>
+                                <img src="{{ room_avatar }}" class="avatar-img me-3" data-avatar-img
                                     alt="avatar">
                                 <div>
                                     <div class="d-flex align-items-center">
-                                        <h6 class="mb-0 me-2">{{ room_member }}</h6>
-                                        <span id="header-presence" class="status-dot offline"></span>
+                                        <div class="d-flex flex-column">
+                                            <div class="d-flex align-items-center">
+                                                <h6 class="mb-0 me-2">{{ room_member }}</h6>
+                                                <button id="profileScheduleBtn"
+                                                    class="btn btn-sm btn-outline-primary ms-2"
+                                                    title="Schedule a meeting" style="display:none;">Schedule</button>
+                                                <span id="header-presence" class="status-dot"></span>
+                                            </div>
+                                            <small id="header-lastseen" class="text-muted small">&nbsp;</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-4 text-end">
-                            <button class="btn btn-light me-2" id="upload">
-                                <i class="fas fa-upload"></i>
-                            </button>
+                        <div class="col-4 text-end d-flex align-items-center justify-content-end">
+                            <!-- Single mobile menu — merges navigation + chat actions -->
+                            <div class="dropdown d-lg-none me-2">
+                                <button class="btn btn-light" data-bs-toggle="dropdown" aria-label="Menu">
+                                    <i class="fas fa-bars"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li>
+                                        <h6 class="dropdown-header">Navigate</h6>
+                                    </li>
+                                    <li><a class="dropdown-item" href="{% url 'users:dashboard' %}"><i
+                                                class="fas fa-home me-2"></i>Dashboard</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'payments:wallet_dashboard' %}"><i
+                                                class="fas fa-wallet me-2"></i>Wallet</a></li>
+                                    <li class="dropdown-item d-flex align-items-center justify-content-between">
+                                        <span><i class="fas fa-bell me-2"></i>Unread rooms</span>
+                                        <span class="badge bg-primary" id="unreadRoomsBadgeMobile">{{ unread_rooms }}</span>
+                                    </li>
+                                    <li class="dropdown-item d-flex align-items-center justify-content-between">
+                                        <span><i class="fas fa-clock me-2"></i>Reminders</span>
+                                        <span class="badge bg-secondary" id="pendingRemindersBadgeMobile">{{ pending_reminders }}</span>
+                                    </li>
+                                    <li><a class="dropdown-item" href="{% url 'users:settings' %}"><i
+                                                class="fas fa-cog me-2"></i>Settings</a></li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li>
+                                        <h6 class="dropdown-header">Chat Actions</h6>
+                                    </li>
+
+                                    {% if can_invite %}
+                                    <li><a class="dropdown-item invite-user-action" data-bs-toggle="modal"
+                                            data-bs-target="#inviteUserModal"><i
+                                                class="fas fa-user-plus me-2"></i>Invite User</a></li>
+                                    {% endif %}
+                                    <li><button class="dropdown-item" type="button"
+                                            onclick="document.getElementById('searchToggle').click();"><i
+                                                class="fas fa-search me-2"></i>Search</button></li>
+                                    <li><a class="dropdown-item" href="{% url 'chatbot:export-chat' room_id %}"><i
+                                                class="fas fa-file-export me-2"></i>Export chat</a></li>
+                                    <li><button class="dropdown-item" type="button"
+                                            onclick="document.getElementById('upload').click();"><i
+                                                class="fas fa-upload me-2"></i>Upload</button></li>
+                                </ul>
+                            </div>
+                            <!-- Desktop: navigation links -->
+                            <div class="d-none d-lg-flex align-items-center me-3 border-end pe-3">
+                                <a href="{% url 'users:dashboard' %}" class="btn btn-link text-muted me-1"
+                                    title="Dashboard">
+                                    <i class="fas fa-home"></i>
+                                </a>
+                                <a href="{% url 'payments:wallet_dashboard' %}" class="btn btn-link text-muted me-1"
+                                    title="Wallet">
+                                    <i class="fas fa-wallet"></i>
+                                </a>
+                                <a href="{% url 'chatbot:export-chat' room_id %}" class="btn btn-link text-muted me-1"
+                                    title="Export chat">
+                                    <i class="fas fa-file-export"></i>
+                                </a>
+                                <div class="dropdown notification-dropdown me-1">
+                                    <button class="btn btn-link text-muted position-relative notification-btn"
+                                        id="notificationMenuButton" data-bs-toggle="dropdown" aria-expanded="false"
+                                        data-unread="{{ unread_rooms }}" data-reminders="{{ pending_reminders }}">
+                                        <i class="fas fa-bell"></i>
+                                        <span class="notification-badge" id="notificationTotalBadge">{{ total_notifications }}</span>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end notification-menu shadow-sm" style="width: 360px; max-height: 500px;">
+                                        <div class="dropdown-header d-flex justify-content-between align-items-center">
+                                            <span>Notifications</span>
+                                            <button class="btn btn-sm btn-link p-0" onclick="window.notificationCenter && window.notificationCenter.markAllRead()">
+                                                Mark all read
+                                            </button>
+                                        </div>
+                                        <div class="notification-summary px-3 py-2 border-bottom d-flex align-items-center gap-3" style="font-size: 0.85rem;">
+                                            <span><span class="badge notification-chip me-1" id="unreadRoomsBadge">{{ unread_rooms }}</span> Unread rooms</span>
+                                            <span><span class="badge notification-chip me-1" id="pendingRemindersBadge">{{ pending_reminders }}</span> Reminders</span>
+                                            <span><span class="badge notification-chip me-1" id="unreadNotificationsBadge">0</span> Alerts</span>
+                                        </div>
+                                        <div id="notificationList" class="notification-list" style="max-height: 350px; overflow-y: auto;">
+                                            <div class="text-center text-muted p-3" id="noNotifications">No notifications</div>
+                                        </div>
+                                        <div class="dropdown-divider mb-0"></div>
+                                        <a class="dropdown-item text-center py-2" href="{% url 'users:reminders' %}">
+                                            <i class="fas fa-clock me-2"></i>View Reminders
+                                        </a>
+                                    </div>
+                                </div>
+                                <a href="{% url 'users:settings' %}" class="btn btn-link text-muted" title="Settings">
+                                    <i class="fas fa-cog"></i>
+                                </a>
+                            </div>
+                            <!-- Desktop: chat action buttons -->
+                            <div class="d-none d-lg-flex align-items-center">
+                                {% if can_invite %}
+                                <button class="btn btn-light me-2 invite-user-action" data-bs-toggle="modal"
+                                    data-bs-target="#inviteUserModal" title="Invite User">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-light me-2" id="searchToggle" title="Search in chat">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                <a class="btn btn-light me-2" href="{% url 'chatbot:export-chat' room_id %}"
+                                    title="Export chat">
+                                    <i class="fas fa-file-export"></i>
+                                </a>
+                                <button class="btn btn-light me-2" id="upload">
+                                    <i class="fas fa-upload"></i>
+                                </button>
+                            </div>
                             <input type="file" id="fileInput" class="d-none" accept="image/*, .pdf, .doc, .docx, .txt">
+                        </div>
+                    </div>
+                    {% endwith %}
+                </div>
+
+                <!-- Search Panel -->
+                <div class="search-panel" id="searchPanel">
+                    <div class="search-panel-content">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-search text-muted me-2"></i>
+                            <input type="text" class="form-control search-input" id="messageSearchInput"
+                                placeholder="Search messages in this chat..." autocomplete="off">
+                            <button class="btn btn-link text-muted ms-2" id="closeSearch" title="Close search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="search-filters">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted">From Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="searchDateFrom">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted">To Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="searchDateTo">
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary mt-2 w-100" id="clearFilters">
+                                <i class="fas fa-redo me-1"></i> Clear Filters
+                            </button>
+                        </div>
+
+                        <div class="search-results mt-3">
+                            <div class="search-results-header">
+                                <span class="search-count" id="searchCount">No results</span>
+                                <div class="search-navigation" id="searchNavigation" style="display: none;">
+                                    <button class="btn btn-sm btn-link" id="prevMatch" title="Previous">
+                                        <i class="fas fa-chevron-up"></i>
+                                    </button>
+                                    <span class="search-position" id="searchPosition">0/0</span>
+                                    <button class="btn btn-sm btn-link" id="nextMatch" title="Next">
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="chat-history">
-                    <ul id="top-chat" class="list-unstyled mb-0">
-                        <!-- Messages will be inserted here -->
-                    </ul>
-                    <div class="typing-indicator" id="typing-indicator" style="display:none;">
-                        <em id="typing-user" class="user-name"></em>
-                        <span></span><span></span><span></span>
-                    </div>
+                <div class="chat-history" id="chat-rooms-container">
+                    <!-- Dynamic Room Containers will be injected here by JS -->
+                    <!-- Initial placeholder/loading state can go here -->
                 </div>
 
                 <div class="file-preview">
@@ -459,10 +496,28 @@
                 </div>
 
                 <div class="chat-message">
+                    <!-- Voice Recording Overlay -->
+                    <div id="voice-recording-overlay" class="recording-overlay" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between w-100 px-3">
+                            <div class="recording-pulse"></div>
+                            <div class="recording-timer">0:00</div>
+                            <div id="recording-waveform"></div>
+                            <button id="cancel-recording" class="btn text-danger">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="input-group">
-                        <button id="emoji" class="btn btn-light">
-                            <i class="far fa-smile"></i>
+                        <button id="emoji" class="btn">
+                            <i class="far fa-smile fa-2x"></i>
                         </button>
+
+                        <!-- Voice Record Button -->
+                        <button id="voice-record-btn" class="btn">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+
                         <input type="text" class="form-control" id="chat-message-input"
                             placeholder="Type your message...">
                         <button class="btn btn-primary" id="chat-message-submit">
@@ -473,319 +528,485 @@
             </div>
         </div>
     </div>
-    <script src="{% static 'js/main.js'%}"></script>
-    <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+
+    <!-- Context Panel Toggle Button -->
+    <button class="context-panel-toggle" id="contextPanelToggle" title="Assistant controls and memory">
+        <i class="fas fa-brain"></i>
+    </button>
+
+    <!-- Context Panel (Shadcn-inspired) -->
+    <div class="context-panel" id="contextPanel">
+        <div class="context-panel-header">
+            <div class="d-flex justify-content-between align-items-start w-100">
+                <div>
+                    <h2 class="context-panel-title">
+                        <i class="fas fa-brain"></i>
+                        AI Memory
+                    </h2>
+                    <p class="context-panel-subtitle">Context & Important Notes</p>
+                </div>
+                <!-- Close button in header -->
+                <button class="btn btn-link text-muted p-0 context-panel-close" id="closeContextPanel"
+                    title="Close panel">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="context-panel-content" id="contextPanelContent">
+            <div class="context-loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 0.75rem;">Loading context...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVITE USER MODAL -->
+    <div class="modal fade" id="inviteUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Invite User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="inviteUserForm" onsubmit="handleInviteUser(event)">
+                        <div class="mb-3">
+                            <label for="inviteEmail" class="form-label">User Email</label>
+                            <input type="email" class="form-control" id="inviteEmail" required
+                                placeholder="user@example.com">
+                        </div>
+                        <div id="inviteMessage" class="mb-3 text-center"></div>
+                        <button type="submit" class="btn btn-primary w-100">Invite</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE ROOM MODAL -->
+    <div class="modal fade" id="createRoomModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Room</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <form action="{% url 'chatbot:create_room' %}" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="room_type" value="general">
+                                <button type="submit" class="btn btn-outline-primary w-100 h-100 p-4 border-2">
+                                    <div class="text-center">
+                                        <i class="fas fa-robot fa-3x mb-3 text-primary"></i>
+                                        <h5 class="mb-1">General Room</h5>
+                                        <small class="text-muted">Chat with Mathia AI</small>
+                                    </div>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-6">
+                            <form action="{% url 'chatbot:create_room' %}" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="room_type" value="private">
+                                <button type="submit" class="btn btn-outline-secondary w-100 h-100 p-4 border-2">
+                                    <div class="text-center">
+                                        <i class="fas fa-lock fa-3x mb-3 text-secondary"></i>
+                                        <h5 class="mb-1">Private Room</h5>
+                                        <small class="text-muted">Your private space</small>
+                                    </div>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CALENDAR MODAL - Main calendar management modal -->
+    <div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 500px;">
+            <div class="modal-content">
+                <!-- Header -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="calendarModalLabel">
+                        <i class="fas fa-calendar-days me-2"></i>My Calendar
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body">
+                    <!-- NOT CONNECTED STATE -->
+                    <div id="calendarStatus">
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                            <h6>Connect Your Calendly</h6>
+                            <p class="small text-muted mb-3">Share your availability and let others book time with you
+                            </p>
+                            <button id="connectCalendly" class="btn btn-primary">
+                                <i class="fas fa-link me-2"></i>Connect Calendly
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CONNECTED STATE -->
+                    <div id="calendarConnected" style="display:none;">
+                        <!-- Connection Info -->
+                        <div class="alert alert-success d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Connected</strong>
+                                <div class="small" id="connectedUser">Loading...</div>
+                            </div>
+                            <button id="disconnectCalendly" class="btn btn-sm btn-outline-danger">
+                                Disconnect
+                            </button>
+                        </div>
+
+                        <!-- Event Type Info -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title mb-2">
+                                    <i class="fas fa-calendar-check me-2"></i>Your Event Type
+                                </h6>
+                                <p class="card-text mb-2" id="connectedEvent">Default Event</p>
+                                <button id="copyBookingLink" class="btn btn-sm btn-outline-primary w-100">
+                                    <i class="fas fa-copy me-2"></i>Copy Booking Link
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Upcoming Meetings -->
+                        <div class="mb-3">
+                            <h6 class="mb-2">
+                                <i class="fas fa-clock me-2"></i>Upcoming Meetings
+                            </h6>
+                            <div id="upcomingMeetings">
+                                <div class="text-center text-muted py-3">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    Loading meetings...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Manage on Calendly -->
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <p class="small text-muted mb-2">Manage your availability and settings</p>
+                                <a id="editOnCalendly" href="https://calendly.com" target="_blank"
+                                    class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-external-link-alt me-2"></i>Open Calendly Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCHEDULING MODAL - For booking with other users -->
+    <div class="modal fade" id="calendlySchedulingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-calendar-plus me-2"></i>Schedule a Meeting
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="min-height:650px;">
+                    <div id="calendlyInline" style="width:100%;height:100%;min-height:650px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-1.10.2.min.js" integrity="sha384-hK8q2gkBjirpIGHAH+sgqYMv6i6mfx2JVZWJ50jyYhkuEHASU6AS1UTWSo32wuGL" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Markdown & Security Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" integrity="sha384-cwS6YdhLI7XS60eoDiC+egV0qHp8zI+Cms46R0nbn8JrmoAzV9uFL60etMZhAnSu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Calendly embed (for inline scheduling) -->
+    <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+    <script src="https://assets.calendly.com/assets/external/widget.js"></script>
+
     <script src="{% static 'js/reconnecting-websocket.js'%}"></script>
     <script src="{% static 'js/reconnecting-websocket.min.js'%}"></script>
     <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
 
     <script>
-        var roomName = {{ room_name }}; // Ensure room_name is properly formatted
-        var username = {{ username }}; // Ensure username is properly formatted
-        var otherUser = '{{ room_member }}'; // room_member is the other user's name
-        var chatSocket = new ReconnectingWebSocket(
-            'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
-        );
+        // Use window properties for global sync across all files
+        // NOTE: room_name and username are already JSON-encoded in views.py
+        window.roomName = {{ room_name }};
+        window.usernameGlobal = {{ username }};
+        window.currentRoomId = window.roomName || null;
+        window.otherUser = '{{ room_member|default:"" }}';
+        window.isAiOnlyRoom = {{ is_ai_room|yesno:"true,false" }};
+        window.canInvite = {{ can_invite|yesno:"true,false" }};
 
-        // Initialize chat connection
-        chatSocket.onopen = function (e) {
-            FetchMessages();
-        };
+        // Legacy support for older scripts
+        var roomName = window.roomName;
+        var username = window.usernameGlobal;
+        var otherUser = window.otherUser;
+        var isAiOnlyRoom = window.isAiOnlyRoom;
 
-        chatSocket.onclose = function (e) {
-            console.error('Chat socket closed unexpectedly');
-        };
+        // Invite user handler
+        function handleInviteUser(event) {
+            event.preventDefault();
+            var email = document.getElementById('inviteEmail').value.trim();
+            var msgEl = document.getElementById('inviteMessage');
+            if (!email) return;
 
-        // Message handling functions
-        function createMessage(data) {
-            if (!data || !data.member || !data.content || !data.timestamp) {
-                console.error('Invalid message data:', data);
-                return;
-            }
-            const chatHistory = document.querySelector('.chat-history');
-            var message = data;
-            var author = data['member'];
-            var time = (message.timestamp).slice(10, -16);
-            var formattedTime = new Date(message.timestamp).toLocaleTimeString(); // New line added for formatted time
-            time = `<span class="time-sender">${formattedTime}</span>`;
-            var msgListTag = document.createElement('li');
-            msgListTag.classList.add(message.member === username ? 'my' : 'other');
+            msgEl.innerHTML = '<span class="text-muted">Sending invite...</span>';
+            var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
-
-            var msgDivTag = document.createElement('div');
-            var msgdivtag = document.createElement('p');
-            var msgSpanTag = document.createElement('span');
-            var msgpTag = document.createElement('div');
-            var msgTextTag = document.createElement('div');
-
-            msgTextTag.innerHTML = message.content;
-            msgdivtag.innerHTML = author;
-            msgpTag.innerHTML += time;
-
-            msgListTag.className = 'clearfix';
-            msgListTag.id = 'tracker';
-
-            if (message.member === username) {
-                msgDivTag.className = 'message-data text-right';
-                msgTextTag.className = 'message my-message float-right';
-                msgpTag.className = 'time-sender';
-            } else {
-                msgDivTag.className = 'message-data';
-                msgTextTag.className = 'message other-message';
-                msgpTag.className = 'time-left';
-            }
-
-            msgdivtag.className = 'user-name';
-            msgSpanTag.className = 'message-data-time';
-
-            msgListTag.appendChild(msgDivTag);
-            msgDivTag.appendChild(msgpTag);
-            msgDivTag.appendChild(msgSpanTag);
-            msgSpanTag.appendChild(msgTextTag);
-            msgTextTag.appendChild(msgdivtag);
-
-            document.querySelector('#top-chat').appendChild(msgListTag);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        }
-
-        function FetchMessages() {
-            chatSocket.send(JSON.stringify({
-                "command": "fetch_messages",
-                "chatid": roomName
-            }));
-        }
-
-        function scrollToLastMessage() {
-            const elements = document.querySelectorAll('#tracker');
-            if (elements.length > 0) {
-                const lastElement = elements[elements.length - 1];
-                lastElement.scrollIntoView();
-            }
-        }
-
-        // Typing indicator functions
-        function showTypingIndicator() {
-            document.querySelector('.typing-indicator').style.display = 'flex';
-        }
-
-        function hideTypingIndicator() {
-            document.querySelector('.typing-indicator').style.display = 'none';
-        }
-
-        // Utility functions
-        function getCookie(name) {
-            const cookies = document.cookie.split(';');
-            for (let cookie of cookies) {
-                cookie = cookie.trim();
-                if (cookie.startsWith(name + '=')) {
-                    return cookie.substring(name.length + 1);
-                }
-            }
-            return null;
-        }
-
-        // Event listeners
-        let typingTimer;
-        document.querySelector('#chat-message-input').addEventListener('input', function () {
-            chatSocket.send(JSON.stringify({
-                'command': 'typing',
-                'from': username,
-                "chatid": roomName
-            }));
-        });
-
-
-        document.querySelector('#chat-message-input').addEventListener('keyup', function (e) {
-            if (e.keyCode === 13) {
-                document.querySelector('#chat-message-submit').click();
-            }
-        });
-
-        document.querySelector('#chat-message-submit').addEventListener('click', function (e) {
-            var messageInputDom = document.querySelector('#chat-message-input');
-            var message = messageInputDom.value;
-            if (message.trim()) {
-                chatSocket.send(JSON.stringify({
-                    'message': message,
-                    'from': username,
-                    'command': 'new_message',
-                    "chatid": roomName
-                }));
-                messageInputDom.value = '';
-            }
-        });
-
-        // File handling
-        document.querySelector('#upload').addEventListener('click', function () {
-            document.querySelector('#fileInput').click();
-        });
-
-        document.querySelector('#fileInput').addEventListener('change', function (event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const filePreview = document.querySelector('.file-preview');
-            const previewContent = filePreview.querySelector('.preview-content');
-            const fileName = filePreview.querySelector('.file-name');
-            const progressBar = filePreview.querySelector('.upload-progress-bar');
-
-            fileName.textContent = file.name;
-            previewContent.innerHTML = '';
-            progressBar.style.width = '0%';
-            filePreview.style.display = 'block';
-
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    previewContent.innerHTML = `<img src="${e.target.result}" alt="preview">`;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                previewContent.innerHTML = `<i class="fas fa-file fa-3x"></i>`;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-            const csrfToken = getCookie('csrftoken');
-
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += 10;
-                progressBar.style.width = `${progress}%`;
-
-                if (progress >= 100) {
-                    clearInterval(progressInterval);
-                    setTimeout(() => {
-                        filePreview.style.display = 'none';
-                    }, 500);
-                }
-            }, 200);
-
-            fetch('/uploads/', {
+            fetch('{% url "chatbot:invite_user" %}', {
                 method: 'POST',
-                body: formData,
                 headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
                     'X-CSRFToken': csrfToken
+                },
+                body: 'room_id=' + encodeURIComponent(window.currentRoomId) + '&email=' + encodeURIComponent(email)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.status === 'success') {
+                    msgEl.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>' + data.message + '</span>';
+                    document.getElementById('inviteEmail').value = '';
+                    setTimeout(function() {
+                        var modal = bootstrap.Modal.getInstance(document.getElementById('inviteUserModal'));
+                        if (modal) modal.hide();
+                        msgEl.innerHTML = '';
+                    }, 1500);
+                } else {
+                    msgEl.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + (data.message || 'Invite failed') + '</span>';
                 }
             })
-                .then(response => response.json())
-                .then(data => {
-                    chatSocket.send(JSON.stringify({
-                        'message': file.type.startsWith('image/')
-                            ? `<img src="${data.fileUrl}" alt="uploaded image" />`
-                            : `<a href="${data.fileUrl}" target="_blank">${file.name}</a>`,
-                        'from': username,
-                        'command': 'new_message',
-                        "chatid": roomName
-                    }));
-                })
-                .catch(error => console.error('Error uploading file:', error));
-        });
+            .catch(function() {
+                msgEl.innerHTML = '<span class="text-danger">Network error. Please try again.</span>';
+            });
+        }
+    </script>
 
-        document.querySelector('.close-preview').addEventListener('click', function () {
-            document.querySelector('.file-preview').style.display = 'none';
-            document.querySelector('#fileInput').value = '';
-        });
+    <script src="{% static 'js/main.js'%}"></script>
+    <script src="{% static 'js/notifications.js'%}"></script>
+    <script src="{% static 'js/message-actions.js'%}"></script>
+    <script src="{% static 'js/ai-assistant.js' %}"></script>
+    <script src="{% static 'js/calendar.js' %}"></script>
+    <script src="{% static 'js/search.js'%}"></script>
+    <script src="{% static 'js/context-panel.js' %}"></script>
+    <!-- Driver.js -->
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+    <script src="{% static 'js/onboarding.js' %}"></script>
+    <script src="{% static 'js/voice-assistant.js' %}"></script>
 
-        // WebSocket message handling
-        chatSocket.onmessage = function (e) {
-            var data = JSON.parse(e.data);
-
-            if (data.command === 'typing' && data.from !== username) {
-                document.getElementById('typing-user').textContent = data.from;
-                showTypingIndicator();            // simply shows the full line
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(hideTypingIndicator, 3000);
-            }
-
-            else if (data['command'] == 'messages') {
-                for (let i = (data['messages'].length) - 1; i >= 0; i--) {
-                    createMessage(data['messages'][i]);
-                }
-                scrollToLastMessage();
-            }
-            else if (data['command'] == 'new_message') {
-                createMessage(data['message']);
-                scrollToLastMessage();
-            }
-            else if (data.command === 'presence') {
-                const who = data.user;
-                const state = data.status; // "online" or "offline"
-
-                // 1) Header: only if this is the current partner
-                if (who === otherUser) {
-                    const dot = document.getElementById('header-presence');
-                    dot.classList.toggle('online', state === 'online');
-                    dot.classList.toggle('offline', state === 'offline');
-                }
-
-                // 2) Sidebar: update any .sidebar-dot[data-user="…"]
-                document.querySelectorAll(`.sidebar-dot[data-user="${who}"]`)
-                    .forEach(el => {
-                        el.classList.toggle('online', state === 'online');
-                        el.classList.toggle('offline', state === 'offline');
-                    });
-            }
-            else if (data.command === 'presence_snapshot') {
-                const online = new Set(data.online || []);
-
-                // header dot
-                const headerDot = document.getElementById('header-presence');
-                if (headerDot && otherUser) {
-                    const on = online.has(otherUser);
-                    headerDot.classList.toggle('online', on);
-                    headerDot.classList.toggle('offline', !on);
-                }
-
-                // sidebar dots
-                document.querySelectorAll('.sidebar-dot[data-user]').forEach(el => {
-                    const who = el.dataset.user;
-                    const on = online.has(who);
-                    el.classList.toggle('online', on);
-                    el.classList.toggle('offline', !on);
-                });
-            }
-
-            else if (data.command === 'error') {
-                console.error('Error from server:', data.message);
-            }
-            else {
-                console.warn('Unknown command:', data);
-            }
-        };
-
-        // Emoji picker initialization
-        document.addEventListener('DOMContentLoaded', function () {
-            const pickerOptions = {
-                onEmojiSelect: function (emoji) {
-                    var input = document.getElementById('chat-message-input');
-                    input.value += emoji.native;
-                    toggleEmojiPicker();
-                }
-            }
-            const picker = new EmojiMart.Picker(pickerOptions)
-            picker.style.display = 'none';
-            document.body.appendChild(picker)
-            document.getElementById('emoji').addEventListener('click', toggleEmojiPicker);
-        });
-
-        function toggleEmojiPicker() {
-            const element = document.querySelector('em-emoji-picker');
-            element.style.display = element.style.display === 'none' ? '' : 'none';
+    <!-- Inline styles for calendar button and dark mode support -->
+    <style>
+        /* Calendar button styling */
+        .btn-calendar {
+            color: #666;
+            padding: 0.5rem;
+            transition: color 0.3s;
         }
 
-        // Dark mode
-        const toggleButton = document.getElementById('darkModeToggle');
-        toggleButton.addEventListener('click', () => {
-            const currentTheme = document.body.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.body.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-        });
+        .btn-calendar:hover {
+            color: #007bff;
+        }
 
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.body.setAttribute('data-theme', savedTheme);
+        body.dark-mode .btn-calendar {
+            color: #aaa;
+        }
+
+        body.dark-mode .btn-calendar:hover {
+            color: #4da3ff;
+        }
+
+        /* Dark mode support for modals */
+        body.dark-mode .modal-content {
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+
+        body.dark-mode .modal-header {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .alert-success {
+            background-color: rgba(25, 135, 84, 0.2);
+            border-color: rgba(25, 135, 84, 0.3);
+            color: #75b798;
+        }
+
+        body.dark-mode .card {
+            background-color: #2a2a2a;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .bg-light {
+            background-color: #2a2a2a !important;
+        }
+
+        /* Meeting card styles */
+        #upcomingMeetings .meeting-card {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        #upcomingMeetings .meeting-card:hover {
+            background-color: #f8f9fa;
+            border-color: #0d6efd;
+        }
+
+        body.dark-mode #upcomingMeetings .meeting-card {
+            border-color: rgba(255, 255, 255, 0.1);
+            background-color: #2a2a2a;
+        }
+
+        body.dark-mode #upcomingMeetings .meeting-card:hover {
+            background-color: #333;
+            border-color: #4da3ff;
+        }
+
+        /* Pulse animation for the Tour button */
+        #startTour i {
+            animation: tour-pulse 2s infinite;
+        }
+
+        @keyframes tour-pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.2) rotate(10deg);
+                color: #6c5ce7;
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+    <!-- Quota Modal -->
+    <div class="modal fade" id="quotaModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fas fa-tachometer-alt me-2 text-primary"></i>Usage & Limits
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-3" id="quota-modal-body">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                        <span class="text-muted">Fetching latest usage data...</span>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <small class="text-muted w-100 text-center">Limits are based on your current workspace plan.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fetchQuotas() {
+            const modalElement = document.getElementById('quotaModal');
+            let modal = bootstrap.Modal.getInstance(modalElement);
+            if (!modal) {
+                modal = new bootstrap.Modal(modalElement);
+            }
+            modal.show();
+
+            const socket = typeof getCurrentSocket === 'function' ? getCurrentSocket() : null;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ 'command': 'get_quotas' }));
+            } else {
+                document.getElementById('quota-modal-body').innerHTML =
+                    '<div class="alert alert-warning py-2 mb-0">Chat disconnected. Reconnecting...</div>';
+            }
+        }
+
+        function updateQuotaUI(quotas) {
+            const container = document.getElementById('quota-modal-body');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            const keys = Object.keys(quotas);
+            keys.forEach(key => {
+                const q = quotas[key];
+                const pct = Math.min((q.used / q.limit) * 100, 100);
+
+                const colorMap = {
+                    'green': 'success',
+                    'yellow': 'warning',
+                    'orange': 'warning',
+                    'red': 'danger'
+                };
+                const bsColor = colorMap[q.color] || 'primary';
+
+                const card = document.createElement('div');
+                card.className = `quota-card ${q.status}`;
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold text-dark">${q.name}</span>
+                        <span class="badge bg-${bsColor}-subtle text-${bsColor} border border-${bsColor}-subtle">
+                            ${q.status.toUpperCase()}
+                        </span>
+                    </div>
+                    <div class="quota-progress">
+                        <div class="quota-progress-bar bg-${bsColor}" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between x-small text-muted mt-1" style="font-size: 0.75rem;">
+                        <span>Used: <strong>${q.used}</strong> / ${q.limit} ${q.unit}</span>
+                        <span>Resets: ${q.reset}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            if (keys.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-muted">No quota information available.</div>';
+            }
+        }
+
+        // Keep the viewport near the newest messages without breaking history load
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatHistory = document.querySelector('.chat-history');
+            if (!chatHistory) return;
+
+            const scrollToBottom = () => {
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            };
+
+            scrollToBottom();
+
+            const observer = new MutationObserver(() => {
+                const distance = chatHistory.scrollHeight - chatHistory.scrollTop - chatHistory.clientHeight;
+                if (distance < 140) {
+                    scrollToBottom();
+                }
+            });
+            observer.observe(chatHistory, { childList: true, subtree: true });
+        });
     </script>
+</body>
 
 </html>

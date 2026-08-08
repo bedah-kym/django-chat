@@ -1,0 +1,117 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary "Global navigation" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: M
+        - generic [ref=e10]:
+          - generic [ref=e11]: MATHIA
+          - generic [ref=e12]: os/1.0
+        - button "Collapse sidebar" [ref=e13] [cursor=pointer]:
+          - img [ref=e14]
+      - navigation [ref=e16]:
+        - link "Home" [ref=e19] [cursor=pointer]:
+          - /url: /app/home
+          - img [ref=e21]
+          - generic [ref=e24]: Home
+        - generic [ref=e25]:
+          - generic [ref=e26]: Intelligence
+          - link "Social Intel" [ref=e28] [cursor=pointer]:
+            - /url: /app/signet
+            - img [ref=e30]
+            - generic [ref=e37]: Social Intel
+          - link "Security" [ref=e39] [cursor=pointer]:
+            - /url: /app/security
+            - img [ref=e41]
+            - generic [ref=e43]: Security
+        - generic [ref=e44]:
+          - generic [ref=e45]: Work
+          - link "Dev" [ref=e47] [cursor=pointer]:
+            - /url: /app/dev
+            - img [ref=e49]
+            - generic [ref=e53]: Dev
+          - link "Business/Ops" [ref=e55] [cursor=pointer]:
+            - /url: /app/ops
+            - img [ref=e57]
+            - generic [ref=e61]: Business/Ops
+      - button "Open user menu" [ref=e63] [cursor=pointer]:
+        - generic [ref=e64]: U
+        - generic [ref=e65]:
+          - generic [ref=e66]: User
+          - generic [ref=e67]: Personal
+    - main [ref=e69]:
+      - generic [ref=e73]:
+        - complementary [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e76]: Social Intel
+            - button "Hide rooms panel" [ref=e77] [cursor=pointer]:
+              - img [ref=e78]
+          - generic [ref=e81]:
+            - generic [ref=e82]: Workspace
+            - link "Dashboard" [ref=e84] [cursor=pointer]:
+              - /url: /app/signet
+              - img [ref=e85]
+              - generic [ref=e92]: Dashboard
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]: Rooms
+              - button "New room" [ref=e96] [cursor=pointer]:
+                - img [ref=e97]
+            - generic [ref=e98]:
+              - img [ref=e99]
+              - textbox "Search social intel rooms" [ref=e102]
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - generic [ref=e107]: SIGNET
+              - generic [ref=e109]: Social Intelligence Platform
+              - generic [ref=e111]: · GRAPH
+            - generic [ref=e113]:
+              - generic [ref=e114]: ⌕
+              - textbox "search account, narrative, hashtag..." [ref=e115]
+            - generic [ref=e116]:
+              - generic [ref=e119]: Collecting
+              - generic [ref=e120]: 0 Accounts·0 Narratives·0 Edges
+              - generic [ref=e121]: ⚠ 2 Alerts
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - generic "GRAPH" [ref=e124] [cursor=pointer]:
+                - img [ref=e125]
+              - generic "FEED" [ref=e131] [cursor=pointer]:
+                - img [ref=e132]
+              - generic "REVIEW" [ref=e133] [cursor=pointer]:
+                - img [ref=e134]
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - generic [ref=e140]:
+                  - generic [ref=e141]: Node filters
+                  - generic [ref=e144] [cursor=pointer]: ACCOUNTS
+                  - generic [ref=e147] [cursor=pointer]: NARRATIVES
+                  - generic [ref=e150] [cursor=pointer]: HASHTAGS
+                - generic [ref=e151]:
+                  - generic [ref=e152]: Edge types
+                  - generic [ref=e155]: SEEDS
+                  - generic [ref=e158]: AMPLIFIES
+                  - generic [ref=e161]: SPREADS VIA
+                  - generic [ref=e164]: TAGGED WITH
+                  - generic [ref=e167]: COORDINATION
+                - generic [ref=e168]:
+                  - generic [ref=e169]: Threat dist.
+                  - generic [ref=e170]:
+                    - generic [ref=e173]: HIGH
+                    - generic [ref=e174]: "2"
+                  - generic [ref=e175]:
+                    - generic [ref=e178]: MEDIUM
+                    - generic [ref=e179]: "5"
+                  - generic [ref=e180]:
+                    - generic [ref=e183]: LOW
+                    - generic [ref=e184]: "5"
+                - generic [ref=e185]:
+                  - generic [ref=e186]: Platforms
+                  - generic [ref=e189]: X / TWITTER
+                  - generic [ref=e192]: TELEGRAM
+                  - generic [ref=e195]: FACEBOOK
+              - img [ref=e197]
+          - generic [ref=e200]: Activity Feed
