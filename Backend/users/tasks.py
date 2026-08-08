@@ -1,7 +1,10 @@
 from celery import shared_task
-from django.core import management
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
 def send_trial_summary_task():
-    management.call_command('send_trial_summary')
+    """Placeholder: management command not yet implemented."""
+    logger.info("send_trial_summary_task: skipped (command not implemented)")

@@ -154,7 +154,11 @@ class LedgerService:
                 return
 
             # Using APIService isn't strictly necessary if Wallets handles it, but good for setup
-            from intasend import Wallets
+            try:
+                from intasend import Wallets
+            except ImportError:
+                logger.error("IntaSend SDK changed — 'Wallets' no longer importable. Update to new intasend API.")
+                return
             wallet_service = Wallets(token=api_key, publishable_key=publishable_key, test=is_test)
 
             # Get wallet balance
