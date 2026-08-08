@@ -50,9 +50,20 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
 
     logger.info(f"Telegram inbound: chat_id={chat_id} text={text[:80]}")
 
-    # Process inline — reply directly via Telegram HTTP API (no asyncio.run woes)
-    from orchestration.llm_client import get_llm_client
+    # Fire-and-forget: ack Telegram immediately, process in background.
+    # Telegram retries after ~10s of silence; LLM calls can exceed that.
+    import asyncio as _asyncio
+    _asyncio.ensure_future(_process_and_reply(chat_id, text))
+
+    return JsonResponse({"status": "ok"})
+
+
+async def _process_and_reply(chat_id: str, text: str) -> None:
+    """Background: call LLM, send reply via Telegram API."""
+    import os
     import httpx
+    from django.conf import settings as django_settings
+    from orchestration.llm_client import get_llm_client
 
     llm = get_llm_client()
     try:
@@ -60,20 +71,22 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
             prompt=f"User says: {text}\n\nRespond helpfully in 1-3 sentences.",
             max_tokens=300,
         )
-    except Exception:
-        reply_text = "I received your message but had trouble generating a response. Try again!"
+    except Exception as exc:
+        logger.error(f"Telegram LLM call failed: {exc}")
+        reply_text = "Sorry, I had trouble thinking. Try again!"
+
+    token = getattr(django_settings, 'TELEGRAM_BOT_TOKEN', None) or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    if not token:
+        logger.error("Telegram reply aborted: no TELEGRAM_BOT_TOKEN")
+        return
 
     try:
-        from django.conf import settings as django_settings
-        import os
-        token = getattr(django_settings, 'TELEGRAM_BOT_TOKEN', None) or os.environ.get('TELEGRAM_BOT_TOKEN', '')
-        if token:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
-                await client.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    json={"chat_id": chat_id, "text": reply_text},
-                )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
+            resp = await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": reply_text},
+            )
+            resp.raise_for_status()
+            logger.info(f"Telegram reply sent to {chat_id}: {reply_text[:80]}")
     except Exception as exc:
-        logger.error(f"Telegram reply failed: {exc}")
-
-    return JsonResponse({"status": "ok"})
+        logger.error(f"Telegram sendMessage failed: {exc}")
