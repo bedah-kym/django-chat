@@ -28,7 +28,7 @@ def _verify_telegram_token(request: HttpRequest) -> bool:
 
 @csrf_exempt
 @require_POST
-def telegram_webhook(request: HttpRequest) -> HttpResponse:
+async def telegram_webhook(request: HttpRequest) -> HttpResponse:
     if not _verify_telegram_token(request):
         return HttpResponse("Unauthorized", status=403)
 
@@ -37,7 +37,6 @@ def telegram_webhook(request: HttpRequest) -> HttpResponse:
     except json.JSONDecodeError:
         return HttpResponseBadRequest("Invalid JSON")
 
-    # Telegram sends either "message" or "edited_message" etc.
     message = body.get("message") or body.get("edited_message")
     if not message:
         return JsonResponse({"status": "ignored", "reason": "no message field"})
@@ -49,38 +48,32 @@ def telegram_webhook(request: HttpRequest) -> HttpResponse:
     if not chat_id or not text:
         return JsonResponse({"status": "ignored"})
 
-    # Route through the chat pipeline — use the connector for now.
-    # Inbound messages are forwarded to the orchestration router which
-    # dispatches to the LLM and returns a response.
     logger.info(f"Telegram inbound: chat_id={chat_id} text={text[:80]}")
 
-    # Quick-ack Telegram (required within ~10s to avoid retries)
-    # We fire-and-forget the actual processing via Celery if desired.
-    # For now, process synchronously with a short timeout.
-    import asyncio
-    from orchestration.connectors.telegram_bot_connector import TelegramBotConnector
+    # Process inline — reply directly via Telegram HTTP API (no asyncio.run woes)
     from orchestration.llm_client import get_llm_client
+    import httpx
 
-    async def _process_and_reply():
-        llm = get_llm_client()
-        try:
-            reply_text = await llm.generate_text(
-                prompt=f"User says: {text}\n\nRespond helpfully in 1-3 sentences.",
-                max_tokens=300,
-            )
-        except Exception:
-            reply_text = "I received your message but had trouble generating a response. Try again!"
-
-        connector = TelegramBotConnector()
-        await connector.execute(
-            parameters={"action": "send_message", "chat_id": chat_id, "message": reply_text},
-            context={},
+    llm = get_llm_client()
+    try:
+        reply_text = await llm.generate_text(
+            prompt=f"User says: {text}\n\nRespond helpfully in 1-3 sentences.",
+            max_tokens=300,
         )
-        await connector.close()
+    except Exception:
+        reply_text = "I received your message but had trouble generating a response. Try again!"
 
     try:
-        asyncio.run(_process_and_reply())
+        from django.conf import settings as django_settings
+        import os
+        token = getattr(django_settings, 'TELEGRAM_BOT_TOKEN', None) or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+        if token:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={"chat_id": chat_id, "text": reply_text},
+                )
     except Exception as exc:
-        logger.error(f"Telegram webhook processing error: {exc}")
+        logger.error(f"Telegram reply failed: {exc}")
 
     return JsonResponse({"status": "ok"})
