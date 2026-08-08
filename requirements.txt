@@ -79,8 +79,10 @@ Pillow>=10.0.0
 pypdf>=5.0.0
 beautifulsoup4>=4.12.0
 
-# Baileys WhatsApp (self-hosted, zero-cost)
-baileys>=1.0.0
+# Baileys WhatsApp bridge (self-hosted, zero-cost)
+# NOTE: baileys is a Node.js library (@whiskeysockets/baileys).
+# The Python connector shells out to a companion Node.js service.
+# See: docs/baileys_whatsapp_connector_design.md
 aiohttp>=3.8.0
 qrcode>=7.3.0
 lxml>=4.9.0

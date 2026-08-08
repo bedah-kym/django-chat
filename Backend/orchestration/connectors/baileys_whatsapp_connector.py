@@ -5,6 +5,11 @@ Drop-in replacement for the Twilio-based WhatsAppConnector using the
 Baileys library (WhatsApp Web multi-device protocol). Zero per-message
 cost, QR-based one-time auth, persistent session state.
 
+IMPORTANT: Baileys is a Node.js library (@whiskeysockets/baileys), not
+a Python package. This connector needs a companion Node.js Baileys service
+running alongside. Until that bridge is built, the connector gracefully
+skips registration with a descriptive log message.
+
 Activation: set WHATSAPP_PROVIDER=baileys in .env
 """
 from __future__ import annotations
