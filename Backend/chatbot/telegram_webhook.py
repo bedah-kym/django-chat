@@ -237,6 +237,35 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
     user_context = {"telegram_chat_id": chat_id, "platform": "telegram"}
     intent = await parse_intent(text, user_context)
     action = intent.get("action", "")
+    missing = intent.get("missing_slots") or []
+
+    # Rule-based parser hit but has missing slots → let LLM fill them
+    if action not in ("general_chat", "chat", "none", "", None) and missing:
+        from orchestration.llm_client import get_llm_client, extract_json
+        llm = get_llm_client()
+        try:
+            fill_raw = await llm.generate_text(
+                system_prompt=(
+                    "Extract the missing parameters from the user's message. "
+                    "Return ONLY valid JSON: {\"parameters\": {...}}\n"
+                    f"Action: {action}\nMissing: {missing}\n"
+                    "Example: \"flights from Nairobi to Mombasa tomorrow\" → "
+                    '{"parameters":{"origin":"NBO","destination":"MBA","departure_date":"2026-08-09"}}'
+                ),
+                user_prompt=text,
+                max_tokens=200,
+            )
+            filled = extract_json(fill_raw)
+            if filled and filled.get("parameters"):
+                intent["parameters"] = {**intent.get("parameters", {}), **filled["parameters"]}
+                intent["missing_slots"] = [
+                    s for s in missing
+                    if s not in filled.get("parameters", {})
+                ]
+        except Exception:
+            pass
+
+    # Still no good action → full LLM classification
     reply: str = ""
 
     if action in ("general_chat", "chat", "none", "", None):
