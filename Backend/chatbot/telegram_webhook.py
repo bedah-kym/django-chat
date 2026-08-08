@@ -73,21 +73,49 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
 
     reply_text: str
     try:
-        # Full pipeline: parse intent → route to connectors → get result
         user_context = {"telegram_chat_id": chat_id, "platform": "telegram"}
         intent = await parse_intent(text, user_context)
         action = intent.get("action", "")
 
-        # Fall back to LLM for general chat — no connector handles this
+        # Rule-based parser failed → let LLM classify the intent
         if action in ("general_chat", "chat", "none", "", None):
-            from orchestration.llm_client import get_llm_client
+            from orchestration.llm_client import get_llm_client, extract_json
             llm = get_llm_client()
-            reply_text = await llm.generate_text(
-                system_prompt="You are Mathia, a helpful AI assistant. Reply concisely in 1-3 sentences.",
-                user_prompt=text,
-                max_tokens=300,
-            )
-        else:
+            try:
+                llm_intent_raw = await llm.generate_text(
+                    system_prompt=(
+                        "You are an intent classifier. Given a user message, return JSON with:\n"
+                        '- "action": one of get_weather, search_flights, search_hotels, search_buses, '
+                        'create_itinerary, send_whatsapp, send_email, set_reminder, get_calendar, '
+                        'search_web, currency_convert, general_chat\n'
+                        '- "parameters": object with relevant fields (location, destination, origin, '
+                        'date, phone_number, message, query, amount, from_currency, to_currency)\n'
+                        '- "is_chat": true ONLY if this is pure conversation with no actionable request\n'
+                        'Example: "I wonder what the weather is in Nairobi" → '
+                        '{"action":"get_weather","parameters":{"location":"Nairobi"},"is_chat":false}'
+                    ),
+                    user_prompt=text,
+                    max_tokens=200,
+                )
+                llm_intent = extract_json(llm_intent_raw)
+                if llm_intent and not llm_intent.get("is_chat") and llm_intent.get("action"):
+                    intent = llm_intent
+                    action = intent.get("action", "")
+                else:
+                    # Pure chat — just reply with LLM
+                    reply_text = await llm.generate_text(
+                        system_prompt="You are Mathia, a helpful AI assistant. Reply concisely in 1-3 sentences.",
+                        user_prompt=text,
+                        max_tokens=300,
+                    )
+            except Exception:
+                reply_text = await llm.generate_text(
+                    system_prompt="You are Mathia, a helpful AI assistant. Reply concisely in 1-3 sentences.",
+                    user_prompt=text,
+                    max_tokens=300,
+                )
+
+        if action not in ("general_chat", "chat", "none", "", None):
             result = await route_intent(intent, user_context)
             if result.get("status") == "success":
                 reply_text = result.get("message") or result.get("data", {}).get("summary", "Done!")
