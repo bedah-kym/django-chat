@@ -78,6 +78,7 @@ class MCPRouter:
         "allow_whatsapp": True,
         "allow_email": True,
         "allow_calendar": True,
+        "allow_baileys_whatsapp": False,
     }
 
     def __init__(self):

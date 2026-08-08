@@ -228,6 +228,8 @@ def normalize_preferences(
         "allow_whatsapp": _coerce_bool(_pull_pref(raw_prefs, "allow_whatsapp"), True),
         "allow_email": _coerce_bool(_pull_pref(raw_prefs, "allow_email"), True),
         "allow_calendar": _coerce_bool(_pull_pref(raw_prefs, "allow_calendar"), True),
+        # Baileys is self-hosted WhatsApp (zero per-message cost) — OFF by default until QR-auth is set up.
+        "allow_baileys_whatsapp": _coerce_bool(_pull_pref(raw_prefs, "allow_baileys_whatsapp"), False),
         # Pentest is a high-risk capability — OFF by default, opt-in only (every other allow_* defaults True).
         "allow_pentest": _coerce_bool(_pull_pref(raw_prefs, "allow_pentest"), False),
         # Approval overrides for confirmation policy (e.g. {"send_email": "auto"})
