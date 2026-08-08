@@ -6,6 +6,7 @@ from . import contact_api
 from . import linked_rooms_api
 from . import message_actions
 from . import voice_views
+from . import telegram_webhook
 
 app_name = "chatbot"
 urlpatterns = [
@@ -16,6 +17,9 @@ urlpatterns = [
     path('api/notifications/status/', views.notification_status, name='notification-status'),
     path('api/rooms/<int:room_id>/read/', views.mark_room_read, name='mark-room-read'),
     path('rooms/<int:room_id>/export/', views.export_chat, name='export-chat'),
+
+    # Telegram Bot webhook
+    path('api/telegram/webhook/', telegram_webhook.telegram_webhook, name='telegram-webhook'),
 
     # Context API
     path('api/rooms/<int:room_id>/context/', context_api.get_room_context, name='room-context'),
