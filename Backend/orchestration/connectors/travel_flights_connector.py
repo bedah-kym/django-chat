@@ -197,7 +197,8 @@ class TravelFlightsConnector(BaseTravelConnector):
             return client.shopping.flight_offers_search.get(**params).data
 
         try:
-            data = await sync_to_async(_call_api)()
+            import asyncio
+            data = await asyncio.to_thread(_call_api)
         except Exception as e:
             # Capture more detail if available
             detail = getattr(e, 'response', None)

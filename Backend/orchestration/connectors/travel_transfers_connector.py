@@ -132,7 +132,8 @@ class TravelTransfersConnector(BaseTravelConnector):
             return client.shopping.transfer_offers.get(**params).data
 
         try:
-            data = await sync_to_async(_call_api)()
+            import asyncio
+            data = await asyncio.to_thread(_call_api)
         except Exception as e:
             logger.error(f"Amadeus transfer search error: {e}")
             return []
