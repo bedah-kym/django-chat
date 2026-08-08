@@ -68,7 +68,8 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
     llm = get_llm_client()
     try:
         reply_text = await llm.generate_text(
-            prompt=f"User says: {text}\n\nRespond helpfully in 1-3 sentences.",
+            system_prompt="You are Mathia, a helpful AI assistant. Keep replies concise.",
+            user_prompt=text,
             max_tokens=300,
         )
     except Exception as exc:
