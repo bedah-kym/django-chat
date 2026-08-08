@@ -59,33 +59,38 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
 
 
 async def _process_and_reply(chat_id: str, text: str) -> None:
-    """Background: call LLM, send reply via Telegram API."""
+    """Background: parse intent → route through connectors → reply."""
     import os
     import httpx
     from django.conf import settings as django_settings
-    from orchestration.llm_client import get_llm_client
-
-    llm = get_llm_client()
-    try:
-        reply_text = await llm.generate_text(
-            system_prompt="You are Mathia, a helpful AI assistant. Keep replies concise.",
-            user_prompt=text,
-            max_tokens=300,
-        )
-    except Exception as exc:
-        logger.error(f"Telegram LLM call failed: {exc}")
-        reply_text = "Sorry, I had trouble thinking. Try again!"
+    from orchestration.intent_parser import parse_intent
+    from orchestration.mcp_router import route_intent
 
     token = getattr(django_settings, 'TELEGRAM_BOT_TOKEN', None) or os.environ.get('TELEGRAM_BOT_TOKEN', '')
     if not token:
         logger.error("Telegram reply aborted: no TELEGRAM_BOT_TOKEN")
         return
 
+    reply_text: str
+    try:
+        # Full pipeline: parse intent → route to connectors → get result
+        user_context = {"telegram_chat_id": chat_id, "platform": "telegram"}
+        intent = await parse_intent(text, user_context)
+        result = await route_intent(intent, user_context)
+
+        if result.get("status") == "success":
+            reply_text = result.get("message") or result.get("data", {}).get("summary", "Done!")
+        else:
+            reply_text = result.get("message") or "Sorry, I couldn't complete that request."
+    except Exception as exc:
+        logger.error(f"Orchestration failed for '{text[:80]}': {exc}")
+        reply_text = "Sorry, I ran into an issue processing that. Try again!"
+
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
             resp = await client.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": chat_id, "text": reply_text},
+                json={"chat_id": chat_id, "text": reply_text[:4000]},
             )
             resp.raise_for_status()
             logger.info(f"Telegram reply sent to {chat_id}: {reply_text[:80]}")
