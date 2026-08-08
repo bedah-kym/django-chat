@@ -76,12 +76,23 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
         # Full pipeline: parse intent → route to connectors → get result
         user_context = {"telegram_chat_id": chat_id, "platform": "telegram"}
         intent = await parse_intent(text, user_context)
-        result = await route_intent(intent, user_context)
+        action = intent.get("action", "")
 
-        if result.get("status") == "success":
-            reply_text = result.get("message") or result.get("data", {}).get("summary", "Done!")
+        # Fall back to LLM for general chat — no connector handles this
+        if action in ("general_chat", "chat", "none", "", None):
+            from orchestration.llm_client import get_llm_client
+            llm = get_llm_client()
+            reply_text = await llm.generate_text(
+                system_prompt="You are Mathia, a helpful AI assistant. Reply concisely in 1-3 sentences.",
+                user_prompt=text,
+                max_tokens=300,
+            )
         else:
-            reply_text = result.get("message") or "Sorry, I couldn't complete that request."
+            result = await route_intent(intent, user_context)
+            if result.get("status") == "success":
+                reply_text = result.get("message") or result.get("data", {}).get("summary", "Done!")
+            else:
+                reply_text = result.get("message") or "Sorry, I couldn't complete that request."
     except Exception as exc:
         logger.error(f"Orchestration failed for '{text[:80]}': {exc}")
         reply_text = "Sorry, I ran into an issue processing that. Try again!"
