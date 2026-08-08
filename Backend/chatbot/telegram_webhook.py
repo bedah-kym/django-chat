@@ -94,6 +94,53 @@ async def _send_message(chat_id: str, text: str):
     await _tg_call("sendMessage", {"chat_id": chat_id, "text": text[:4000]})
 
 
+def _format_result(result: dict) -> str:
+    """Format a connector result into readable Telegram text."""
+    # Already has a good message
+    msg = result.get("message", "")
+    if msg and len(msg) > 20:
+        return msg
+
+    # Weather result
+    if result.get("temperature") is not None:
+        return (
+            f"🌡️ {result.get('city', '?')}, {result.get('country', '')}: "
+            f"{result['temperature']}°C, {result.get('description', '?')}. "
+            f"Humidity: {result.get('humidity', '?')}%, Wind: {result.get('wind_speed', '?')} km/h"
+        )
+
+    # Travel search results (flights, hotels, buses)
+    results = result.get("results") or result.get("data", {}).get("results", [])
+    if results and isinstance(results, list) and len(results) > 0:
+        lines = [f"📋 Found {len(results)} results:"]
+        for i, item in enumerate(results[:5]):  # max 5 for Telegram
+            if isinstance(item, dict):
+                # Flight
+                if "airline" in item or "flight_number" in item:
+                    lines.append(
+                        f"{i+1}. {item.get('airline','?')} {item.get('flight_number','')} "
+                        f"{item.get('departure','')} → {item.get('arrival','')} "
+                        f"${item.get('price','?')}"
+                    )
+                # Hotel
+                elif "hotel_name" in item or "name" in item:
+                    lines.append(
+                        f"{i+1}. {item.get('hotel_name') or item.get('name','?')} — "
+                        f"${item.get('price','?')}/night, ⭐{item.get('rating','?')}"
+                    )
+                # Generic
+                else:
+                    lines.append(f"{i+1}. {str(item)[:100]}")
+            else:
+                lines.append(f"{i+1}. {str(item)[:100]}")
+        return "\n".join(lines)
+
+    # Generic fallback
+    if msg:
+        return msg
+    return str(result.get("data", result))[:2000] or "Done!"
+
+
 async def _get_context(chat_id: str) -> list[dict]:
     """Get recent conversation context from Redis."""
     try:
@@ -228,13 +275,12 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
         try:
             result = await route_intent(intent, user_context)
             if result.get("status") == "needs_confirmation":
-                # Store pending intent, ask user to confirm
                 await _set_pending(chat_id, intent)
                 reply = result.get("message") or "Confirm this action? Reply yes/no."
             elif result.get("status") == "success":
-                reply = result.get("message") or result.get("data", {}).get("summary", "Done!")
+                reply = _format_result(result)
             else:
-                reply = result.get("message") or "That didn't work. Try rephrasing?"
+                reply = result.get("message") or _format_result(result) or "That didn't work. Try rephrasing?"
         except Exception as exc:
             logger.error(f"Route intent failed: {exc}")
             reply = "Sorry, I couldn't complete that. Try again?"
