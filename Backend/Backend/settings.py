@@ -615,59 +615,69 @@ JAZZMIN_UI_TWEAKS = {
 }
 
 # Celery Beat Schedule
+# Set CELERY_BEAT_MINIMAL=true to run only essential housekeeping (saves ~$5/mo
+# on idle worker CPU). Re-enable full schedule when you have active users,
+# SIGNET sessions, or payment workflows.
+CELERY_BEAT_MINIMAL = os.environ.get('CELERY_BEAT_MINIMAL', 'False').lower() in ('1', 'true', 'yes')
+
 from celery.schedules import crontab
 
-CELERY_BEAT_SCHEDULE = {
-    'nightly_ledger_reconciliation': {
-        'task': 'payments.tasks.reconcile_ledger',
-        'schedule': crontab(hour=2, minute=0),
-    },
-    'daily_recurring_invoices': {
-        'task': 'payments.tasks.process_recurring_invoices',
-        'schedule': crontab(hour=1, minute=0),
-    },
-    'sweep-memory-notes': {
+CELERY_BEAT_SCHEDULE: dict = {}
+
+if CELERY_BEAT_MINIMAL:
+    # Only memory housekeeping — everything else is no-op with 0 users.
+    CELERY_BEAT_SCHEDULE['sweep-memory-notes'] = {
         'task': 'chatbot.tasks.sweep_memory_notes',
         'schedule': 21600.0,  # Every 6 hours
-    },
-    # Restored 2026-06-16 — these lived in an earlier CELERY_BEAT_SCHEDULE block
-    # that this one silently clobbered (duplicate assignment since 2026-03-06),
-    # so they had not been scheduling at all. Merged here.
-    'check-due-reminders': {
-        'task': 'chatbot.tasks.check_due_reminders',
-        'schedule': float(REMINDER_SWEEP_SECONDS),  # Safety sweep
-    },
-    'send-trial-summary': {
-        'task': 'users.tasks.send_trial_summary_task',
-        'schedule': crontab(hour=7, minute=0),  # every day at 07:00
-    },
-    # SIGNET collection heartbeat (every hour — fires for each running session)
-    'signet_collection_heartbeat': {
-        'task': 'signet.tasks.signet_heartbeat',
-        'schedule': 3600.0,
-    },
-    'signet_weekly_eval': {
-        'task': 'signet.tasks.signet_weekly_drift_check',
-        'schedule': crontab(day_of_week=1, hour=3, minute=0),  # Monday 3 AM
-    },
-}
-
-if MODERATION_ENABLED:
+    }
+else:
     CELERY_BEAT_SCHEDULE.update({
-        'flush-moderation-batches': {
-            'task': 'chatbot.tasks.process_pending_batches',
-            'schedule': float(MODERATION_FLUSH_SECONDS),  # Batch moderation
+        'nightly_ledger_reconciliation': {
+            'task': 'payments.tasks.reconcile_ledger',
+            'schedule': crontab(hour=2, minute=0),
         },
-        'cleanup-old-batches': {
-            'task': 'chatbot.tasks.cleanup_old_moderation_batches',
-            'schedule': 86400.0,  # Daily
+        'daily_recurring_invoices': {
+            'task': 'payments.tasks.process_recurring_invoices',
+            'schedule': crontab(hour=1, minute=0),
+        },
+        'sweep-memory-notes': {
+            'task': 'chatbot.tasks.sweep_memory_notes',
+            'schedule': 21600.0,  # Every 6 hours
+        },
+        'check-due-reminders': {
+            'task': 'chatbot.tasks.check_due_reminders',
+            'schedule': float(REMINDER_SWEEP_SECONDS),
+        },
+        'send-trial-summary': {
+            'task': 'users.tasks.send_trial_summary_task',
+            'schedule': crontab(hour=7, minute=0),
+        },
+        'signet_collection_heartbeat': {
+            'task': 'signet.tasks.signet_heartbeat',
+            'schedule': 3600.0,
+        },
+        'signet_weekly_eval': {
+            'task': 'signet.tasks.signet_weekly_drift_check',
+            'schedule': crontab(day_of_week=1, hour=3, minute=0),
         },
     })
 
-if not TEMPORAL_DISABLED:
-    CELERY_BEAT_SCHEDULE.update({
-        'replay-deferred-workflows': {
-            'task': 'workflows.tasks.replay_deferred_workflows',
-            'schedule': float(WORKFLOW_REPLAY_SCHEDULE_SECONDS),  # Batch replays
-        },
-    })
+    if MODERATION_ENABLED:
+        CELERY_BEAT_SCHEDULE.update({
+            'flush-moderation-batches': {
+                'task': 'chatbot.tasks.process_pending_batches',
+                'schedule': float(MODERATION_FLUSH_SECONDS),
+            },
+            'cleanup-old-batches': {
+                'task': 'chatbot.tasks.cleanup_old_moderation_batches',
+                'schedule': 86400.0,
+            },
+        })
+
+    if not TEMPORAL_DISABLED:
+        CELERY_BEAT_SCHEDULE.update({
+            'replay-deferred-workflows': {
+                'task': 'workflows.tasks.replay_deferred_workflows',
+                'schedule': float(WORKFLOW_REPLAY_SCHEDULE_SECONDS),
+            },
+        })
