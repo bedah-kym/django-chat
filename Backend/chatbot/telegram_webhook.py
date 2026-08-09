@@ -442,7 +442,7 @@ async def _cmd_start(chat_id: str, payload: str):
         or os.environ.get("TELEGRAM_MINI_APP_URL", "")
         or f"https://{os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost:8000')}"
     )
-    mini_app_url = f"{base_url}/tg/app/?chat_id={chat_id}"
+    mini_app_url = f"{base_url}/chatbot/tg/app/?chat_id={chat_id}"
 
     # Build keyboard with dynamic web_app URL
     keyboard = {
