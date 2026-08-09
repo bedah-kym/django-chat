@@ -67,6 +67,21 @@ The reusable substrate every capability is built on:
 The spine also still powers the platform's heritage capabilities (conversational agent,
 double-entry finance ledger, integrations) that now serve as primitives rather than the headline.
 
+### 🤖 Telegram Bot (Mathia on Telegram)
+Full conversational AI accessible via Telegram with natural-language intent routing,
+hybrid memory, and deep platform integration.
+
+- **Chat**: natural-language parsing → connectors (weather, travel, payments, reminders, email, calendar, web search)
+- **Memory**: hybrid — PostgreSQL for durable facts/preferences, Redis for recent turns, rolling LLM summary
+- **Commands**: `/start`, `/help`, `/link`, `/timezone`
+- **Interactive**: inline keyboards, confirmation gates, typing indicators, rich Markdown formatting
+- **Mini App**: Telegram Web App dashboard via `/chatbot/tg/app/`
+- **Account linking**: QR-code linking page at `/chatbot/tg/link/` — link Telegram to Mathia account
+- **Webhook**: `POST /chatbot/api/telegram/webhook/` — processes messages, callbacks, inline queries
+
+Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_MINI_APP_URL` (optional).
+See `Backend/chatbot/telegram_webhook.py` for the full handler.
+
 ---
 
 ## 🛠️ Tech stack
@@ -106,6 +121,9 @@ This repo ships a `Dockerfile` and an entrypoint that runs migrations and `colle
    - `DJANGO_DEBUG=false`
    - `DJANGO_ALLOWED_HOSTS=yourapp.up.railway.app`
    - `DJANGO_CSRF_TRUSTED_ORIGINS=https://yourapp.up.railway.app`
+   - `TELEGRAM_BOT_TOKEN` — bot token from @BotFather
+   - `TELEGRAM_WEBHOOK_SECRET` — random secret for webhook auth (set same in BotFather)
+4. Set webhook: `curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://yourapp.up.railway.app/chatbot/api/telegram/webhook/&secret_token=<SECRET>"`
 4. (Optional) Uploads in production: `R2_ENABLED=true` + all `R2_*` vars (see `Backend/Backend/settings.py`).
 
 Service start commands (Railway service settings):
