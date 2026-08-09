@@ -427,6 +427,8 @@ class TelegramUser(models.Model):
     linked_at = models.DateTimeField(auto_now_add=True)
     is_authenticated = models.BooleanField(default=False,
                                            help_text="True if user completed the /link flow")
+    timezone = models.CharField(max_length=64, blank=True, default='Africa/Nairobi',
+                                help_text="IANA timezone e.g. Africa/Nairobi, America/New_York")
 
     class Meta:
         ordering = ['-linked_at']

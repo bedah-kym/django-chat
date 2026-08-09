@@ -22,6 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .memory_manager import MemoryManager
+from .date_utils import format_for_system_prompt, validate_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -196,17 +197,20 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
 
     logger.info(f"Telegram inbound: chat_id={chat_id} text={text[:80]} cmd={is_command}")
 
-    # Pre-fetch durable facts / summary while still in the request context
+    # Pre-fetch durable facts / summary + timezone
     try:
         facts_block = await MemoryManager._build_facts_block(chat_id)
         rolling_summary = await MemoryManager._get_rolling_summary(chat_id)
+        timezone_str = await _get_user_timezone(chat_id)
     except Exception:
         facts_block = ""
         rolling_summary = ""
+        timezone_str = "Africa/Nairobi"
 
-    system_prompt = _MATHIA_TG_SYSTEM_PROMPT
+    date_block = format_for_system_prompt(timezone_str)
+    system_prompt = _MATHIA_TG_SYSTEM_PROMPT + "\n\n" + date_block
     if facts_block:
-        system_prompt += "\n\n" + facts_block
+        system_prompt += "\n" + facts_block
     if rolling_summary:
         system_prompt += f"\n\nCONVERSATION SUMMARY:\n{rolling_summary}"
 
@@ -391,6 +395,7 @@ _COMMAND_MAP = {
     "start": "_cmd_start",
     "help": "_cmd_help",
     "link": "_cmd_link",
+    "timezone": "_cmd_timezone",
 }
 
 
@@ -509,12 +514,14 @@ async def _cmd_help(chat_id: str, _payload: str = ""):
         "*Commands:*\n"
         "/start — Welcome message\n"
         "/help — This help text\n"
-        "/link — Link your Telegram to your Mathia account\n\n"
+        "/link — Link your Telegram to your Mathia account\n"
+        "/timezone — Set your timezone for accurate dates\n\n"
         "*Things I can do:*\n"
         "🌤️ Weather: _\"weather in Nairobi\"_\n"
         "✈️ Travel: _\"flights to Mombasa\"_\n"
         "💰 Payments: _\"invoice status\"_\n"
         "📅 Reminders: _\"remind me at 3pm\"_\n"
+        "🕐 Timezone: _/timezone Nairobi_\n"
         "🔍 Web search: _\"search for...\"_\n\n"
         "_Just type naturally — I'll figure it out\\._"
     )
@@ -547,6 +554,54 @@ async def _cmd_link(chat_id: str, payload: str = ""):
         "text": link_text,
         "parse_mode": "MarkdownV2",
     })
+
+
+async def _cmd_timezone(chat_id: str, payload: str = ""):
+    """Handle /timezone [zone] — set or view timezone."""
+    from asgiref.sync import sync_to_async
+    from .models import TelegramUser as TGUser
+
+    @sync_to_async
+    def _get_timezone():
+        tg = TGUser.objects.filter(chat_id=int(chat_id)).first()
+        return tg.timezone if tg else "Africa/Nairobi"
+
+    @sync_to_async
+    def _set_timezone(tz: str):
+        tg, _ = TGUser.objects.get_or_create(
+            telegram_id=int(chat_id),
+            defaults={"chat_id": int(chat_id), "timezone": tz},
+        )
+        tg.timezone = tz
+        tg.save(update_fields=["timezone"])
+        return tg.timezone
+
+    if payload and payload.strip():
+        tz_input = payload.strip()
+        valid, canonical = validate_timezone(tz_input)
+        if valid:
+            await _set_timezone(canonical)
+            now_str = format_for_system_prompt(canonical).split("\n")[0]
+            await _send_message(
+                chat_id,
+                f"🕐 Timezone set to *{canonical}*\\.\n{now_str}",
+            )
+        else:
+            await _send_message(
+                chat_id,
+                f"❌ {canonical}\\.\n\n"
+                "Examples: `/timezone Nairobi`, `/timezone London`, `/timezone New_York`",
+            )
+        return
+
+    current = await _get_timezone()
+    now_str = format_for_system_prompt(current)
+    await _send_message(
+        chat_id,
+        f"🕐 *Your timezone:* {current}\n\n{now_str}\n\n"
+        "Change with `/timezone City_Name`\n"
+        "Examples: `/timezone Nairobi`, `/timezone London`",
+    )
 
 
 async def _verify_and_link(chat_id: str, code: str):
@@ -986,15 +1041,36 @@ async def _build_context_for_llm(chat_id: str) -> str:
 
 
 async def _build_system_prompt(chat_id: str) -> str:
+    """Build full system prompt: base + date awareness + facts + summary."""
+    # Get user's timezone
+    timezone_str = await _get_user_timezone(chat_id)
+    date_block = format_for_system_prompt(timezone_str)
+
     base = _MATHIA_TG_SYSTEM_PROMPT
     facts_block = await MemoryManager._build_facts_block(chat_id)
     summary = await MemoryManager._get_rolling_summary(chat_id)
-    parts = [base]
+    parts = [base, "\n\n" + date_block]
     if facts_block:
-        parts.append("\n\n" + facts_block)
+        parts.append("\n" + facts_block)
     if summary:
         parts.append(f"\n\nCONVERSATION SUMMARY:\n{summary}")
     return "\n".join(parts)
+
+
+async def _get_user_timezone(chat_id: str) -> str:
+    """Get the timezone for a Telegram chat, defaulting to Africa/Nairobi."""
+    try:
+        from asgiref.sync import sync_to_async
+        from .models import TelegramUser as TGUser
+
+        @sync_to_async
+        def _get():
+            tg = TGUser.objects.filter(chat_id=int(chat_id)).first()
+            return tg.timezone if tg and tg.timezone else "Africa/Nairobi"
+
+        return await _get()
+    except Exception:
+        return "Africa/Nairobi"
 
 
 async def _record_and_forget(chat_id: str, user_msg: str, reply: str):
