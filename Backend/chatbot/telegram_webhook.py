@@ -492,7 +492,8 @@ async def _cmd_start(chat_id: str, payload: str):
     greeting = (
         "👋 *Welcome to Mathia\\!*\n\n"
         "I'm your AI assistant for weather, travel, payments, reminders, and more\\.\n\n"
-        "Type anything or tap a button below to get started\\."
+        "Type anything or tap a button below to get started\\.\n\n"
+        f"🌐 [Open Web Dashboard]({mini_app_url})"
     )
     await _tg_call("sendMessage", {
         "chat_id": chat_id,
