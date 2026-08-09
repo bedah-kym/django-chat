@@ -200,8 +200,9 @@ def telegram_link_page(request: HttpRequest) -> HttpResponse:
     """
     Show a QR code that non-technical users can scan to link their account.
 
-    If authenticated, generates a code and shows QR + instructions.
-    If not authenticated, shows a login prompt.
+    - Not authenticated → login prompt
+    - Already linked → shows which TG account, option to re-link
+    - Not linked → generates QR code
     """
     from django.shortcuts import render
     import json as _json
@@ -211,22 +212,37 @@ def telegram_link_page(request: HttpRequest) -> HttpResponse:
         "authenticated": False,
         "code": None,
         "qr_url": None,
+        "already_linked": False,
+        "linked_tg_username": None,
+        "error": None,
     }
 
-    if request.user and request.user.is_authenticated:
-        context["authenticated"] = True
-        code = _generate_code()
-        r = _redis()
-        payload = {
-            "user_id": request.user.id,
-            "username": request.user.username,
-            "created_at": time.time(),
-        }
-        r.setex(_code_key(code), 600, _json.dumps(payload))
-        context["code"] = code
-        # Deep link URL for QR code: t.me/bot?start=link_CODE
-        context["qr_url"] = (
-            f"https://t.me/{_bot_username()}?start=link_{code}"
-        )
+    if not request.user or not request.user.is_authenticated:
+        return render(request, "chatbot/link_page.html", context)
+
+    context["authenticated"] = True
+
+    # Check if already linked
+    try:
+        existing = TelegramUser.objects.filter(
+            user=request.user, is_authenticated=True
+        ).first()
+        if existing:
+            context["already_linked"] = True
+            context["linked_tg_username"] = existing.telegram_username or f"ID:{existing.telegram_id}"
+    except Exception:
+        pass
+
+    # Always generate a code (even if linked — allows re-linking)
+    code = _generate_code()
+    r = _redis()
+    payload = {
+        "user_id": request.user.id,
+        "username": request.user.username,
+        "created_at": time.time(),
+    }
+    r.setex(_code_key(code), 600, _json.dumps(payload))
+    context["code"] = code
+    context["qr_url"] = f"https://t.me/{_bot_username()}?start=link_{code}"
 
     return render(request, "chatbot/link_page.html", context)

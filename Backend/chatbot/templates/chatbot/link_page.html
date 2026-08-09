@@ -89,6 +89,12 @@
         .login-prompt a {
             color: #60a5fa;
         }
+        .status-badge {
+            display: inline-block; padding: 6px 14px; border-radius: 20px;
+            font-size: 13px; font-weight: 600; margin-bottom: 16px;
+        }
+        .linked { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+        .unlinked { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
     </style>
 </head>
 
@@ -96,6 +102,18 @@
     <div class="card">
         <h1>🔗 Link Telegram</h1>
         <p class="subtitle">Connect your Mathia account to @{{ bot_username }}</p>
+
+        {% if authenticated and already_linked %}
+            <span class="status-badge linked">✅ Linked as @{{ linked_tg_username }}</span>
+            <p style="font-size:13px;color:#9ca3af;margin-bottom:16px;">
+                Your account is connected. Scan below to re-link a different Telegram account.
+            </p>
+        {% elif authenticated %}
+            <span class="status-badge unlinked">⚠️ Not Linked</span>
+            <p style="font-size:13px;color:#9ca3af;margin-bottom:16px;">
+                Scan the QR code with your phone camera to link your Telegram account.
+            </p>
+        {% endif %}
 
         {% if authenticated and qr_url %}
         <div class="qr-wrapper">
@@ -113,7 +131,7 @@
             <strong>3.</strong> The bot will link your account automatically<br>
             <em>Code expires in 10 minutes</em>
         </p>
-        {% else %}
+        {% elif not authenticated %}
         <div class="login-prompt">
             ⚠️ You need to <a href="/accounts/login/">log in</a> to Mathia first, then return to this page.
         </div>

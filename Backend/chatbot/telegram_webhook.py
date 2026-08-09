@@ -533,20 +533,40 @@ async def _cmd_help(chat_id: str, _payload: str = ""):
 async def _cmd_link(chat_id: str, payload: str = ""):
     """Handle /link [code] — link Telegram account to Mathia."""
     if payload and len(payload.strip()) >= 4:
-        # User provided a code — verify it
         code = payload.strip().upper()
         await _verify_and_link(chat_id, code)
         return
 
-    # No code provided — show instructions
-    link_text = (
-        "🔗 *Link Your Account*\n\n"
-        "To link your Telegram to your Mathia account:\n\n"
-        "1\\. Go to Mathia Settings → Linked Accounts\n"
-        "2\\. Click \"Link Telegram\"\n"
-        "3\\. You'll get a unique code — send it here with `/link CODE`\n\n"
-        "_Account linking enables personalized responses and access to your data\\._"
-    )
+    # No code provided — check current status and show instructions
+    from asgiref.sync import sync_to_async
+    from .models import TelegramUser as TGUser
+
+    @sync_to_async
+    def _get_link_status():
+        tg = TGUser.objects.filter(chat_id=int(chat_id), is_authenticated=True).first()
+        if tg and tg.user:
+            return tg.user.username
+        return None
+
+    linked_user = await _get_link_status()
+
+    if linked_user:
+        link_text = (
+            f"✅ *Already linked as @{linked_user}*\n\n"
+            "Your Telegram is connected to your Mathia account\\.\n"
+            "To re-link, get a new code from the web app and send `/link CODE`\\.\n\n"
+            f"🌐 [Open Linking Page](https://mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/)"
+        )
+    else:
+        link_text = (
+            "🔗 *Link Your Account*\n\n"
+            "Your Telegram is not yet linked to a Mathia account\\.\n\n"
+            "1\\. Visit the linking page:\n"
+            "🌐 [mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/](https://mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/)\n"
+            "2\\. Log in and scan the QR code\n"
+            "3\\. Or copy the code and send `/link CODE` here\n\n"
+            "_Linking enables personalized responses and access to your data\\._"
+        )
     await _tg_call("sendMessage", {
         "chat_id": chat_id,
         "text": link_text,
@@ -623,9 +643,28 @@ async def _verify_and_link(chat_id: str, code: str):
     def _get_tg_user():
         return TGUser.objects.filter(chat_id=int(chat_id)).first()
 
+    @sync_to_async
+    def _check_already_linked():
+        """Check if this chat is already linked to a different Django user."""
+        existing = TGUser.objects.filter(
+            chat_id=int(chat_id), is_authenticated=True
+        ).first()
+        if existing and existing.user:
+            return existing.user.username
+        return None
+
     tg_user = await _get_tg_user()
     tg_id = tg_user.telegram_id if tg_user else int(chat_id)
     tg_username = tg_user.telegram_username if tg_user else ""
+
+    # Check if already linked to a different account
+    already_linked_to = await _check_already_linked()
+    if already_linked_to and already_linked_to != data.get("username"):
+        await _send_message(
+            chat_id,
+            f"⚠️ This Telegram account is already linked to *{already_linked_to}*\\.\n"
+            "Linking again will switch it to the new account\\.",
+        )
 
     # Link
     username, created = await _link_user(user_id, tg_id, tg_username)
