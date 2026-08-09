@@ -947,6 +947,43 @@ def _format_result(result: dict) -> str:
         what = reminder_data.get("content", reminder_data.get("text", "your reminder"))
         return f"⏰ *Reminder set\\!*\n_{what}_ — {when}"
 
+    # ── Calendar / Calendly ──────────────────────────────────────────
+    if result.get("action") in ("schedule_meeting", "check_availability"):
+        if data.get("type") == "booking_link" and data.get("booking_link"):
+            return f"📅 *Booking Link*\n{data['booking_link']}"
+        if data.get("events") and isinstance(data["events"], list):
+            lines = [f"📅 *Upcoming Meetings:*"]
+            for ev in data["events"][:5]:
+                if isinstance(ev, dict):
+                    start = ev.get("start", "?")[:16]
+                    title = ev.get("title", "Meeting")
+                    lines.append(f"• {start} — {title}")
+            return "\n".join(lines) if len(lines) > 1 else f"📅 {msg}"
+
+    # ── Gmail ────────────────────────────────────────────────────────
+    if result.get("action") == "send_email":
+        if result.get("status") == "success":
+            return f"✉️ *Email sent\\!*\n{msg}" if msg else "✉️ *Email sent successfully\\!*"
+        # Error with guidance
+        if data.get("action_required") == "connect_gmail":
+            return (
+                "🔗 *Gmail not connected*\n\n"
+                "Connect Gmail in Settings → Integrations, or visit:\n"
+                "[mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/]"
+                "(https://mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/)\n\n"
+                f"_{msg}_"
+            )
+
+    # ── Calendly not connected ───────────────────────────────────────
+    if data.get("action_required") == "connect_calendly":
+        return (
+            "🔗 *Calendly not connected*\n\n"
+            "Connect Calendly in Settings → Integrations, or visit:\n"
+            "[mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/]"
+            "(https://mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/)\n\n"
+            f"_{msg}_"
+        )
+
     # ── Invoices ─────────────────────────────────────────────────────
     invoices = data.get("invoices") or result.get("invoices")
     if invoices and isinstance(invoices, list):
@@ -1185,6 +1222,7 @@ async def _process_and_reply(chat_id: str, text: str, system_prompt: str = "") -
                     "- create_itinerary, view_itinerary: trip planning\n"
                     "- send_whatsapp, send_email, send_telegram_message: messaging\n"
                     "- set_reminder: reminders and scheduling\n"
+                    "- schedule_meeting, check_availability: Calendly calendar\n"
                     "- search_web: web search\n"
                     "- currency_convert: currency exchange\n"
                     "- general_chat: pure conversation, no action needed\n\n"
@@ -1231,11 +1269,17 @@ async def _process_and_reply(chat_id: str, text: str, system_prompt: str = "") -
                     max_tokens=300,
                 )
             else:
-                reply = (
-                    result.get("message")
-                    or _format_result(result)
-                    or "That didn't work\\. Try rephrasing?"
-                )
+                # Try formatted result first (handles Gmail/Calendly guidance),
+                # fall back to raw message, then generic error
+                formatted = _format_result(result)
+                if formatted and formatted != "✅ Done\\!" and formatted != msg:
+                    reply = formatted
+                else:
+                    reply = (
+                        result.get("message")
+                        or formatted
+                        or "That didn't work\\. Try rephrasing?"
+                    )
         except Exception as exc:
             logger.error(f"Route intent failed: {exc}")
             reply = "❌ Sorry, I couldn't complete that\\. Try again?"
