@@ -845,13 +845,15 @@ async def _edit_message_with_keyboard(
 
 
 def _format_result(result: dict) -> str:
-    """Format a connector result into readable Telegram text."""
-    # Already has a good message
+    """Format a connector result into readable Telegram text with rich formatting."""
     msg = result.get("message", "")
-    if msg and len(msg) > 20:
+    data = result.get("data", {})
+
+    # Already has a detailed message from the connector
+    if msg and len(msg) > 30:
         return msg
 
-    # Weather result
+    # ── Weather ──────────────────────────────────────────────────────
     if result.get("temperature") is not None:
         return (
             f"🌡️ *{result.get('city', '?')}*, {result.get('country', '')}\n"
@@ -860,8 +862,51 @@ def _format_result(result: dict) -> str:
             f"💨 Wind: {result.get('wind_speed', '?')} km/h"
         )
 
-    # Travel search results (flights, hotels, buses)
-    results = result.get("results") or result.get("data", {}).get("results", [])
+    # ── Wallet / Balance ─────────────────────────────────────────────
+    balance = data.get("balance") or result.get("balance")
+    if balance is not None:
+        currency = data.get("currency", result.get("currency", "USD"))
+        return (
+            f"💰 *Wallet Balance*\n"
+            f"{balance:,.2f} {currency}"
+        )
+
+    # ── Currency Conversion ──────────────────────────────────────────
+    converted = data.get("converted_amount") or result.get("converted_amount")
+    if converted is not None:
+        frm = data.get("from", result.get("from", "?"))
+        to = data.get("to", result.get("to", "?"))
+        rate = data.get("rate", result.get("rate", "?"))
+        return (
+            f"💱 *Currency Conversion*\n"
+            f"{frm} → {to}: *{converted:,.2f}*\n"
+            f"Rate: {rate}"
+        )
+
+    # ── Reminders ────────────────────────────────────────────────────
+    if result.get("action") == "set_reminder" and result.get("status") == "success":
+        reminder_data = data or result
+        when = reminder_data.get("scheduled_time", reminder_data.get("when", "soon"))
+        what = reminder_data.get("content", reminder_data.get("text", "your reminder"))
+        return f"⏰ *Reminder set\\!*\n_{what}_ — {when}"
+
+    # ── Invoices ─────────────────────────────────────────────────────
+    invoices = data.get("invoices") or result.get("invoices")
+    if invoices and isinstance(invoices, list):
+        status = data.get("status_filter", "recent")
+        lines = [f"🧾 *Invoices — {status}*"]
+        for inv in invoices[:5]:
+            if isinstance(inv, dict):
+                inv_id = inv.get("id", inv.get("invoice_id", "?"))
+                amount = inv.get("amount", "?")
+                state = inv.get("state", inv.get("status", "?"))
+                lines.append(f"• \\#{inv_id}: {amount} _{state}_")
+            else:
+                lines.append(f"• {str(inv)[:80]}")
+        return "\n".join(lines)
+
+    # ── Travel Search ────────────────────────────────────────────────
+    results = result.get("results") or data.get("results", [])
     if results and isinstance(results, list) and len(results) > 0:
         lines = [f"📋 *Found {len(results)} results:*"]
         for i, item in enumerate(results[:5]):
@@ -883,10 +928,20 @@ def _format_result(result: dict) -> str:
                 lines.append(f"{i+1}\\. {str(item)[:100]}")
         return "\n".join(lines)
 
-    # Generic fallback
+    # ── Generic data ─────────────────────────────────────────────────
+    if isinstance(data, dict) and data:
+        # Try common keys
+        for key in ("summary", "status", "result"):
+            val = data.get(key)
+            if val and isinstance(val, str) and len(val) > 5:
+                return f"📌 {val[:2000]}"
+        # Truncated dump
+        return str(data)[:1500]
+
+    # ── Final fallback ───────────────────────────────────────────────
     if msg:
         return msg
-    return str(result.get("data", result))[:2000] or "✅ Done\\!"
+    return "✅ Done\\!"
 
 
 # ---------------------------------------------------------------------------
