@@ -198,20 +198,14 @@ class TravelFlightsConnector(BaseTravelConnector):
 
         try:
             import asyncio
+            import traceback
             data = await asyncio.to_thread(_call_api)
         except Exception as e:
-            # Capture more detail if available
-            detail = getattr(e, 'response', None)
-            detail_text = ''
-            try:
-                if detail and hasattr(detail, 'body'):
-                    detail_text = str(detail.body)
-            except Exception:
-                detail_text = ''
-            msg = f"Amadeus flight search error: {e}"
-            if detail_text:
-                msg += f" | detail: {detail_text}"
+            msg = f"Amadeus flight search error: {type(e).__name__}: {e}"
+            # Log full traceback for debugging
             logger.error(msg)
+            logger.error(traceback.format_exc())
+            # Try fallback if available
             return [], msg
 
         return self._parse_amadeus_offers(data), ""
