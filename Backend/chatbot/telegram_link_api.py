@@ -18,7 +18,8 @@ import time
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -188,3 +189,44 @@ def _bot_username() -> str:
         getattr(settings, "TELEGRAM_BOT_USERNAME", "")
         or os.environ.get("TELEGRAM_BOT_USERNAME", "MathiaBot")
     )
+
+
+# ---------------------------------------------------------------------------
+# QR Code linking page (non-technical user flow)
+# ---------------------------------------------------------------------------
+
+@csrf_exempt
+def telegram_link_page(request: HttpRequest) -> HttpResponse:
+    """
+    Show a QR code that non-technical users can scan to link their account.
+
+    If authenticated, generates a code and shows QR + instructions.
+    If not authenticated, shows a login prompt.
+    """
+    from django.shortcuts import render
+    import json as _json
+
+    context = {
+        "bot_username": _bot_username(),
+        "authenticated": False,
+        "code": None,
+        "qr_url": None,
+    }
+
+    if request.user and request.user.is_authenticated:
+        context["authenticated"] = True
+        code = _generate_code()
+        r = _redis()
+        payload = {
+            "user_id": request.user.id,
+            "username": request.user.username,
+            "created_at": time.time(),
+        }
+        r.setex(_code_key(code), 600, _json.dumps(payload))
+        context["code"] = code
+        # Deep link URL for QR code: t.me/bot?start=link_CODE
+        context["qr_url"] = (
+            f"https://t.me/{_bot_username()}?start=link_{code}"
+        )
+
+    return render(request, "chatbot/link_page.html", context)

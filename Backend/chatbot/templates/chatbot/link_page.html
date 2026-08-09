@@ -1,0 +1,107 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Telegram — Mathia</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f23;
+            color: #e5e7eb;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: #1a1a2e;
+            border: 1px solid #2d2d44;
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        .card h1 { font-size: 22px; margin-bottom: 8px; }
+        .card .subtitle { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+        .qr-wrapper {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .code-box {
+            background: #16213e;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: monospace;
+            letter-spacing: 4px;
+            color: #60a5fa;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+        .instructions {
+            font-size: 13px;
+            color: #9ca3af;
+            line-height: 1.6;
+        }
+        .instructions strong { color: #e5e7eb; }
+        .login-prompt {
+            font-size: 14px;
+            color: #f59e0b;
+            padding: 16px;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 8px;
+        }
+        .login-prompt a { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔗 Link Telegram</h1>
+        <p class="subtitle">Connect your Mathia account to @{{ bot_username }}</p>
+
+        {% if authenticated and qr_url %}
+            <div class="qr-wrapper">
+                <div id="qrcode"></div>
+            </div>
+            <p style="font-size:13px;color:#9ca3af;margin-bottom:12px;">Scan with your phone camera</p>
+
+            <div class="code-box">{{ code }}</div>
+            <p style="font-size:13px;color:#9ca3af;margin-bottom:16px;">Or send <strong>/link {{ code }}</strong> to @{{ bot_username }} on Telegram</p>
+
+            <p class="instructions">
+                <strong>1.</strong> Open Telegram on your phone<br>
+                <strong>2.</strong> Scan the QR code above<br>
+                <strong>3.</strong> The bot will link your account automatically<br>
+                <em>Code expires in 10 minutes</em>
+            </p>
+        {% else %}
+            <div class="login-prompt">
+                ⚠️ You need to <a href="/accounts/login/">log in</a> to Mathia first, then return to this page.
+            </div>
+        {% endif %}
+    </div>
+
+    {% if authenticated and qr_url %}
+    <script>
+        new QRCode(document.getElementById("qrcode"), {
+            text: "{{ qr_url }}",
+            width: 200,
+            height: 200,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

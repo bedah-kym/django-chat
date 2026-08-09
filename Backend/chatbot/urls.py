@@ -25,6 +25,7 @@ urlpatterns = [
 
     # Telegram account linking
     path('api/telegram/link/', telegram_link_api.telegram_link_api, name='telegram-link'),
+    path('tg/link/', telegram_link_api.telegram_link_page, name='telegram-link-page'),
 
     # Telegram Mini App
     path('tg/app/', telegram_mini_app.telegram_mini_app, name='telegram-mini-app'),

@@ -450,16 +450,24 @@ async def _cmd_start(chat_id: str, payload: str):
             await _handle_deep_link_action(chat_id, payload)
             return
 
-    # First-time greeting with welcome keyboard (dynamic URL for Mini App)
+    # Build the Mini App URL — try env var first, fall back to known working URL
     import os
     from django.conf import settings as django_settings
 
     base_url = (
         getattr(django_settings, "TELEGRAM_MINI_APP_URL", "")
         or os.environ.get("TELEGRAM_MINI_APP_URL", "")
-        or f"https://{os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost:8000')}"
     )
+    if not base_url:
+        # Ultimate fallback for Railway
+        domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+        if domain:
+            base_url = f"https://{domain}"
+        else:
+            base_url = "https://mathiaos-chat254.up.railway.app"
+
     mini_app_url = f"{base_url}/chatbot/tg/app/?chat_id={chat_id}"
+    logger.info("TG Mini App URL for chat=%s: %s", chat_id, mini_app_url)
 
     # Build keyboard with dynamic web_app URL
     keyboard = {
