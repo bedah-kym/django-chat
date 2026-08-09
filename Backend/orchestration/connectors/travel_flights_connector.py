@@ -42,11 +42,11 @@ class TravelFlightsConnector(BaseTravelConnector):
             return ''
 
     async def _fetch(self, parameters: Dict, context: Dict) -> Dict:
-        origin = parameters.get('origin', '').strip()
-        destination = parameters.get('destination', '').strip()
-        departure_date = self._normalize_date(parameters.get('departure_date'))
-        return_date = self._normalize_date(parameters.get('return_date'))
-        passengers = int(parameters.get('passengers', 1) or 1)
+        origin = (parameters.get('origin') or '').strip()
+        destination = (parameters.get('destination') or '').strip()
+        departure_date = self._normalize_date(parameters.get('departure_date') or '')
+        return_date = self._normalize_date(parameters.get('return_date') or '')
+        passengers = int(parameters.get('passengers') or 1)
         cabin_class = parameters.get('cabin_class', 'economy').lower()
 
         # Basic validation before hitting provider
@@ -217,6 +217,8 @@ class TravelFlightsConnector(BaseTravelConnector):
         return self._parse_amadeus_offers(data), ""
 
     async def _resolve_location_code(self, location: str) -> str:
+        if not location:
+            return ""
         location = location.strip()
         if len(location) == 3:
             return location.upper()
