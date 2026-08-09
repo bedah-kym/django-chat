@@ -1088,7 +1088,7 @@ class LLMClient:
         except Exception:
             pass
 
-        logger.error(f"Failed to extract JSON from: {text[:100]}...")
+        logger.warning("Failed to extract JSON from LLM response (len=%d): %s...", len(text), text[:80])
         return {}
 
     def _should_cache(self, json_mode: bool, temperature: float) -> bool:

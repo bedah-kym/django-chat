@@ -253,15 +253,13 @@ class MemoryManager:
         memory.turn_count_since_compaction += 1
         await _sync_save_memory(memory)
 
-        # 3. Trigger async compaction if threshold reached
+        # 3. Trigger compaction if threshold reached — run synchronously
         if memory.turn_count_since_compaction >= COMPACTION_INTERVAL:
             logger.info(
                 "TG memory compaction triggered for chat=%s (turns=%d)",
                 chat_id, memory.turn_count_since_compaction,
             )
-            # Fire-and-forget — don't block the webhook response
-            import asyncio
-            asyncio.ensure_future(MemoryManager.extract_and_persist_facts(chat_id))
+            await MemoryManager.extract_and_persist_facts(chat_id)
 
     # ------------------------------------------------------------------
     # Fact extraction & compaction
@@ -297,13 +295,13 @@ class MemoryManager:
             user_prompt += (memory.rolling_summary or "(none)") + "\n\n"
             user_prompt += "NEW CONVERSATION:\n" + "\n".join(transcript_lines)
 
-            # Call LLM for fact extraction (cheap: ~150 tokens output)
+            # Call LLM for fact extraction (~400 tokens needed for full JSON response)
             llm = get_llm_client()
             raw_response = await llm.generate_text(
                 system_prompt=FACT_EXTRACTION_SYSTEM,
                 user_prompt=user_prompt,
-                temperature=0.3,       # low temp for factual extraction
-                max_tokens=250,
+                temperature=0.3,
+                max_tokens=500,
                 json_mode=False,
                 model_role="executor",
             )
