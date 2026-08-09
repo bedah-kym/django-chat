@@ -466,7 +466,11 @@ async def _cmd_start(chat_id: str, payload: str):
         else:
             base_url = "https://mathiaos-chat254.up.railway.app"
 
-    mini_app_url = f"{base_url}/chatbot/tg/app/?chat_id={chat_id}"
+    # Build the Mini App URL
+    if "/chatbot/tg/app" in base_url:
+        mini_app_url = f"{base_url.rstrip('/')}/?chat_id={chat_id}"
+    else:
+        mini_app_url = f"{base_url.rstrip('/')}/chatbot/tg/app/?chat_id={chat_id}"
     logger.info("TG Mini App URL for chat=%s: %s", chat_id, mini_app_url)
 
     # Build keyboard with dynamic web_app URL
