@@ -494,17 +494,12 @@ async def _cmd_start(chat_id: str, payload: str):
     }
 
     greeting = (
-        "👋 *Welcome to Mathia\\!*\n\n"
-        "I'm your AI assistant for weather, travel, payments, reminders, and more\\.\n\n"
-        "Type anything or tap a button below to get started\\.\n\n"
+        "👋 *Welcome to Mathia!*\n\n"
+        "I'm your AI assistant for weather, travel, payments, reminders, and more.\n\n"
+        "Type anything or tap a button below to get started.\n\n"
         f"🌐 [Open Web Dashboard]({mini_app_url})"
     )
-    await _tg_call("sendMessage", {
-        "chat_id": chat_id,
-        "text": greeting,
-        "parse_mode": "MarkdownV2",
-        "reply_markup": keyboard,
-    })
+    await _send_message_with_keyboard(chat_id, greeting, keyboard)
 
 
 async def _cmd_help(chat_id: str, _payload: str = ""):
@@ -525,11 +520,7 @@ async def _cmd_help(chat_id: str, _payload: str = ""):
         "🔍 Web search: _\"search for...\"_\n\n"
         "_Just type naturally — I'll figure it out\\._"
     )
-    await _tg_call("sendMessage", {
-        "chat_id": chat_id,
-        "text": help_text,
-        "parse_mode": "MarkdownV2",
-    })
+    await _send_message(chat_id, help_text)
 
 
 async def _cmd_link(chat_id: str, payload: str = ""):
@@ -549,11 +540,7 @@ async def _cmd_link(chat_id: str, payload: str = ""):
         "2\\. Copy the code and send `/link CODE` here\n\n"
         "_Linking enables personalized responses\\._"
     )
-    await _tg_call("sendMessage", {
-        "chat_id": chat_id,
-        "text": link_text,
-        "parse_mode": "MarkdownV2",
-    })
+    await _send_message(chat_id, link_text)
 
 
 async def _cmd_timezone(chat_id: str, payload: str = ""):
@@ -838,7 +825,12 @@ async def _tg_call(method: str, data: dict) -> dict:
     async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
         r = await client.post(f"{TG_API}/bot{token}/{method}", json=data)
         r.raise_for_status()
-        return r.json()
+        body = r.json()
+        if not body.get("ok"):
+            logger.error("TG API error: method=%s chat_id=%s error=%s desc=%s",
+                         method, data.get("chat_id","?"),
+                         body.get("error_code"), body.get("description"))
+        return body
 
 
 async def _send_typing(chat_id: str):
@@ -872,13 +864,23 @@ async def _send_message_with_keyboard(
     text: str,
     keyboard: Dict[str, Any],
 ):
-    """Send a message with an inline keyboard attached."""
-    await _tg_call("sendMessage", {
-        "chat_id": chat_id,
-        "text": text[:4000],
-        "parse_mode": "MarkdownV2",
-        "reply_markup": keyboard,
-    })
+    """Send a message with an inline keyboard. Falls back to plain text on MarkdownV2 failure."""
+    try:
+        await _tg_call("sendMessage", {
+            "chat_id": chat_id,
+            "text": text[:4000],
+            "parse_mode": "MarkdownV2",
+            "reply_markup": keyboard,
+        })
+    except Exception:
+        try:
+            await _tg_call("sendMessage", {
+                "chat_id": chat_id,
+                "text": text[:4000],
+                "reply_markup": keyboard,
+            })
+        except Exception:
+            logger.error("TG sendMessage+keyboard failed twice for chat=%s", chat_id)
 
 
 async def _edit_message_with_keyboard(
@@ -905,7 +907,7 @@ def _format_result(result: dict) -> str:
     data = result.get("data", {})
 
     # Already has a detailed message from the connector
-    if msg and len(msg) > 30:
+    if msg and len(msg) > 50:
         return msg
 
     # ── Weather ──────────────────────────────────────────────────────
@@ -967,15 +969,22 @@ def _format_result(result: dict) -> str:
         for i, item in enumerate(results[:5]):
             if isinstance(item, dict):
                 if "airline" in item or "flight_number" in item:
+                    dep = item.get('departure_time') or item.get('departure', '')
+                    arr = item.get('arrival_time') or item.get('arrival', '')
+                    price = item.get('price_ksh') or item.get('price', '?')
+                    currency = item.get('currency', '')
+                    if currency:
+                        price = f"{currency} {price}"
                     lines.append(
                         f"{i+1}\\. {item.get('airline','?')} {item.get('flight_number','')} "
-                        f"{item.get('departure','')} → {item.get('arrival','')} "
-                        f"${item.get('price','?')}"
+                        f"{dep} → {arr} "
+                        f"{price}"
                     )
                 elif "hotel_name" in item or "name" in item:
+                    price = item.get('price_ksh') or item.get('price', '?')
                     lines.append(
                         f"{i+1}\\. *{item.get('hotel_name') or item.get('name','?')}* — "
-                        f"${item.get('price','?')}/night, ⭐{item.get('rating','?')}"
+                        f"{price}/night, ⭐{item.get('rating','?')}"
                     )
                 else:
                     lines.append(f"{i+1}\\. {str(item)[:100]}")
@@ -985,10 +994,10 @@ def _format_result(result: dict) -> str:
 
     # ── Generic data ─────────────────────────────────────────────────
     if isinstance(data, dict) and data:
-        # Try common keys
-        for key in ("summary", "status", "result"):
+        # Try common descriptive keys (skip bare "success" / "error" status)
+        for key in ("summary", "message", "result", "error"):
             val = data.get(key)
-            if val and isinstance(val, str) and len(val) > 5:
+            if val and isinstance(val, str) and len(val) > 10:
                 return f"📌 {val[:2000]}"
         # Truncated dump
         return str(data)[:1500]
@@ -1175,7 +1184,7 @@ async def _process_and_reply(chat_id: str, text: str, system_prompt: str = "") -
                     "- search_flights, search_hotels, search_buses: travel search\n"
                     "- create_itinerary, view_itinerary: trip planning\n"
                     "- send_whatsapp, send_email, send_telegram_message: messaging\n"
-                    "- set_reminder, get_calendar: scheduling\n"
+                    "- set_reminder: reminders and scheduling\n"
                     "- search_web: web search\n"
                     "- currency_convert: currency exchange\n"
                     "- general_chat: pure conversation, no action needed\n\n"
@@ -1213,6 +1222,14 @@ async def _process_and_reply(chat_id: str, text: str, system_prompt: str = "") -
                 return
             elif result.get("status") == "success":
                 reply = _format_result(result)
+            elif result.get("reason") == "unsupported_action":
+                # Fall back to general chat — don't show "not supported" to user
+                llm = get_llm_client()
+                reply = await llm.generate_text(
+                    system_prompt=system_prompt,
+                    user_prompt=context_prompt + "\nUser: " + text,
+                    max_tokens=300,
+                )
             else:
                 reply = (
                     result.get("message")
