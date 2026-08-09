@@ -198,6 +198,23 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
     logger.info(f"Telegram inbound: chat_id={chat_id} text={text[:80]} cmd={is_command}")
 
     import asyncio as _asyncio
+
+    # Pre-fetch durable facts / summary while still in the request context
+    # (sync_to_async's CurrentThreadExecutor dies after the response is sent)
+    try:
+        facts_block = await MemoryManager._build_facts_block(chat_id)
+        rolling_summary = await MemoryManager._get_rolling_summary(chat_id)
+    except Exception:
+        facts_block = ""
+        rolling_summary = ""
+
+    # Build the full system prompt now (requires DB access)
+    system_prompt = _MATHIA_TG_SYSTEM_PROMPT
+    if facts_block:
+        system_prompt += "\n\n" + facts_block
+    if rolling_summary:
+        system_prompt += f"\n\nCONVERSATION SUMMARY:\n{rolling_summary}"
+
     # Auto-register the Telegram user on first contact
     _asyncio.ensure_future(_ensure_telegram_user(
         chat_id, telegram_id, tg_username, first_name, last_name,
@@ -206,7 +223,7 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
     if is_command:
         _asyncio.ensure_future(_handle_command(chat_id, text, entities))
     else:
-        _asyncio.ensure_future(_process_and_reply(chat_id, text))
+        _asyncio.ensure_future(_process_and_reply(chat_id, text, system_prompt))
 
     return JsonResponse({"status": "ok"})
 
@@ -890,7 +907,7 @@ async def _clear_pending(chat_id: str):
 # Core processing
 # ---------------------------------------------------------------------------
 
-async def _process_and_reply(chat_id: str, text: str) -> None:
+async def _process_and_reply(chat_id: str, text: str, system_prompt: str = "") -> None:
     token = _get_token()
     if not token:
         return
@@ -914,7 +931,8 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
 
     # ── 2. Build conversation context ──────────────────────────────
     context_prompt = await _build_context_for_llm(chat_id)
-    system_prompt = await _build_system_prompt(chat_id)
+    if not system_prompt:
+        system_prompt = _MATHIA_TG_SYSTEM_PROMPT
 
     # ── 3. Parse intent (rule-based → LLM fallback) ────────────────
     from orchestration.intent_parser import parse_intent
