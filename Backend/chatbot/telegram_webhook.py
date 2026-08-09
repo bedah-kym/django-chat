@@ -221,6 +221,12 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
     ))
 
     if is_command:
+        # /link CODE needs DB access — process synchronously
+        if text.startswith("/link ") and len(text) > 7:
+            code = text[6:].strip().split()[0].upper()
+            if len(code) >= 4:
+                await _verify_and_link(chat_id, code)
+                return JsonResponse({"status": "ok"})
         _asyncio.ensure_future(_handle_command(chat_id, text, entities))
     else:
         _asyncio.ensure_future(_process_and_reply(chat_id, text, system_prompt))
@@ -537,36 +543,16 @@ async def _cmd_link(chat_id: str, payload: str = ""):
         await _verify_and_link(chat_id, code)
         return
 
-    # No code provided — check current status and show instructions
-    from asgiref.sync import sync_to_async
-    from .models import TelegramUser as TGUser
-
-    @sync_to_async
-    def _get_link_status():
-        tg = TGUser.objects.filter(chat_id=int(chat_id), is_authenticated=True).first()
-        if tg and tg.user:
-            return tg.user.username
-        return None
-
-    linked_user = await _get_link_status()
-
-    if linked_user:
-        link_text = (
-            f"✅ *Already linked as @{linked_user}*\n\n"
-            "Your Telegram is connected to your Mathia account\\.\n"
-            "To re-link, get a new code from the web app and send `/link CODE`\\.\n\n"
-            f"🌐 [Open Linking Page](https://mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/)"
-        )
-    else:
-        link_text = (
-            "🔗 *Link Your Account*\n\n"
-            "Your Telegram is not yet linked to a Mathia account\\.\n\n"
-            "1\\. Visit the linking page:\n"
-            "🌐 [mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/](https://mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/)\n"
-            "2\\. Log in and scan the QR code\n"
-            "3\\. Or copy the code and send `/link CODE` here\n\n"
-            "_Linking enables personalized responses and access to your data\\._"
-        )
+    # No code — show instructions with linking page URL (no DB required)
+    link_text = (
+        "🔗 *Link Your Account*\n\n"
+        "Visit the linking page to connect your Telegram:\n"
+        "🌐 [mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/]"
+        "(https://mathiaos\\-chat254\\.up\\.railway\\.app/chatbot/tg/link/)\n\n"
+        "1\\. Log in and scan the QR code, or\n"
+        "2\\. Copy the code and send `/link CODE` here\n\n"
+        "_Linking enables personalized responses\\._"
+    )
     await _tg_call("sendMessage", {
         "chat_id": chat_id,
         "text": link_text,
