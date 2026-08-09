@@ -371,10 +371,8 @@ async def _handle_confirmation(chat_id: str, confirmed: bool) -> None:
     from orchestration.mcp_router import route_intent
     pending["confirmed"] = True
     try:
-        result = await route_intent(
-            pending,
-            {"telegram_chat_id": chat_id, "platform": "telegram"},
-        )
+        user_ctx = await _build_user_context(chat_id)
+        result = await route_intent(pending, user_ctx)
         reply = _format_result(result)
     except Exception as exc:
         logger.error(f"Confirmed action failed: {exc}")
@@ -892,6 +890,32 @@ def _format_result(result: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# User context builder — injects Django user_id for linked TG accounts
+# ---------------------------------------------------------------------------
+
+async def _build_user_context(chat_id: str) -> Dict[str, Any]:
+    """Build user context dict with linked Django user_id if available."""
+    ctx: Dict[str, Any] = {"telegram_chat_id": chat_id, "platform": "telegram"}
+    try:
+        from asgiref.sync import sync_to_async
+        from .models import TelegramUser as TGUser
+
+        @sync_to_async
+        def _get_linked():
+            tg = TGUser.objects.filter(
+                chat_id=int(chat_id), is_authenticated=True, user__isnull=False
+            ).select_related("user").first()
+            return tg.user_id if tg else None
+
+        uid = await _get_linked()
+        if uid:
+            ctx["user_id"] = uid
+    except Exception:
+        pass
+    return ctx
+
+
+# ---------------------------------------------------------------------------
 # Context helpers — delegate to MemoryManager
 # ---------------------------------------------------------------------------
 
@@ -979,7 +1003,7 @@ async def _process_and_reply(chat_id: str, text: str, system_prompt: str = "") -
     from orchestration.mcp_router import route_intent
     from orchestration.llm_client import get_llm_client, extract_json
 
-    user_context = {"telegram_chat_id": chat_id, "platform": "telegram"}
+    user_context = await _build_user_context(chat_id)
     intent = await parse_intent(text, user_context)
     action = intent.get("action", "")
     missing = intent.get("missing_slots") or []
