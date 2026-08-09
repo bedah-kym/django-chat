@@ -78,6 +78,21 @@ _EXECUTOR_BASE_ACTIONS = {
     "create_invoice",
 }
 
+# Actions that are connector-level tools (invoked via MCPRouter directly,
+# not through workflow steps).  They don't need workflow executor mappings.
+_CONNECTOR_ONLY_ACTIONS = {
+    "send_telegram_message",
+    "send_telegram_media",
+    "send_telegram_keyboard",
+    "edit_telegram_message",
+    "delete_telegram_message",
+    "telegram_health",
+    "send_baileys_message",
+    "send_baileys_media",
+    "get_baileys_qr",
+    "baileys_health",
+}
+
 
 def validate_executor_action_mappings() -> None:
     mapped = set(_EXECUTOR_BASE_ACTIONS)
@@ -86,6 +101,8 @@ def validate_executor_action_mappings() -> None:
     mapped.update(_TRAVEL_ACTIONS.keys())
     mapped.update(_MISC_ACTIONS.keys())
     required = set(get_supported_actions(include_aliases=False))
+    # Connector-only actions are not workflow steps — exclude from required
+    required -= _CONNECTOR_ONLY_ACTIONS
     missing = sorted(required - mapped)
     if missing:
         raise RuntimeError(

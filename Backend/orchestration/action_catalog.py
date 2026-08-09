@@ -414,6 +414,90 @@ ACTION_CATALOG: List[Dict[str, Any]] = [
         "confirmation_policy": "never",
         "capability_gate": "allow_pentest",
     },
+    {
+        "action": "send_telegram_message",
+        "aliases": ["telegram_send", "tg_message"],
+        "service": "telegram",
+        "description": "Send a text message via Telegram Bot API to a chat.",
+        "params": {
+            "chat_id": {"type": "string", "required": True, "description": "Telegram chat ID"},
+            "message": {"type": "string", "required": True, "description": "Text content of the message"},
+        },
+        "return_description": "Returns message_id, chat_id, and sent status",
+        "risk_level": "low",
+        "confirmation_policy": "never",
+        "capability_gate": None,
+    },
+    {
+        "action": "send_telegram_media",
+        "aliases": ["tg_media"],
+        "service": "telegram",
+        "description": "Send a photo, video, document, or audio via Telegram.",
+        "params": {
+            "chat_id": {"type": "string", "required": True, "description": "Telegram chat ID"},
+            "media_url": {"type": "string", "required": True, "description": "Public URL of the media file"},
+            "media_type": {"type": "string", "required": False, "description": "photo, video, document, or audio"},
+        },
+        "return_description": "Returns message_id, chat_id, and media_type",
+        "risk_level": "low",
+        "confirmation_policy": "never",
+        "capability_gate": None,
+    },
+    {
+        "action": "send_telegram_keyboard",
+        "aliases": ["tg_keyboard"],
+        "service": "telegram",
+        "description": "Send a message with inline keyboard buttons via Telegram.",
+        "params": {
+            "chat_id": {"type": "string", "required": True, "description": "Telegram chat ID"},
+            "text": {"type": "string", "required": True, "description": "Message text"},
+            "buttons": {"type": "array", "required": True, "description": "Array of button rows"},
+        },
+        "return_description": "Returns message_id, chat_id, and button count",
+        "risk_level": "low",
+        "confirmation_policy": "never",
+        "capability_gate": None,
+    },
+    {
+        "action": "edit_telegram_message",
+        "aliases": ["tg_edit"],
+        "service": "telegram",
+        "description": "Edit a previously sent Telegram bot message.",
+        "params": {
+            "chat_id": {"type": "string", "required": True, "description": "Telegram chat ID"},
+            "message_id": {"type": "integer", "required": True, "description": "ID of the message to edit"},
+            "text": {"type": "string", "required": True, "description": "New text for the message"},
+        },
+        "return_description": "Returns message_id and edited status",
+        "risk_level": "low",
+        "confirmation_policy": "never",
+        "capability_gate": None,
+    },
+    {
+        "action": "delete_telegram_message",
+        "aliases": ["tg_delete"],
+        "service": "telegram",
+        "description": "Delete a Telegram bot message.",
+        "params": {
+            "chat_id": {"type": "string", "required": True, "description": "Telegram chat ID"},
+            "message_id": {"type": "integer", "required": True, "description": "ID of the message to delete"},
+        },
+        "return_description": "Returns deleted status",
+        "risk_level": "medium",
+        "confirmation_policy": "high_risk",
+        "capability_gate": None,
+    },
+    {
+        "action": "telegram_health",
+        "aliases": ["tg_health"],
+        "service": "telegram",
+        "description": "Check whether the Telegram bot is configured and reachable.",
+        "params": {},
+        "return_description": "Returns bot username, ID, and status",
+        "risk_level": "low",
+        "confirmation_policy": "never",
+        "capability_gate": None,
+    },
 ]
 
 
@@ -431,6 +515,7 @@ SERVICE_METADATA: Dict[str, Dict[str, Any]] = {
     "reminder": {"description": "Reminder scheduling actions."},
     "quota": {"description": "Usage and quota checks."},
     "schedule": {"description": "Scheduled trigger service."},
+    "telegram": {"description": "Telegram Bot API actions for messaging and interaction."},
 }
 
 
