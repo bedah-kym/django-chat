@@ -65,6 +65,17 @@ export async function disconnectCalendly(): Promise<void> {
   if (!res.ok) throw new Error('Failed to disconnect Calendly')
 }
 
+// ─── REAL: Gmail ──────────────────────────────────────────────────────────────
+export async function connectGmail(): Promise<{ authorization_url: string }> {
+  const res = await fetch(`${BASE}/api/gmail/connect/`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: csrfHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to initiate Gmail connect')
+  return res.json() as Promise<{ authorization_url: string }>
+}
+
 // ─── STUBBED: Profile ─────────────────────────────────────────────────────────
 // TODO: PATCH /api/users/profile/
 export async function updateProfile(_data: unknown): Promise<void> {

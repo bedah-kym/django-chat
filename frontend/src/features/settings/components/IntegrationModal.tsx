@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { connectIntegration } from '../settingsApi'
+import { connectIntegration, connectGmail } from '../settingsApi'
 import styles from './IntegrationModal.module.css'
 
 type IntegrationType = 'whatsapp' | 'intasend' | 'gmail'
@@ -77,10 +77,13 @@ export function IntegrationModal({ type, onClose, onConnected }: Props) {
             </p>
             <button
               className={styles.btnPrimary}
-              onClick={() => {
-                // TODO: redirect to /accounts/integrations/gmail/connect/
-                toast.info('Redirecting to Google…')
-                onClose()
+              onClick={async () => {
+                try {
+                  const { authorization_url } = await connectGmail()
+                  window.location.href = authorization_url
+                } catch {
+                  toast.error('Failed to start Gmail connection')
+                }
               }}
               type="button"
             >

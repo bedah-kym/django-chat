@@ -71,6 +71,9 @@ if not CSRF_TRUSTED_ORIGINS_STRING and not DEBUG:
     )
 CSRF_TRUSTED_ORIGINS = [url.strip() for url in CSRF_TRUSTED_ORIGINS_STRING.split(',') if url.strip()] if CSRF_TRUSTED_ORIGINS_STRING else []
 
+# Frontend URL for OAuth redirects
+FRONTEND_URL = os.environ.get('FRONTEND_URL', (CSRF_TRUSTED_ORIGINS[0] if CSRF_TRUSTED_ORIGINS else 'http://localhost:5173'))
+
 # Additional CSRF security
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False

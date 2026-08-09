@@ -20,4 +20,8 @@ urlpatterns = [
     path('calendly/user/username/<str:username>/booking-link/', views.calendly_user_booking_link_by_username, name='calendly_user_booking_link_by_username'),
     path('calendly/disconnect/', views.calendly_disconnect, name='calendly_disconnect'),
 
+    # Gmail integration endpoints
+    path('gmail/connect/', views.gmail_connect, name='gmail_connect'),
+    path('gmail/callback/', views.gmail_callback, name='gmail_callback'),
+
 ]

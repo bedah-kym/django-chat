@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token
 from django.conf import settings
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.core.cache import cache
 from django.db.models import Max
 from django.urls import reverse
@@ -17,7 +17,9 @@ from users.models import CalendlyProfile
 from django.contrib.auth import get_user_model
 from urllib.parse import quote
 import requests
+import json
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +78,10 @@ def calendly_callback(request):
     """Handle OAuth callback from Calendly and store tokens."""
     code = request.GET.get('code')
     state = request.GET.get('state')
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+
     if not code:
-        return Response({'error': 'code missing'}, status=400)
+        return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
     token_url = 'https://auth.calendly.com/oauth/token'
     client_id = getattr(settings, 'CALENDLY_CLIENT_ID', None)
     client_secret = getattr(settings, 'CALENDLY_CLIENT_SECRET', None)
@@ -92,7 +96,7 @@ def calendly_callback(request):
     r = requests.post(token_url, data=payload)
     if r.status_code != 200:
         logger.error('Calendly token exchange failed: %s', r.text)
-        return Response({'error': 'token exchange failed'}, status=500)
+        return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
     data = r.json()
     access_token = data.get('access_token')
     refresh_token = data.get('refresh_token')
@@ -123,7 +127,10 @@ def calendly_callback(request):
         booking_link = user_resource.get('scheduling_url')
 
     profile.connect(access_token, refresh_token, calendly_user_uri, event_type_uri, event_type_name, booking_link)
-    return Response({'ok': True, 'connected': True})
+
+    # Redirect back to frontend Settings → Integrations tab
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+    return redirect(f"{frontend_url}/settings?tab=integrations&calendly=connected")
 
 
 @api_view(['GET'])
@@ -279,6 +286,99 @@ def calendly_disconnect(request):
         return Response({'ok': True})
     profile.disconnect()
     return Response({'ok': True})
+
+
+# ─── Gmail OAuth ──────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def gmail_connect(request):
+    """Return a Google OAuth URL for Gmail send-only access."""
+    client_id = getattr(settings, 'GMAIL_OAUTH_CLIENT_ID', None)
+    if not client_id:
+        return Response({'error': 'Gmail OAuth client id not configured'}, status=500)
+
+    redirect_uri = request.build_absolute_uri('/api/gmail/callback/')
+    state = str(request.user.id)
+
+    auth_url = (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+        f"?response_type=code"
+        f"&client_id={client_id}"
+        f"&redirect_uri={quote(redirect_uri, safe='')}"
+        f"&state={state}"
+        f"&scope={quote('https://www.googleapis.com/auth/gmail.send', safe='')}"
+        f"&access_type=offline"
+        f"&prompt=consent"
+    )
+
+    return Response({'authorization_url': auth_url})
+
+
+@api_view(['GET'])
+def gmail_callback(request):
+    """Handle Google OAuth callback, store tokens in UserIntegration."""
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    if not code:
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f"{frontend_url}/settings?tab=integrations&gmail=error")
+
+    client_id = getattr(settings, 'GMAIL_OAUTH_CLIENT_ID', None)
+    client_secret = getattr(settings, 'GMAIL_OAUTH_CLIENT_SECRET', None)
+    redirect_uri = request.build_absolute_uri('/api/gmail/callback/')
+
+    # Exchange code for tokens
+    token_resp = requests.post('https://oauth2.googleapis.com/token', data={
+        'grant_type': 'authorization_code',
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'code': code,
+        'redirect_uri': redirect_uri,
+    })
+
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+
+    if token_resp.status_code != 200:
+        logger.error('Gmail token exchange failed: %s', token_resp.text)
+        return redirect(f"{frontend_url}/settings?tab=integrations&gmail=error")
+
+    token_data = token_resp.json()
+    access_token = token_data.get('access_token')
+    refresh_token = token_data.get('refresh_token')
+    expires_in = token_data.get('expires_in', 3600)
+
+    # Get the user from state
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=int(state)) if state else None
+    except (User.DoesNotExist, ValueError):
+        user = None
+
+    if not user:
+        return redirect(f"{frontend_url}/settings?tab=integrations&gmail=error")
+
+    # Store in UserIntegration
+    from users.models import UserIntegration
+    from users.encryption import TokenEncryption
+    import time
+
+    integration, _ = UserIntegration.objects.update_or_create(
+        user=user,
+        integration_type='gmail',
+        defaults={
+            'is_connected': True,
+            'encrypted_credentials': TokenEncryption.encrypt(json.dumps({
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'expires_at': int(time.time()) + expires_in,
+            })),
+            'metadata': {'provider': 'google'},
+        }
+    )
+
+    return redirect(f"{frontend_url}/settings?tab=integrations&gmail=connected")
 
 
 class CreateReply(generics.ListCreateAPIView):
