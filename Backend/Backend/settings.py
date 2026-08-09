@@ -319,6 +319,12 @@ TELEGRAM_DEFAULT_CHANNELS = [
     if c.strip()
 ]
 
+# Telegram Bot integration — webhook, commands, Mini App, account linking.
+# TELEGRAM_BOT_TOKEN is shared with SIGNET above (single bot for both).
+TELEGRAM_WEBHOOK_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')
+TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', 'MathiaBot')
+TELEGRAM_MINI_APP_URL = os.environ.get('TELEGRAM_MINI_APP_URL', '')
+
 SIGNET_PROJECTION_WINDOW_DAYS = int(os.environ.get('SIGNET_PROJECTION_WINDOW_DAYS', '3'))
 SIGNET_PROJECT_DEBOUNCE_SECONDS = int(os.environ.get('SIGNET_PROJECT_DEBOUNCE_SECONDS', '120'))
 

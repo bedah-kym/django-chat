@@ -412,3 +412,63 @@ class DocumentUpload(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.file_type} - {self.status} - {self.uploaded_at}"
+
+
+class TelegramUser(models.Model):
+    """Link a Telegram chat to a Django user account."""
+    user = models.ForeignKey(user, on_delete=models.CASCADE, null=True, blank=True,
+                             related_name='telegram_accounts')
+    telegram_id = models.BigIntegerField(unique=True, db_index=True)
+    telegram_username = models.CharField(max_length=64, blank=True, default='')
+    chat_id = models.BigIntegerField(db_index=True,
+                                     help_text="Chat ID (may differ from telegram_id in groups)")
+    first_name = models.CharField(max_length=128, blank=True, default='')
+    last_name = models.CharField(max_length=128, blank=True, default='')
+    linked_at = models.DateTimeField(auto_now_add=True)
+    is_authenticated = models.BooleanField(default=False,
+                                           help_text="True if user completed the /link flow")
+
+    class Meta:
+        ordering = ['-linked_at']
+        verbose_name = "Telegram User"
+        verbose_name_plural = "Telegram Users"
+
+    def __str__(self):
+        return f"TG:{self.telegram_id} ({self.telegram_username or 'no username'})"
+
+
+class TelegramMemory(models.Model):
+    """
+    Durable memory store for Telegram conversations.
+
+    Mirrors the RoomContext.memory_* fields but is keyed directly on
+    chat_id so no Chatroom is required.  Ephemeral turn storage lives
+    in Redis; this model holds only extracted, durable facts.
+    """
+    chat_id = models.BigIntegerField(unique=True, db_index=True)
+
+    # Layered memory — same structure as RoomContext
+    memory_facts = models.JSONField(default=list)
+    # [{"key":"...","value":"...","confidence":0.8,"updated_at":"..."}]
+    memory_preferences = models.JSONField(default=list)
+    # [{"key":"...","value":"...","confidence":0.7,"updated_at":"..."}]
+    memory_episodes = models.JSONField(default=list)
+    # [{"summary":"...","date":"YYYY-MM-DD","importance":"medium","updated_at":"..."}]
+
+    # Rolling summary — LLM-compressed older conversation
+    rolling_summary = models.TextField(blank=True, default='')
+
+    # Compaction bookkeeping
+    turn_count_since_compaction = models.IntegerField(default=0)
+    last_compacted_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        verbose_name = "Telegram Memory"
+        verbose_name_plural = "Telegram Memories"
+
+    def __str__(self):
+        return f"TG Memory chat={self.chat_id} (facts={len(self.memory_facts)}, prefs={len(self.memory_preferences)})"

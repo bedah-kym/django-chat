@@ -7,6 +7,8 @@ from . import linked_rooms_api
 from . import message_actions
 from . import voice_views
 from . import telegram_webhook
+from . import telegram_link_api
+from . import telegram_mini_app
 
 app_name = "chatbot"
 urlpatterns = [
@@ -20,6 +22,12 @@ urlpatterns = [
 
     # Telegram Bot webhook
     path('api/telegram/webhook/', telegram_webhook.telegram_webhook, name='telegram-webhook'),
+
+    # Telegram account linking
+    path('api/telegram/link/', telegram_link_api.telegram_link_api, name='telegram-link'),
+
+    # Telegram Mini App
+    path('tg/app/', telegram_mini_app.telegram_mini_app, name='telegram-mini-app'),
 
     # Context API
     path('api/rooms/<int:room_id>/context/', context_api.get_room_context, name='room-context'),

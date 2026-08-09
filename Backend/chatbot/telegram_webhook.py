@@ -2,7 +2,10 @@
 Telegram Bot webhook receiver — full chatroom experience.
 
 Capabilities: natural-language intent parsing, multi-turn conversations,
-confirmation gates, workflow planning, context memory, typing indicators.
+confirmation gates (inline keyboards), workflow planning, context memory
+(hybrid: DB facts + rolling LLM summary + recent raw turns via MemoryManager),
+typing indicators, command handling (/start, /help, /link), deep linking,
+rich result formatting.
 """
 from __future__ import annotations
 
@@ -10,16 +13,71 @@ import hashlib
 import hmac
 import json
 import logging
+import time as _time_module
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from .memory_manager import MemoryManager
+
 logger = logging.getLogger(__name__)
 
 TG_API = "https://api.telegram.org"
-CONTEXT_TTL = 60 * 60 * 6  # 6-hour conversation memory per chat
+
+# ---------------------------------------------------------------------------
+# System prompt used for the Mathia AI in Telegram
+# ---------------------------------------------------------------------------
+
+_MATHIA_TG_SYSTEM_PROMPT = (
+    "You are Mathia, a helpful AI assistant on Telegram. "
+    "You can manage travel, weather, payments, reminders, messaging, and more. "
+    "Keep replies concise (1-3 sentences). "
+    "If the user needs a tool capability, let them know you can help with that. "
+    "Be warm, professional, and direct."
+)
+
+# ---------------------------------------------------------------------------
+# Confirmation keyboard — sent when an action needs explicit user approval
+# ---------------------------------------------------------------------------
+
+_CONFIRM_KEYBOARD: Dict[str, Any] = {
+    "inline_keyboard": [
+        [
+            {"text": "✅ Confirm", "callback_data": "confirm"},
+            {"text": "❌ Cancel", "callback_data": "cancel"},
+        ],
+    ],
+}
+
+# ---------------------------------------------------------------------------
+# Help / welcome keyboard
+# ---------------------------------------------------------------------------
+
+_WELCOME_KEYBOARD: Dict[str, Any] = {
+    "inline_keyboard": [
+        [
+            {"text": "🌤️ Weather", "callback_data": "cmd:weather"},
+            {"text": "✈️ Travel", "callback_data": "cmd:travel"},
+        ],
+        [
+            {"text": "💰 Payments", "callback_data": "cmd:payments"},
+            {"text": "🔗 Link Account", "callback_data": "cmd:link"},
+        ],
+        [
+            {"text": "📱 Open Dashboard", "web_app": {"url": ""}},  # filled at send time
+        ],
+        [
+            {"text": "❓ Help", "callback_data": "cmd:help"},
+        ],
+    ],
+}
+
+# ---------------------------------------------------------------------------
+# Token verification
+# ---------------------------------------------------------------------------
 
 
 def _verify_telegram_token(request: HttpRequest) -> bool:
@@ -28,6 +86,46 @@ def _verify_telegram_token(request: HttpRequest) -> bool:
         return True
     header = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
     return hmac.compare_digest(header, expected)
+
+
+# ---------------------------------------------------------------------------
+# Main webhook entry point
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+_RATE_LIMIT_WINDOW = 10     # seconds
+_RATE_LIMIT_MAX = 30        # max requests per window per chat_id
+
+def _check_rate_limit(chat_id: str) -> bool:
+    """Simple sliding-window rate limiter. Returns True if allowed."""
+    try:
+        r = _redis()
+        key = f"tg:ratelimit:{chat_id}"
+        now = _time_module.time()
+        now_str = f"{now:.6f}"
+        window_start = now - _RATE_LIMIT_WINDOW
+
+        # Remove old entries and count recent ones
+        r.zremrangebyscore(key, 0, window_start)
+        count = r.zcard(key)
+
+        if count >= _RATE_LIMIT_MAX:
+            return False
+
+        r.zadd(key, {now_str: now})
+        r.expire(key, _RATE_LIMIT_WINDOW + 5)
+        return True
+    except Exception:
+        return True  # fail open if Redis is down
+
+
+# ---------------------------------------------------------------------------
+# Main webhook entry point
+# ---------------------------------------------------------------------------
 
 
 @csrf_exempt
@@ -41,23 +139,581 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
     except json.JSONDecodeError:
         return HttpResponseBadRequest("Invalid JSON")
 
+    # ── Callback queries (inline keyboard button presses) ──────────
+    callback = body.get("callback_query")
+    if callback:
+        import asyncio as _asyncio
+        _asyncio.ensure_future(_handle_callback(callback))
+        return JsonResponse({"status": "ok"})
+
+    # ── Inline queries (@MathiaBot query from any chat) ────────────
+    inline_query = body.get("inline_query")
+    if inline_query:
+        import asyncio as _asyncio
+        _asyncio.ensure_future(_handle_inline_query(inline_query))
+        return JsonResponse({"status": "ok"})
+
+    # ── Regular messages ───────────────────────────────────────────
     message = body.get("message") or body.get("edited_message")
     if not message:
         return JsonResponse({"status": "ignored", "reason": "no message field"})
 
     chat = message.get("chat", {})
     chat_id = str(chat.get("id", ""))
+
+    # ── Rate limit check ────────────────────────────────────────────
+    if not _check_rate_limit(chat_id):
+        logger.warning("TG rate limit hit: chat_id=%s", chat_id)
+        return JsonResponse({"status": "rate_limited"})
+
+    # ── Mini App data (sent via WebApp.sendData) ────────────────────
+    web_app_data = message.get("web_app_data", {}).get("data", "")
+    if web_app_data:
+        import asyncio as _asyncio
+        _asyncio.ensure_future(_handle_web_app_data(chat_id, web_app_data))
+        return JsonResponse({"status": "ok"})
+
     text = message.get("text", "").strip()
 
-    if not chat_id or not text:
+    # Extract sender info for auto-registration
+    from_user = message.get("from", {})
+    telegram_id = str(from_user.get("id", ""))
+    tg_username = from_user.get("username", "")
+    first_name = from_user.get("first_name", "")
+    last_name = from_user.get("last_name", "")
+
+    # Check for bot commands (entities with type "bot_command")
+    entities = message.get("entities", [])
+    is_command = any(
+        e.get("type") == "bot_command" for e in entities
+        if isinstance(e, dict)
+    )
+
+    if not chat_id:
         return JsonResponse({"status": "ignored"})
 
-    logger.info(f"Telegram inbound: chat_id={chat_id} text={text[:80]}")
+    if not text and not is_command:
+        return JsonResponse({"status": "ignored"})
+
+    logger.info(f"Telegram inbound: chat_id={chat_id} text={text[:80]} cmd={is_command}")
 
     import asyncio as _asyncio
-    _asyncio.ensure_future(_process_and_reply(chat_id, text))
+    # Auto-register the Telegram user on first contact
+    _asyncio.ensure_future(_ensure_telegram_user(
+        chat_id, telegram_id, tg_username, first_name, last_name,
+    ))
+
+    if is_command:
+        _asyncio.ensure_future(_handle_command(chat_id, text, entities))
+    else:
+        _asyncio.ensure_future(_process_and_reply(chat_id, text))
 
     return JsonResponse({"status": "ok"})
+
+
+# ---------------------------------------------------------------------------
+# Callback query handler (inline keyboard button presses)
+# ---------------------------------------------------------------------------
+
+
+async def _handle_callback(callback: dict) -> None:
+    """Handle inline keyboard button presses."""
+    data = callback.get("data", "")
+    cb_id = callback.get("id", "")
+    message = callback.get("message", {})
+    chat_id = str(message.get("chat", {}).get("id", ""))
+
+    if not chat_id or not data:
+        return
+
+    logger.info(f"TG callback: chat={chat_id} data={data}")
+
+    # Acknowledge the callback (removes loading state on the button)
+    await _tg_call("answerCallbackQuery", {"callback_query_id": cb_id})
+
+    # ── Confirmation callbacks ─────────────────────────────────────
+    if data == "confirm":
+        await _handle_confirmation(chat_id, confirmed=True)
+        return
+
+    if data == "cancel":
+        await _clear_pending(chat_id)
+        await _send_message(chat_id, "❌ Cancelled. What else can I help with?")
+        return
+
+    # ── Command shortcuts from welcome keyboard ────────────────────
+    if data.startswith("cmd:"):
+        cmd = data[4:]
+        await _route_quick_command(chat_id, cmd)
+        return
+
+    # ── Unknown callback ───────────────────────────────────────────
+    logger.warning(f"TG: unhandled callback data={data}")
+
+
+# ---------------------------------------------------------------------------
+# Inline query handler (@MathiaBot query from any chat)
+# ---------------------------------------------------------------------------
+
+
+async def _handle_inline_query(query: dict) -> None:
+    """Handle inline queries — lets users type @MathiaBot <query> in any chat."""
+    query_id = query.get("id", "")
+    query_text = (query.get("query", "") or "").strip()
+
+    if not query_text:
+        # Empty query — show help suggestions
+        results = [
+            _inline_article(
+                "help_weather",
+                "🌤️ Weather: <city name>",
+                "Type: @MathiaBot weather Nairobi",
+            ),
+            _inline_article(
+                "help_travel",
+                "✈️ Travel: flights/hotels",
+                "Type: @MathiaBot flights Nairobi to Mombasa",
+            ),
+            _inline_article(
+                "help_reminder",
+                "📅 Reminder: remind me",
+                "Type: @MathiaBot remind me at 3pm",
+            ),
+        ]
+    else:
+        # Quick inline suggestions based on query
+        results = _build_inline_results(query_text)
+
+    await _tg_call("answerInlineQuery", {
+        "inline_query_id": query_id,
+        "results": results,
+        "cache_time": 30,
+    })
+
+
+def _inline_article(id_suffix: str, title: str, description: str) -> dict:
+    """Build a single inline query result article."""
+    return {
+        "type": "article",
+        "id": id_suffix,
+        "title": title,
+        "description": description,
+        "input_message_content": {
+            "message_text": f"/{id_suffix.split('_', 1)[1] if '_' in id_suffix else title}",
+        },
+    }
+
+
+def _build_inline_results(query: str) -> list:
+    """Build inline query results based on the query text."""
+    q = query.lower()
+    results = []
+
+    if any(w in q for w in ("weather", "rain", "sun", "temp", "hot", "cold")):
+        results.append(_inline_article(
+            "weather_query",
+            f"🌤️ Check weather for: {query}",
+            "Tap to get current weather conditions",
+        ))
+
+    if any(w in q for w in ("flight", "hotel", "travel", "bus", "trip")):
+        results.append(_inline_article(
+            "travel_query",
+            f"✈️ Search travel: {query}",
+            "Tap to search flights, hotels, or buses",
+        ))
+
+    if any(w in q for w in ("remind", "reminder", "schedule", "calendar")):
+        results.append(_inline_article(
+            "reminder_query",
+            f"📅 Set reminder: {query}",
+            "Tap to create a reminder",
+        ))
+
+    # Always add a general chat option
+    if not results:
+        results.append(_inline_article(
+            "chat_query",
+            f"💬 Ask Mathia: {query[:50]}",
+            "Send this to Mathia as a chat message",
+        ))
+
+    return results
+
+
+async def _handle_confirmation(chat_id: str, confirmed: bool) -> None:
+    """Process a confirmed/cancelled pending action."""
+    pending = await _get_pending(chat_id)
+    if not pending:
+        await _send_message(chat_id, "⚠️ No pending action to confirm. It may have expired.")
+        return
+
+    await _clear_pending(chat_id)
+
+    if not confirmed:
+        await _send_message(chat_id, "❌ Cancelled.")
+        return
+
+    from orchestration.mcp_router import route_intent
+    pending["confirmed"] = True
+    try:
+        result = await route_intent(
+            pending,
+            {"telegram_chat_id": chat_id, "platform": "telegram"},
+        )
+        reply = _format_result(result)
+    except Exception as exc:
+        logger.error(f"Confirmed action failed: {exc}")
+        reply = "❌ Sorry, that action failed. Try again?"
+
+    await _record_and_forget(chat_id, "[confirmed action]", reply)
+    await _send_message(chat_id, reply)
+
+
+# ---------------------------------------------------------------------------
+# Command handler
+# ---------------------------------------------------------------------------
+
+# Known commands that bypass intent parsing
+_COMMAND_MAP = {
+    "start": "_cmd_start",
+    "help": "_cmd_help",
+    "link": "_cmd_link",
+}
+
+
+async def _handle_command(
+    chat_id: str,
+    text: str,
+    entities: list,
+) -> None:
+    """Route a bot command to the appropriate handler."""
+    # Extract the command text from the entities
+    for entity in entities or []:
+        if not isinstance(entity, dict):
+            continue
+        if entity.get("type") != "bot_command":
+            continue
+
+        offset = entity.get("offset", 0)
+        length = entity.get("length", 0)
+        raw_cmd = text[offset:offset + length]
+
+        # Split: "/start payload" → cmd="/start", payload="payload"
+        parts = raw_cmd.split(maxsplit=1)
+        cmd = (parts[0] if parts else raw_cmd).lstrip("/").split("@")[0].lower()
+        payload = parts[1] if len(parts) > 1 else ""
+
+        logger.info(f"TG command: chat={chat_id} cmd={cmd} payload={payload[:50] if payload else ''}")
+
+        handler_name = _COMMAND_MAP.get(cmd)
+        if handler_name:
+            handler = globals().get(handler_name)
+            if handler:
+                await handler(chat_id, payload)
+                return
+
+    # Fallback: unrecognized command → process as regular message
+    await _process_and_reply(chat_id, text)
+
+
+async def _cmd_start(chat_id: str, payload: str):
+    """Handle /start — welcome message with keyboard, parse deep link payload."""
+    # Deep link: /start auth_TOKEN or /start action_weather_nairobi
+    if payload:
+        if payload.startswith("link_"):
+            # /start link_CODE → direct account linking
+            code = payload.replace("link_", "", 1).strip().upper()
+            await _verify_and_link(chat_id, code)
+            return
+        if payload.startswith("auth_"):
+            await _handle_deep_link_auth(chat_id, payload)
+            return
+        if payload.startswith("action_"):
+            await _handle_deep_link_action(chat_id, payload)
+            return
+
+    # First-time greeting with welcome keyboard (dynamic URL for Mini App)
+    import os
+    from django.conf import settings as django_settings
+
+    base_url = (
+        getattr(django_settings, "TELEGRAM_MINI_APP_URL", "")
+        or os.environ.get("TELEGRAM_MINI_APP_URL", "")
+        or f"https://{os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost:8000')}"
+    )
+    mini_app_url = f"{base_url}/tg/app/?chat_id={chat_id}"
+
+    # Build keyboard with dynamic web_app URL
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "🌤️ Weather", "callback_data": "cmd:weather"},
+                {"text": "✈️ Travel", "callback_data": "cmd:travel"},
+            ],
+            [
+                {"text": "💰 Payments", "callback_data": "cmd:payments"},
+                {"text": "🔗 Link Account", "callback_data": "cmd:link"},
+            ],
+            [
+                {"text": "📱 Open Dashboard", "web_app": {"url": mini_app_url}},
+            ],
+            [
+                {"text": "❓ Help", "callback_data": "cmd:help"},
+            ],
+        ],
+    }
+
+    greeting = (
+        "👋 *Welcome to Mathia\\!*\n\n"
+        "I'm your AI assistant for weather, travel, payments, reminders, and more\\.\n\n"
+        "Type anything or tap a button below to get started\\."
+    )
+    await _tg_call("sendMessage", {
+        "chat_id": chat_id,
+        "text": greeting,
+        "parse_mode": "MarkdownV2",
+        "reply_markup": keyboard,
+    })
+
+
+async def _cmd_help(chat_id: str, _payload: str = ""):
+    """Handle /help."""
+    help_text = (
+        "🛰️ *Mathia Help*\n\n"
+        "*Commands:*\n"
+        "/start — Welcome message\n"
+        "/help — This help text\n"
+        "/link — Link your Telegram to your Mathia account\n\n"
+        "*Things I can do:*\n"
+        "🌤️ Weather: _\"weather in Nairobi\"_\n"
+        "✈️ Travel: _\"flights to Mombasa\"_\n"
+        "💰 Payments: _\"invoice status\"_\n"
+        "📅 Reminders: _\"remind me at 3pm\"_\n"
+        "🔍 Web search: _\"search for...\"_\n\n"
+        "_Just type naturally — I'll figure it out\\._"
+    )
+    await _tg_call("sendMessage", {
+        "chat_id": chat_id,
+        "text": help_text,
+        "parse_mode": "MarkdownV2",
+    })
+
+
+async def _cmd_link(chat_id: str, payload: str = ""):
+    """Handle /link [code] — link Telegram account to Mathia."""
+    if payload and len(payload.strip()) >= 4:
+        # User provided a code — verify it
+        code = payload.strip().upper()
+        await _verify_and_link(chat_id, code)
+        return
+
+    # No code provided — show instructions
+    link_text = (
+        "🔗 *Link Your Account*\n\n"
+        "To link your Telegram to your Mathia account:\n\n"
+        "1\\. Go to Mathia Settings → Linked Accounts\n"
+        "2\\. Click \"Link Telegram\"\n"
+        "3\\. You'll get a unique code — send it here with `/link CODE`\n\n"
+        "_Account linking enables personalized responses and access to your data\\._"
+    )
+    await _tg_call("sendMessage", {
+        "chat_id": chat_id,
+        "text": link_text,
+        "parse_mode": "MarkdownV2",
+    })
+
+
+async def _verify_and_link(chat_id: str, code: str):
+    """Verify a linking code against the API and create the TelegramUser link."""
+    import httpx
+
+    # Build the verification URL (internal API call)
+    # Use the Django test client or direct model access in production
+    from django.conf import settings as django_settings
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _verify_in_db():
+        """Verify the code directly against Redis (same Redis instance)."""
+        import json as _json
+        r = _redis()
+        raw = r.get(f"tg:link:code:{code}")
+        if not raw:
+            return None
+        try:
+            data = _json.loads(raw if isinstance(raw, str) else raw.decode())
+            return data
+        except Exception:
+            return None
+
+    @sync_to_async
+    def _link_user(user_id: int, telegram_id: int, username: str,
+                   first_name: str = "", last_name: str = ""):
+        """Link the TelegramUser to the Django user."""
+        from django.contrib.auth import get_user_model
+        from .models import TelegramUser as TGUser
+
+        User = get_user_model()
+        try:
+            django_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return None, "User not found"
+
+        tg_user, created = TGUser.objects.update_or_create(
+            telegram_id=telegram_id,
+            defaults={
+                "user": django_user,
+                "chat_id": int(chat_id),
+                "telegram_username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "is_authenticated": True,
+            },
+        )
+        r = _redis()
+        r.delete(f"tg:link:code:{code}")
+        return django_user.username, created
+
+    # Verify code
+    data = await _verify_in_db()
+    if not data:
+        await _send_message(chat_id, "❌ Invalid or expired code\\. Please generate a new one from Settings → Linked Accounts\\.")
+        return
+
+    user_id = data.get("user_id")
+    if not user_id:
+        await _send_message(chat_id, "❌ Invalid code data\\. Please try again\\.")
+        return
+
+    # Get TG user info from Redis (stored at first contact)
+    from .models import TelegramUser as TGUser
+
+    @sync_to_async
+    def _get_tg_user():
+        return TGUser.objects.filter(chat_id=int(chat_id)).first()
+
+    tg_user = await _get_tg_user()
+    tg_id = tg_user.telegram_id if tg_user else int(chat_id)
+    tg_username = tg_user.telegram_username if tg_user else ""
+
+    # Link
+    username, created = await _link_user(user_id, tg_id, tg_username)
+
+    if username:
+        emoji = "🆕" if created else "🔁"
+        await _send_message(
+            chat_id,
+            f"{emoji} Account linked\\! Welcome, *{username}*\\.\n\n"
+            "I now have access to your preferences and data\\. "
+            "Your conversations will be personalized from now on\\.",
+        )
+    else:
+        await _send_message(chat_id, "❌ Linking failed\\. Please try again or contact support\\.")
+
+
+async def _handle_web_app_data(chat_id: str, raw_data: str):
+    """Handle data sent from the Mini App via WebApp.sendData()."""
+    import json as _json
+
+    try:
+        data = _json.loads(raw_data)
+    except (_json.JSONDecodeError, TypeError):
+        logger.warning("TG Mini App: invalid JSON data from chat=%s", chat_id)
+        return
+
+    action = data.get("action", "")
+    source = data.get("source", "")
+
+    logger.info("TG Mini App data: chat=%s action=%s source=%s", chat_id, action, source)
+
+    if action == "weather":
+        await _send_message(chat_id, "🌤️ Tell me a location — for example: _\"Nairobi\"_ or _\"Mombasa, Kenya\"_")
+    elif action == "travel":
+        await _send_message(chat_id, "✈️ Where would you like to go? Try: _\"flights from Nairobi to Mombasa tomorrow\"_")
+    elif action == "link":
+        await _cmd_link(chat_id, "")
+    elif action == "help":
+        await _cmd_help(chat_id)
+    else:
+        await _send_message(chat_id, f"📱 Received from dashboard: _{action}_\\. Type your request and I'll help\\!")
+
+
+async def _ensure_telegram_user(
+    chat_id: str,
+    telegram_id: str,
+    username: str,
+    first_name: str,
+    last_name: str,
+):
+    """Auto-register a TelegramUser on first contact (no Django link)."""
+    from asgiref.sync import sync_to_async
+
+    @sync_to_async
+    def _upsert():
+        from .models import TelegramUser
+        tg_id = int(telegram_id) if telegram_id else int(chat_id)
+        obj, created = TelegramUser.objects.get_or_create(
+            telegram_id=tg_id,
+            defaults={
+                "chat_id": int(chat_id),
+                "telegram_username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "is_authenticated": False,
+            },
+        )
+        if not created:
+            # Update metadata on every contact
+            updated = False
+            if username and obj.telegram_username != username:
+                obj.telegram_username = username
+                updated = True
+            if first_name and obj.first_name != first_name:
+                obj.first_name = first_name
+                updated = True
+            if updated:
+                obj.save(update_fields=["telegram_username", "first_name"])
+        return created
+
+    try:
+        created = await _upsert()
+        if created:
+            logger.info("TG user auto-registered: tg_id=%s username=%s", telegram_id, username)
+    except Exception as exc:
+        logger.error("TG user auto-registration failed: %s", exc)
+
+
+async def _route_quick_command(chat_id: str, cmd: str):
+    """Handle quick commands from the welcome keyboard."""
+    if cmd == "weather":
+        await _send_message(chat_id, "🌤️ Tell me a location — for example: _\"Nairobi\"_ or _\"Mombasa, Kenya\"_")
+    elif cmd == "travel":
+        await _send_message(chat_id, "✈️ Where would you like to go? Try: _\"flights from Nairobi to Mombasa tomorrow\"_")
+    elif cmd == "payments":
+        await _send_message(chat_id, "💰 What would you like to know about payments? Try: _\"my invoice status\"_ or _\"recent transactions\"_")
+    elif cmd == "link":
+        await _cmd_link(chat_id)
+    elif cmd == "help":
+        await _cmd_help(chat_id)
+
+
+async def _handle_deep_link_auth(chat_id: str, payload: str):
+    """Process an auth deep link: /start auth_TOKEN."""
+    token = payload.replace("auth_", "", 1).strip()
+    if len(token) < 4:
+        await _send_message(chat_id, "❌ Invalid auth token\\.")
+        return
+
+    # Treat auth tokens same as link codes — verify via the same mechanism
+    await _verify_and_link(chat_id, token.upper())
+
+
+async def _handle_deep_link_action(chat_id: str, payload: str):
+    """Process an action deep link: /start action_weather_nairobi."""
+    action_text = payload.replace("action_", "", 1).strip().replace("_", " ")
+    logger.info(f"TG deep link action: chat={chat_id} action={action_text}")
+    await _process_and_reply(chat_id, action_text)
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +722,10 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
 
 def _get_token() -> str:
     import os
-    return getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    return (
+        getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+        or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    )
 
 
 def _redis():
@@ -91,7 +750,43 @@ async def _send_typing(chat_id: str):
 
 
 async def _send_message(chat_id: str, text: str):
-    await _tg_call("sendMessage", {"chat_id": chat_id, "text": text[:4000]})
+    await _tg_call("sendMessage", {
+        "chat_id": chat_id,
+        "text": text[:4000],
+        "parse_mode": "MarkdownV2",
+    })
+
+
+async def _send_message_with_keyboard(
+    chat_id: str,
+    text: str,
+    keyboard: Dict[str, Any],
+):
+    """Send a message with an inline keyboard attached."""
+    await _tg_call("sendMessage", {
+        "chat_id": chat_id,
+        "text": text[:4000],
+        "parse_mode": "MarkdownV2",
+        "reply_markup": keyboard,
+    })
+
+
+async def _edit_message_with_keyboard(
+    chat_id: str,
+    message_id: int,
+    text: str,
+    keyboard: Optional[Dict[str, Any]] = None,
+):
+    """Edit an existing message, optionally updating its keyboard."""
+    payload: Dict[str, Any] = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text[:4000],
+        "parse_mode": "MarkdownV2",
+    }
+    if keyboard:
+        payload["reply_markup"] = keyboard
+    await _tg_call("editMessageText", payload)
 
 
 def _format_result(result: dict) -> str:
@@ -104,69 +799,76 @@ def _format_result(result: dict) -> str:
     # Weather result
     if result.get("temperature") is not None:
         return (
-            f"🌡️ {result.get('city', '?')}, {result.get('country', '')}: "
-            f"{result['temperature']}°C, {result.get('description', '?')}. "
-            f"Humidity: {result.get('humidity', '?')}%, Wind: {result.get('wind_speed', '?')} km/h"
+            f"🌡️ *{result.get('city', '?')}*, {result.get('country', '')}\n"
+            f"🌤️ {result['temperature']}°C, {result.get('description', '?')}\n"
+            f"💧 Humidity: {result.get('humidity', '?')}%\n"
+            f"💨 Wind: {result.get('wind_speed', '?')} km/h"
         )
 
     # Travel search results (flights, hotels, buses)
     results = result.get("results") or result.get("data", {}).get("results", [])
     if results and isinstance(results, list) and len(results) > 0:
-        lines = [f"📋 Found {len(results)} results:"]
-        for i, item in enumerate(results[:5]):  # max 5 for Telegram
+        lines = [f"📋 *Found {len(results)} results:*"]
+        for i, item in enumerate(results[:5]):
             if isinstance(item, dict):
-                # Flight
                 if "airline" in item or "flight_number" in item:
                     lines.append(
-                        f"{i+1}. {item.get('airline','?')} {item.get('flight_number','')} "
+                        f"{i+1}\\. {item.get('airline','?')} {item.get('flight_number','')} "
                         f"{item.get('departure','')} → {item.get('arrival','')} "
                         f"${item.get('price','?')}"
                     )
-                # Hotel
                 elif "hotel_name" in item or "name" in item:
                     lines.append(
-                        f"{i+1}. {item.get('hotel_name') or item.get('name','?')} — "
+                        f"{i+1}\\. *{item.get('hotel_name') or item.get('name','?')}* — "
                         f"${item.get('price','?')}/night, ⭐{item.get('rating','?')}"
                     )
-                # Generic
                 else:
-                    lines.append(f"{i+1}. {str(item)[:100]}")
+                    lines.append(f"{i+1}\\. {str(item)[:100]}")
             else:
-                lines.append(f"{i+1}. {str(item)[:100]}")
+                lines.append(f"{i+1}\\. {str(item)[:100]}")
         return "\n".join(lines)
 
     # Generic fallback
     if msg:
         return msg
-    return str(result.get("data", result))[:2000] or "Done!"
+    return str(result.get("data", result))[:2000] or "✅ Done\\!"
 
 
-async def _get_context(chat_id: str) -> list[dict]:
-    """Get recent conversation context from Redis."""
+# ---------------------------------------------------------------------------
+# Context helpers — delegate to MemoryManager
+# ---------------------------------------------------------------------------
+
+async def _build_context_for_llm(chat_id: str) -> str:
+    raw_turns = await MemoryManager.get_recent_turns(chat_id, max_items=6)
+    if not raw_turns:
+        return ""
+    lines = []
+    for turn in raw_turns:
+        prefix = "User" if turn["role"] == "user" else "Mathia"
+        lines.append(f"{prefix}: {turn['content']}")
+    return "Recent conversation:\n" + "\n".join(lines) + "\n\n"
+
+
+async def _build_system_prompt(chat_id: str) -> str:
+    base = _MATHIA_TG_SYSTEM_PROMPT
+    facts_block = await MemoryManager._build_facts_block(chat_id)
+    summary = await MemoryManager._get_rolling_summary(chat_id)
+    parts = [base]
+    if facts_block:
+        parts.append("\n\n" + facts_block)
+    if summary:
+        parts.append(f"\n\nCONVERSATION SUMMARY:\n{summary}")
+    return "\n".join(parts)
+
+
+async def _record_and_forget(chat_id: str, user_msg: str, reply: str):
     try:
-        raw = _redis().get(f"tg:ctx:{chat_id}")
-        if raw:
-            return json.loads(raw if isinstance(raw, str) else raw.decode())
-    except Exception:
-        pass
-    return []
-
-
-async def _save_context(chat_id: str, user_msg: str, reply: str):
-    """Store last 10 messages in Redis for conversation memory."""
-    ctx = await _get_context(chat_id)
-    ctx.append({"role": "user", "text": user_msg[:500]})
-    ctx.append({"role": "assistant", "text": reply[:500]})
-    if len(ctx) > 20:
-        ctx = ctx[-20:]
-    try:
-        _redis().setex(f"tg:ctx:{chat_id}", CONTEXT_TTL, json.dumps(ctx))
-    except Exception:
-        pass
+        await MemoryManager.record_turn(chat_id, user_msg, reply)
+    except Exception as exc:
+        logger.error(f"MemoryManager.record_turn failed for chat={chat_id}: {exc}")
 
 
 async def _get_pending(chat_id: str) -> dict | None:
-    """Check for a pending confirmation action."""
     try:
         raw = _redis().get(f"tg:pending:{chat_id}")
         if raw:
@@ -177,7 +879,7 @@ async def _get_pending(chat_id: str) -> dict | None:
 
 
 async def _set_pending(chat_id: str, data: dict):
-    _redis().setex(f"tg:pending:{chat_id}", 600, json.dumps(data))  # 10-min TTL
+    _redis().setex(f"tg:pending:{chat_id}", 600, json.dumps(data))
 
 
 async def _clear_pending(chat_id: str):
@@ -195,39 +897,24 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
 
     await _send_typing(chat_id)
 
-    # ── 1. Check for pending confirmation ──────────────────────────
+    # ── 1. Check for pending confirmation (text-based, backward compat) ──
     pending = await _get_pending(chat_id)
-    if pending and text.lower() in ("yes", "confirm", "ok", "y", "proceed", "go ahead", "accept"):
-        await _clear_pending(chat_id)
-        from orchestration.mcp_router import route_intent
-        pending["confirmed"] = True
-        try:
-            result = await route_intent(pending, {"telegram_chat_id": chat_id, "platform": "telegram"})
-            reply = result.get("message") or "Done!"
-        except Exception as exc:
-            logger.error(f"Confirmed action failed: {exc}")
-            reply = "Sorry, that action failed. Try again?"
-        await _save_context(chat_id, text, reply)
-        await _send_message(chat_id, reply)
+    if pending and text.lower() in (
+        "yes", "confirm", "ok", "y", "proceed", "go ahead", "accept",
+    ):
+        await _handle_confirmation(chat_id, confirmed=True)
         return
 
     if pending and text.lower() in ("no", "cancel", "n", "stop", "never mind"):
         await _clear_pending(chat_id)
-        reply = "Cancelled. What else can I help with?"
-        await _save_context(chat_id, text, reply)
+        reply = "❌ Cancelled\\. What else can I help with?"
+        await _record_and_forget(chat_id, text, reply)
         await _send_message(chat_id, reply)
         return
 
     # ── 2. Build conversation context ──────────────────────────────
-    ctx = await _get_context(chat_id)
-    context_prompt = ""
-    if ctx:
-        recent = ctx[-6:]  # last 3 exchanges
-        lines = []
-        for m in recent:
-            prefix = "User" if m["role"] == "user" else "Mathia"
-            lines.append(f"{prefix}: {m['text']}")
-        context_prompt = "Recent conversation:\n" + "\n".join(lines) + "\n\n"
+    context_prompt = await _build_context_for_llm(chat_id)
+    system_prompt = await _build_system_prompt(chat_id)
 
     # ── 3. Parse intent (rule-based → LLM fallback) ────────────────
     from orchestration.intent_parser import parse_intent
@@ -239,9 +926,7 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
     action = intent.get("action", "")
     missing = intent.get("missing_slots") or []
 
-    # Rule-based parser hit but has missing slots → let LLM fill them
     if action not in ("general_chat", "chat", "none", "", None) and missing:
-        from orchestration.llm_client import get_llm_client, extract_json
         llm = get_llm_client()
         try:
             fill_raw = await llm.generate_text(
@@ -265,12 +950,10 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
         except Exception:
             pass
 
-    # Still no good action → full LLM classification
     reply: str = ""
 
     if action in ("general_chat", "chat", "none", "", None):
         llm = get_llm_client()
-        # Try LLM-based intent extraction with context
         try:
             llm_intent_raw = await llm.generate_text(
                 system_prompt=(
@@ -278,7 +961,7 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
                     "- get_weather: weather for a location\n"
                     "- search_flights, search_hotels, search_buses: travel search\n"
                     "- create_itinerary, view_itinerary: trip planning\n"
-                    "- send_whatsapp, send_email: messaging\n"
+                    "- send_whatsapp, send_email, send_telegram_message: messaging\n"
                     "- set_reminder, get_calendar: scheduling\n"
                     "- search_web: web search\n"
                     "- currency_convert: currency exchange\n"
@@ -286,7 +969,7 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
                     "Given the user message, return valid JSON ONLY:\n"
                     '{"action":"<action>","parameters":{...},"is_chat":true/false}\n'
                     '"is_chat":true means this is just conversation, no tool needed.\n\n'
-                    "Example: 'hmm what's the weather like in Nairobi today?' →\n"
+                    "Example: 'what's the weather in Nairobi today?' →\n"
                     '{"action":"get_weather","parameters":{"location":"Nairobi"},"is_chat":false}'
                 ),
                 user_prompt=context_prompt + "User: " + text,
@@ -305,31 +988,41 @@ async def _process_and_reply(chat_id: str, text: str) -> None:
             result = await route_intent(intent, user_context)
             if result.get("status") == "needs_confirmation":
                 await _set_pending(chat_id, intent)
-                reply = result.get("message") or "Confirm this action? Reply yes/no."
+                confirm_text = (
+                    result.get("message")
+                    or "⚠️ This action needs your confirmation\\."
+                )
+                await _send_message_with_keyboard(
+                    chat_id,
+                    f"{confirm_text}\n\n_Tap a button below:_",
+                    _CONFIRM_KEYBOARD,
+                )
+                return
             elif result.get("status") == "success":
                 reply = _format_result(result)
             else:
-                reply = result.get("message") or _format_result(result) or "That didn't work. Try rephrasing?"
+                reply = (
+                    result.get("message")
+                    or _format_result(result)
+                    or "That didn't work\\. Try rephrasing?"
+                )
         except Exception as exc:
             logger.error(f"Route intent failed: {exc}")
-            reply = "Sorry, I couldn't complete that. Try again?"
+            reply = "❌ Sorry, I couldn't complete that\\. Try again?"
     else:
-        # Pure chat — LLM with context
         llm = get_llm_client()
         reply = await llm.generate_text(
-            system_prompt=(
-                "You are Mathia, a helpful AI assistant. You can manage travel, "
-                "weather, payments, reminders, messaging, and more. Keep replies "
-                "concise (1-3 sentences). If the user needs a tool capability, "
-                "let them know you can help with that."
-            ),
+            system_prompt=system_prompt,
             user_prompt=context_prompt + "User: " + text,
             max_tokens=300,
         )
 
     if not reply:
-        reply = "I'm not sure how to help with that. Try asking about weather, travel, or reminders!"
+        reply = (
+            "I'm not sure how to help with that\\. "
+            "Try asking about weather, travel, or reminders\\!"
+        )
 
     # ── 5. Reply & remember ────────────────────────────────────────
-    await _save_context(chat_id, text, reply)
+    await _record_and_forget(chat_id, text, reply)
     await _send_message(chat_id, reply)

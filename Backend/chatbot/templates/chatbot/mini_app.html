@@ -1,0 +1,291 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mathia</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #1a1a1a;
+            --text-secondary: #6b7280;
+            --card: #f3f4f6;
+            --card-border: #e5e7eb;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger: #ef4444;
+            --success: #10b981;
+            --radius: 12px;
+        }
+
+        /* Telegram dark theme overrides */
+        body.tg-dark {
+            --bg: var(--tg-theme-bg-color, #1a1a2e);
+            --text: var(--tg-theme-text-color, #e5e7eb);
+            --text-secondary: var(--tg-theme-hint-color, #9ca3af);
+            --card: var(--tg-theme-secondary-bg-color, #16213e);
+            --card-border: var(--tg-theme-section-separator-color, #2d2d44);
+            --accent: var(--tg-theme-button-color, #3b82f6);
+            --accent-hover: var(--tg-theme-button-text-color, #60a5fa);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 16px;
+            min-height: 100vh;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .header {
+            text-align: center;
+            padding: 24px 0 16px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .header .subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .user-card {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-card .avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .user-card .info h3 {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .user-card .info p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 20px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            width: 100%;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid var(--card-border);
+            color: var(--text);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.linked {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.unlinked {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text);
+            color: var(--bg);
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🛰️ Mathia</h1>
+        <p class="subtitle">AI Assistant — in Telegram</p>
+    </div>
+
+    <div class="user-card" id="userCard">
+        <div class="avatar" id="userAvatar">?</div>
+        <div class="info">
+            <h3 id="userName">Loading...</h3>
+            <p id="userStatus">Connecting to Telegram...</p>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-primary" onclick="sendToBot('weather')">
+            🌤️ Check Weather
+        </button>
+        <button class="btn btn-primary" onclick="sendToBot('travel')">
+            ✈️ Search Travel
+        </button>
+        <button class="btn btn-outline" onclick="sendToBot('link')">
+            🔗 Link Account
+        </button>
+        <button class="btn btn-outline" onclick="sendToBot('help')">
+            ❓ Help
+        </button>
+        <button class="btn btn-outline" onclick="closeApp()">
+            ✕ Close
+        </button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ── Telegram Web App initialization ──────────────────────────
+        const tg = window.Telegram.WebApp;
+
+        // Apply Telegram theme
+        tg.ready();
+        tg.expand(); // Use full available height
+
+        // Set theme class for CSS variables
+        if (tg.colorScheme === 'dark') {
+            document.body.classList.add('tg-dark');
+        }
+        tg.onEvent('themeChanged', () => {
+            document.body.classList.toggle('tg-dark', tg.colorScheme === 'dark');
+        });
+
+        // ── User info display ────────────────────────────────────────
+        const user = tg.initDataUnsafe?.user;
+        const avatarEl = document.getElementById('userAvatar');
+        const nameEl = document.getElementById('userName');
+        const statusEl = document.getElementById('userStatus');
+
+        if (user) {
+            nameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            avatarEl.textContent = (user.first_name || '?')[0].toUpperCase();
+            if (user.photo_url) {
+                avatarEl.style.backgroundImage = `url(${user.photo_url})`;
+                avatarEl.style.backgroundSize = 'cover';
+                avatarEl.textContent = '';
+            }
+
+            // Check linking status from backend
+            {% if linked_user %}
+            statusEl.innerHTML = '<span class="status-badge linked">✅ Linked as @{{ linked_user }}</span>';
+            {% elif linked_tg %}
+            statusEl.innerHTML = '<span class="status-badge linked">✅ Linked {{ linked_tg }}</span>';
+            {% else %}
+            statusEl.innerHTML = '<span class="status-badge unlinked">⚠️ Not linked — tap Link Account</span>';
+            {% endif %}
+        } else {
+            nameEl.textContent = 'Mathia User';
+            avatarEl.textContent = 'M';
+            statusEl.textContent = 'Open via Telegram for full features';
+        }
+
+        // ── Main button (persistent bottom button) ───────────────────
+        tg.MainButton.setText('Open Chat').show().onClick(() => {
+            tg.close();
+        });
+
+        // ── Actions ──────────────────────────────────────────────────
+        function sendToBot(action) {
+            const data = JSON.stringify({ action: action, source: 'mini_app' });
+            tg.sendData(data);
+            showToast('Sent to Mathia! 📤');
+            // Close after a brief delay so user sees the toast
+            setTimeout(() => tg.close(), 800);
+        }
+
+        function closeApp() {
+            tg.close();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+
+</html>
