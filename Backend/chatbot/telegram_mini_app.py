@@ -23,45 +23,44 @@ logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def telegram_mini_app(request: HttpRequest) -> HttpResponse:
-    """
-    Serve the Mini App HTML page.
-
-    The page reads initData from the URL (injected by Telegram) and uses
-    the Telegram Web App JS SDK for theming, user info, and interactions.
-    """
-    # Extract initData from query params (Telegram appends this)
-    init_data = request.GET.get("tgWebAppData", "")
-
-    # Try to extract chat_id from initData or query params
-    chat_id = request.GET.get("chat_id", "")
-
+    """Serve the Mini App HTML page."""
     context = {
-        "init_data": init_data,
-        "chat_id": chat_id,
-        "bot_username": _bot_username(),
+        "init_data": request.GET.get("tgWebAppData", ""),
+        "chat_id": request.GET.get("chat_id", ""),
+        "bot_username": _bot_username_safe(),
+        "linked_user": None,
+        "linked_tg": None,
     }
 
-    # If user is authenticated via Django session, include linking info
-    if request.user and request.user.is_authenticated:
-        try:
+    # Safely query TelegramUser — may not exist if migration hasn't run yet
+    chat_id = context["chat_id"]
+    try:
+        if request.user and request.user.is_authenticated:
             tg_user = TelegramUser.objects.filter(
                 user=request.user, is_authenticated=True
             ).first()
-            context["linked_tg"] = (
-                f"@{tg_user.telegram_username}" if tg_user and tg_user.telegram_username else "Yes"
-            )
-        except Exception:
-            context["linked_tg"] = None
-    else:
-        # Check if chat_id has a linked TG user
-        if chat_id:
-            try:
-                tg_user = TelegramUser.objects.filter(
-                    chat_id=int(chat_id), is_authenticated=True
-                ).first()
-                if tg_user and tg_user.user:
-                    context["linked_user"] = tg_user.user.username
-            except (ValueError, Exception):
-                pass
+            if tg_user:
+                context["linked_tg"] = (
+                    f"@{tg_user.telegram_username}"
+                    if tg_user.telegram_username else "Yes"
+                )
+        elif chat_id:
+            tg_user = TelegramUser.objects.filter(
+                chat_id=int(chat_id), is_authenticated=True
+            ).first()
+            if tg_user and tg_user.user:
+                context["linked_user"] = tg_user.user.username
+    except Exception as exc:
+        logger.warning("Mini App: TelegramUser query failed (migration pending?): %s", exc)
 
     return render(request, "chatbot/mini_app.html", context)
+
+
+def _bot_username_safe() -> str:
+    """Get bot username without crashing on import errors."""
+    try:
+        return _bot_username()
+    except Exception:
+        import os
+        from django.conf import settings as ds
+        return getattr(ds, "TELEGRAM_BOT_USERNAME", "") or os.environ.get("TELEGRAM_BOT_USERNAME", "MathiaBot")
