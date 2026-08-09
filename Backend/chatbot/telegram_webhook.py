@@ -767,11 +767,22 @@ async def _send_typing(chat_id: str):
 
 
 async def _send_message(chat_id: str, text: str):
-    await _tg_call("sendMessage", {
-        "chat_id": chat_id,
-        "text": text[:4000],
-        "parse_mode": "MarkdownV2",
-    })
+    """Send a message. Tries MarkdownV2 first, falls back to plain text on failure."""
+    try:
+        await _tg_call("sendMessage", {
+            "chat_id": chat_id,
+            "text": text[:4000],
+            "parse_mode": "MarkdownV2",
+        })
+    except Exception:
+        # MarkdownV2 parsing failed (unescaped chars from LLM) — retry plain text
+        try:
+            await _tg_call("sendMessage", {
+                "chat_id": chat_id,
+                "text": text[:4000],
+            })
+        except Exception:
+            logger.error("TG sendMessage failed twice for chat=%s", chat_id)
 
 
 async def _send_message_with_keyboard(
