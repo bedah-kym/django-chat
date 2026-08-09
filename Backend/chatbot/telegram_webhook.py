@@ -142,8 +142,7 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
     # ── Callback queries (inline keyboard button presses) ──────────
     callback = body.get("callback_query")
     if callback:
-        import asyncio as _asyncio
-        _asyncio.ensure_future(_handle_callback(callback))
+        await _handle_callback(callback)
         return JsonResponse({"status": "ok"})
 
     # ── Inline queries (@MathiaBot query from any chat) ────────────
@@ -197,10 +196,7 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
 
     logger.info(f"Telegram inbound: chat_id={chat_id} text={text[:80]} cmd={is_command}")
 
-    import asyncio as _asyncio
-
     # Pre-fetch durable facts / summary while still in the request context
-    # (sync_to_async's CurrentThreadExecutor dies after the response is sent)
     try:
         facts_block = await MemoryManager._build_facts_block(chat_id)
         rolling_summary = await MemoryManager._get_rolling_summary(chat_id)
@@ -208,28 +204,23 @@ async def telegram_webhook(request: HttpRequest) -> HttpResponse:
         facts_block = ""
         rolling_summary = ""
 
-    # Build the full system prompt now (requires DB access)
     system_prompt = _MATHIA_TG_SYSTEM_PROMPT
     if facts_block:
         system_prompt += "\n\n" + facts_block
     if rolling_summary:
         system_prompt += f"\n\nCONVERSATION SUMMARY:\n{rolling_summary}"
 
-    # Auto-register the Telegram user on first contact
+    # Auto-register the user (fire-and-forget is fine — no DB access in failure path)
+    import asyncio as _asyncio
     _asyncio.ensure_future(_ensure_telegram_user(
         chat_id, telegram_id, tg_username, first_name, last_name,
     ))
 
+    # Process synchronously — await to keep DB executor alive
     if is_command:
-        # /link CODE needs DB access — process synchronously
-        if text.startswith("/link ") and len(text) > 7:
-            code = text[6:].strip().split()[0].upper()
-            if len(code) >= 4:
-                await _verify_and_link(chat_id, code)
-                return JsonResponse({"status": "ok"})
-        _asyncio.ensure_future(_handle_command(chat_id, text, entities))
+        await _handle_command(chat_id, text, entities)
     else:
-        _asyncio.ensure_future(_process_and_reply(chat_id, text, system_prompt))
+        await _process_and_reply(chat_id, text, system_prompt)
 
     return JsonResponse({"status": "ok"})
 
