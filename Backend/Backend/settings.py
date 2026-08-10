@@ -344,6 +344,17 @@ SIGNET_NITTER_INSTANCE_DELAY = float(os.environ.get('SIGNET_NITTER_INSTANCE_DELA
 SIGNET_NITTER_REQUEST_TIMEOUT = float(os.environ.get('SIGNET_NITTER_REQUEST_TIMEOUT', '15.0'))
 SIGNET_NITTER_MAX_POSTS = int(os.environ.get('SIGNET_NITTER_MAX_POSTS', '50'))
 
+# SIGNET — X Feed collector (twikit, internal API).
+# Cookies file path or base64-encoded JSON blob for auth.
+SIGNET_X_COOKIES_PATH = os.environ.get('SIGNET_X_COOKIES_PATH', 'x_cookies.json')
+SIGNET_X_COOKIES_JSON = os.environ.get('SIGNET_X_COOKIES_JSON', '')
+# Which timelines to collect: 'for_you', 'following', or both (comma-separated).
+SIGNET_X_FEED_TYPES = [
+    t.strip() for t in os.environ.get('SIGNET_X_FEED_TYPES', 'for_you,following').split(',')
+    if t.strip()
+]
+SIGNET_X_FEED_LIMIT = int(os.environ.get('SIGNET_X_FEED_LIMIT', '50'))
+
 # Telegram Bot integration — webhook, commands, Mini App, account linking.
 # TELEGRAM_BOT_TOKEN is shared with SIGNET above (single bot for both).
 TELEGRAM_WEBHOOK_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')

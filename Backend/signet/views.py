@@ -391,12 +391,9 @@ def collection_start(request):
         config = {'channels': channels, 'limit': limit}
     elif platform == 'x':
         from django.conf import settings
-        handle = request.data.get('handle') or getattr(settings, 'SIGNET_X_DEFAULT_HANDLE', '')
-        if not handle:
-            return Response({'error': 'X handle required (set SIGNET_X_DEFAULT_HANDLE in .env or pass handle in request)'}, status=400)
-        keywords = request.data.get('keywords', [])
-        keywords = keywords if isinstance(keywords, list) else [keywords]
-        config = {'handle': handle.strip().lstrip('@'), 'keywords': keywords, 'limit': limit}
+        feed_types = request.data.get('feed_types') or getattr(settings, 'SIGNET_X_FEED_TYPES', ['for_you', 'following'])
+        feed_types = feed_types if isinstance(feed_types, list) else [feed_types]
+        config = {'feed_types': feed_types, 'limit': limit}
     else:
         subreddits = request.data.get('subreddits', ['Kenya'])
         config = {'subreddits': subreddits if isinstance(subreddits, list) else [subreddits], 'limit': limit}

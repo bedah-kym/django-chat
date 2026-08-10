@@ -244,3 +244,80 @@ def normalize_x_rss_entry(entry, default_handle: str = '') -> 'CollectionPayload
         parent_post_id=None,
         collector_version='1.0',
     )
+
+
+def normalize_x_tweet(tweet, feed_type: str = 'for_you') -> 'CollectionPayload':
+    """Normalize a twikit Tweet object into a CollectionPayload.
+
+    ``tweet`` is a twikit ``Tweet`` object from ``get_latest_timeline()``
+    or ``get_timeline()``. ``feed_type`` is ``"for_you"`` or ``"following"``
+    and is stored in the raw_payload for downstream analysis.
+    """
+    tweet_id = str(getattr(tweet, 'id', ''))
+    if not tweet_id:
+        return None
+
+    user = getattr(tweet, 'user', None)
+    author_handle = str(getattr(user, 'screen_name', '') or 'unknown')
+
+    text = (getattr(tweet, 'text', '') or '').strip()
+    full = (getattr(tweet, 'full_text', '') or '').strip()
+    content_text = full or text
+
+    posted_at = datetime.now(timezone.utc).isoformat()
+    created = getattr(tweet, 'created_at', None)
+    if created is not None:
+        try:
+            if hasattr(created, 'isoformat'):
+                posted_at = created.isoformat()
+            else:
+                posted_at = str(created)
+        except Exception:
+            pass
+
+    likes = getattr(tweet, 'favorite_count', None)
+    shares = getattr(tweet, 'retweet_count', None)
+    comments = getattr(tweet, 'reply_count', None)
+    views = getattr(tweet, 'view_count', None)
+
+    hashtags = _extract_hashtags(content_text)
+    mentions = _extract_at_mentions(content_text)
+    urls = _extract_urls(content_text)
+
+    is_reply = bool(getattr(tweet, 'in_reply_to_status_id', None))
+    is_repost = bool(getattr(tweet, 'retweeted_status', None)) or (
+        content_text.strip().upper().startswith('RT @')
+    )
+    parent_id = str(getattr(tweet, 'in_reply_to_status_id', '') or '') or None
+
+    media_objs = getattr(tweet, 'media', None)
+    media_type = 'text'
+    if media_objs:
+        if isinstance(media_objs, list) and media_objs:
+            media_type = str(getattr(media_objs[0], 'type', 'text') or 'text')
+        else:
+            media_type = 'media'
+
+    return CollectionPayload(
+        platform='x',
+        platform_post_id=tweet_id,
+        platform_author_id=author_handle,
+        author_handle=f'@{author_handle}',
+        content_text=content_text,
+        posted_at=posted_at,
+        collected_at=datetime.now(timezone.utc).isoformat(),
+        likes=likes,
+        shares=shares,
+        comments=comments,
+        views=views,
+        reach=views,
+        hashtags=hashtags,
+        mentions=mentions,
+        urls=urls,
+        media_type=media_type,
+        language=None,
+        is_reply=is_reply,
+        is_repost=is_repost,
+        parent_post_id=parent_id,
+        collector_version='2.0',
+    )
