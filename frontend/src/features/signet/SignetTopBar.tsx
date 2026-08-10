@@ -74,7 +74,7 @@ export function SignetTopBar({
           </span>
         </div>
         <div className={s.platformToggle} aria-label="Collection platform">
-          {(['reddit', 'telegram'] as SignetCollectionPlatform[]).map(platform => (
+          {(['reddit', 'telegram', 'x'] as SignetCollectionPlatform[]).map(platform => (
             <button
               key={platform}
               type="button"
