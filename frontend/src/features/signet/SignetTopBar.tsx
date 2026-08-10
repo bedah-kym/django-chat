@@ -74,17 +74,16 @@ export function SignetTopBar({
           </span>
         </div>
         <div className={s.platformToggle} aria-label="Collection platform">
-          {(['reddit', 'telegram', 'x'] as SignetCollectionPlatform[]).map(platform => (
-            <button
-              key={platform}
-              type="button"
-              className={platform === collectionPlatform ? s.platformButtonActive : s.platformButton}
-              disabled={collectionBusy || isCollecting}
-              onClick={() => onCollectionPlatformChange?.(platform)}
-            >
-              {platform}
-            </button>
-          ))}
+          <select
+            className={s.platformSelect}
+            value={collectionPlatform}
+            disabled={collectionBusy || isCollecting}
+            onChange={e => onCollectionPlatformChange?.(e.target.value as SignetCollectionPlatform)}
+          >
+            <option value="reddit">Reddit</option>
+            <option value="telegram">Telegram</option>
+            <option value="x">X</option>
+          </select>
         </div>
         <button
           type="button"

@@ -134,40 +134,42 @@
 .platformToggle {
   display: inline-flex;
   align-items: center;
+}
+
+.platformSelect {
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid var(--sg-line);
   border-radius: var(--sg-radius);
   background: var(--sg-panel-inset);
-  overflow: hidden;
-}
-
-.platformButton,
-.platformButtonActive {
-  border: 0;
-  border-inline-end: 1px solid var(--sg-line);
-  background: transparent;
-  color: var(--sg-text-low);
+  color: var(--sg-signal);
   cursor: pointer;
   font-family: var(--sg-mono);
   font-size: var(--sg-fs-2xs);
   letter-spacing: var(--sg-track);
-  padding: 4px 8px;
+  padding: 4px 24px 4px 8px;
   text-transform: uppercase;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23F5A623'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px 6px;
+  transition: border-color var(--transition-fast, 150ms ease);
 }
 
-.platformButton:last-child,
-.platformButtonActive:last-child {
-  border-inline-end: 0;
+.platformSelect:focus-visible {
+  outline: 1px solid var(--sg-signal);
+  outline-offset: 2px;
 }
 
-.platformButtonActive {
-  background: rgba(245, 166, 35, 0.14);
-  color: var(--sg-signal);
-}
-
-.platformButton:disabled,
-.platformButtonActive:disabled {
+.platformSelect:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+.platformSelect option {
+  background: var(--sg-panel);
+  color: var(--sg-text);
+  font-family: var(--sg-mono);
 }
 
 .startButton,
