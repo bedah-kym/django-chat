@@ -10,7 +10,7 @@ from signet.models import (
     CollectionSession, CollectedPost, PostClassification,
     SignetActivity, SignetReviewItem,
 )
-from signet.collectors import RedditCollector, TelegramCollector
+from signet.collectors import RedditCollector, TelegramCollector, XCollector
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,62 @@ def collect_telegram_task(self, session_id: int):
                 text=f'Collected {count} posts from {channel}',
                 is_alert=False,
             )
+
+        pending_posts = CollectedPost.objects.filter(
+            session=session,
+            tagging_status='pending',
+        ).order_by('-posted_at')
+
+        batch_size = 5
+        for i in range(0, pending_posts.count(), batch_size):
+            batch = pending_posts[i:i + batch_size]
+            for post in batch:
+                tag_post_task.delay(post.id, user_id=session.user_id)
+
+
+@shared_task(bind=True, max_retries=1, ignore_result=True)
+def collect_x_task(self, session_id: int):
+    try:
+        session = CollectionSession.objects.get(id=session_id)
+    except CollectionSession.DoesNotExist:
+        logger.error(f'collect_x_task: session {session_id} not found')
+        return
+
+    if session.status == 'paused':
+        logger.info(f'collect_x_task: session {session_id} paused — skipping')
+        return
+
+    session.status = 'running'
+    session.save(update_fields=['status'])
+
+    try:
+        collector = XCollector(session)
+        count = collector.collect()
+    except Exception as exc:
+        logger.error(f'collect_x_task: session {session_id} failed: {exc}')
+        session.stats = {
+            **(session.stats or {}),
+            'last_run': str(timezone.now()),
+            'last_error': str(exc),
+            'posts_collected': 0,
+        }
+        session.save(update_fields=['stats'])
+        return
+
+    session.stats = {
+        **(session.stats or {}),
+        'last_run': str(timezone.now()),
+        'posts_collected': count,
+    }
+    session.save(update_fields=['stats'])
+
+    if count:
+        handle = session.config.get('handle', 'unknown')
+        SignetActivity.objects.create(
+            user=session.user,
+            text=f'Collected {count} X posts from @{handle}',
+            is_alert=False,
+        )
 
         pending_posts = CollectedPost.objects.filter(
             session=session,
@@ -259,6 +315,8 @@ def signet_heartbeat(self):
     for session in running:
         if session.platform == 'telegram':
             collect_telegram_task.delay(session.id)
+        elif session.platform == 'x':
+            collect_x_task.delay(session.id)
         else:
             collect_reddit_task.delay(session.id)
 

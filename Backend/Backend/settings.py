@@ -322,6 +322,28 @@ TELEGRAM_DEFAULT_CHANNELS = [
     if c.strip()
 ]
 
+# SIGNET — X/Twitter collector (via Nitter RSS, no API key).
+# Set SIGNET_X_DEFAULT_HANDLE to your own @handle (without the @) to
+# collect your public timeline. This is a single-operator feature —
+# it is not exposed as a general user setting.
+SIGNET_X_DEFAULT_HANDLE = os.environ.get('SIGNET_X_DEFAULT_HANDLE', '')
+# Comma-separated list of Nitter instances to try (order = preference).
+SIGNET_NITTER_INSTANCES = [
+    i.strip() for i in os.environ.get(
+        'SIGNET_NITTER_INSTANCES',
+        'https://nitter.net,'
+        'https://nitter.poast.org,'
+        'https://nitter.privacydev.net,'
+        'https://nitter.1d4.us,'
+        'https://nitter.kavin.rocks,'
+        'https://nitter.unixfox.eu,'
+        'https://nitter.domain.glass',
+    ).split(',') if i.strip()
+]
+SIGNET_NITTER_INSTANCE_DELAY = float(os.environ.get('SIGNET_NITTER_INSTANCE_DELAY', '2.0'))
+SIGNET_NITTER_REQUEST_TIMEOUT = float(os.environ.get('SIGNET_NITTER_REQUEST_TIMEOUT', '15.0'))
+SIGNET_NITTER_MAX_POSTS = int(os.environ.get('SIGNET_NITTER_MAX_POSTS', '50'))
+
 # Telegram Bot integration — webhook, commands, Mini App, account linking.
 # TELEGRAM_BOT_TOKEN is shared with SIGNET above (single bot for both).
 TELEGRAM_WEBHOOK_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')

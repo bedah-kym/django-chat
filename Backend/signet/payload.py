@@ -132,3 +132,115 @@ def normalize_telegram_message(message) -> CollectionPayload:
         parent_post_id=str(getattr(message, 'reply_to_message_id', '') or '') or None,
         collector_version='1.0',
     )
+
+
+def _parse_nitter_tweet_id(link: str) -> str:
+    """Extract the tweet ID from a Nitter RSS link.
+
+    Nitter RSS entries have links like:
+      https://nitter.net/<handle>/status/<tweet_id>
+    or the canonical:
+      https://twitter.com/<handle>/status/<tweet_id>
+    """
+    import re
+    m = re.search(r'/status(?:es)?/(\d+)', link)
+    return m.group(1) if m else ''
+
+
+def _nitter_handle_from_link(link: str) -> str:
+    """Extract the Twitter handle from a Nitter RSS link."""
+    import re
+    m = re.search(r'(?:twitter\.com|nitter\.[^/]+)/([A-Za-z0-9_]+)', link)
+    return m.group(1) if m else ''
+
+
+def _parse_nitter_title(title: str) -> tuple[str, bool, bool]:
+    """Parse a Nitter RSS title into (clean_text, is_reply, is_repost).
+
+    Nitter title patterns:
+    - Plain tweet: "Author: tweet text..."
+    - Reply:      "Author: @other_user tweet text..."
+    - Retweet:    "RT @other_user: tweet text..."
+    """
+    is_repost = title.strip().upper().startswith('RT ')
+    is_reply = False
+
+    # Strip "Author: " prefix if present (format: "handle: text")
+    if ':' in title:
+        prefix, rest = title.split(':', 1)
+        rest = rest.strip()
+        if rest.startswith('@'):
+            is_reply = True
+        title = rest
+
+    return title.strip(), is_reply, is_repost
+
+
+def normalize_x_rss_entry(entry, default_handle: str = '') -> 'CollectionPayload':
+    """Normalize a Nitter RSS feed entry into a CollectionPayload.
+
+    ``entry`` is a feedparser entry dict-like object from a Nitter RSS feed.
+    ``default_handle`` is the Twitter handle being collected (fallback if
+    the entry doesn't have explicit author info).
+    """
+    title = getattr(entry, 'title', '') or ''
+    link = getattr(entry, 'link', '') or ''
+    summary = getattr(entry, 'summary', '') or ''
+    published = getattr(entry, 'published', '') or ''
+    author = getattr(entry, 'author', '') or ''
+
+    # Tweet ID from the link
+    tweet_id = _parse_nitter_tweet_id(link)
+    if not tweet_id:
+        return None
+
+    # Author handle
+    author_handle = _nitter_handle_from_link(link) or author or default_handle
+    author_handle = author_handle.lstrip('@').strip()
+
+    # Parse title for reply/repost flags
+    clean_text, is_reply, is_repost = _parse_nitter_title(title)
+
+    # Content: prefer summary (HTML-stripped by feedparser), fallback to title
+    content_text = (summary or clean_text or title).strip()
+
+    # Parse published date
+    posted_at = datetime.now(timezone.utc).isoformat()
+    if published:
+        try:
+            from feedparser import _parse_date
+            parsed = _parse_date(published)
+            if parsed:
+                posted_at = datetime(*parsed[:6], tzinfo=timezone.utc).isoformat()
+        except Exception:
+            pass
+
+    # Extract entities from content
+    hashtags = _extract_hashtags(content_text)
+    mentions = _extract_at_mentions(content_text)
+    urls = _extract_urls(content_text)
+
+    # For RSS we don't get engagement metrics; set to None
+    return CollectionPayload(
+        platform='x',
+        platform_post_id=tweet_id,
+        platform_author_id=author_handle,
+        author_handle=f'@{author_handle}',
+        content_text=content_text,
+        posted_at=posted_at,
+        collected_at=datetime.now(timezone.utc).isoformat(),
+        likes=None,
+        shares=None,
+        comments=None,
+        views=None,
+        reach=None,
+        hashtags=hashtags,
+        mentions=mentions,
+        urls=urls,
+        media_type='text',
+        language=None,
+        is_reply=is_reply,
+        is_repost=is_repost,
+        parent_post_id=None,
+        collector_version='1.0',
+    )

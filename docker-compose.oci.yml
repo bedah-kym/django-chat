@@ -45,6 +45,7 @@ services:
       - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - DATABASE_URL=${DATABASE_URL:-postgres://mathia_user:mathia_password@db:5432/mathia_db}
+      - SIGNET_X_DEFAULT_HANDLE=${SIGNET_X_DEFAULT_HANDLE:-}
     ports:
       - "8000:8000"
     depends_on:

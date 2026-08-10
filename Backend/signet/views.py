@@ -378,7 +378,7 @@ def mute_account(request, pk):
 def collection_start(request):
     platform = request.data.get('platform', 'reddit')
     limit = request.data.get('limit', 25)
-    if platform not in ('reddit', 'telegram'):
+    if platform not in ('reddit', 'telegram', 'x'):
         return Response({'error': 'Unsupported platform'}, status=400)
 
     if platform == 'telegram':
@@ -389,6 +389,14 @@ def collection_start(request):
         if not channels:
             return Response({'error': 'Telegram channels required'}, status=400)
         config = {'channels': channels, 'limit': limit}
+    elif platform == 'x':
+        from django.conf import settings
+        handle = request.data.get('handle') or getattr(settings, 'SIGNET_X_DEFAULT_HANDLE', '')
+        if not handle:
+            return Response({'error': 'X handle required (set SIGNET_X_DEFAULT_HANDLE in .env or pass handle in request)'}, status=400)
+        keywords = request.data.get('keywords', [])
+        keywords = keywords if isinstance(keywords, list) else [keywords]
+        config = {'handle': handle.strip().lstrip('@'), 'keywords': keywords, 'limit': limit}
     else:
         subreddits = request.data.get('subreddits', ['Kenya'])
         config = {'subreddits': subreddits if isinstance(subreddits, list) else [subreddits], 'limit': limit}
@@ -401,9 +409,11 @@ def collection_start(request):
         started_at=timezone.now(),
     )
 
-    from signet.tasks import collect_reddit_task, collect_telegram_task
+    from signet.tasks import collect_reddit_task, collect_telegram_task, collect_x_task
     if platform == 'telegram':
         collect_telegram_task.delay(session.id)
+    elif platform == 'x':
+        collect_x_task.delay(session.id)
     else:
         collect_reddit_task.delay(session.id)
 
