@@ -10,7 +10,7 @@ from signet.models import (
     CollectionSession, CollectedPost, PostClassification,
     SignetActivity, SignetReviewItem,
 )
-from signet.collectors import RedditCollector, TelegramCollector, XFeedCollector
+from signet.collectors import RedditCollector, TelegramCollector, XCollector
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ def collect_x_task(self, session_id: int):
     session.save(update_fields=['status'])
 
     try:
-        collector = XFeedCollector(session)
+        collector = XCollector(session)
         count = collector.collect()
     except Exception as exc:
         logger.error(f'collect_x_task: session {session_id} failed: {exc}')
@@ -159,11 +159,10 @@ def collect_x_task(self, session_id: int):
     session.save(update_fields=['stats'])
 
     if count:
-        feed_types = session.config.get('feed_types', ['for_you', 'following'])
-        feed_label = ' + '.join(f.replace('_', ' ').title() for f in feed_types)
+        handle = session.config.get('handle', 'unknown')
         SignetActivity.objects.create(
             user=session.user,
-            text=f'Collected {count} X timeline posts ({feed_label})',
+            text=f'Collected {count} X posts from @{handle}',
             is_alert=False,
         )
 
