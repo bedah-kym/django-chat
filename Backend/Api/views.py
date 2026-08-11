@@ -585,3 +585,29 @@ def create_room(request):
         'isAiRoom': is_ai,
         'participants': participants_payload,
     }, status=201)
+
+
+# ── Quota endpoints ──────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_quotas(request):
+    """Return the current user's quota usage across all categories."""
+    from users.quota_service import QuotaService
+    service = QuotaService()
+    quotas = service.get_user_quotas(request.user.id)
+    return Response(quotas)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reset_own_quotas(request):
+    """Admin/staff: reset the calling user's own quotas immediately."""
+    user = request.user
+    if not user.is_staff:
+        return Response({'error': 'Only staff can reset quotas'}, status=403)
+
+    from users.quota_service import QuotaService
+    service = QuotaService()
+    quotas = service.reset_user_quotas(user.id)
+    return Response({'status': 'reset', 'quotas': quotas})

@@ -1,0 +1,100 @@
+.widget {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+}
+
+.title {
+    font-size: 14px;
+    font-weight: var(--font-weight-semibold);
+}
+
+.link {
+    font-size: 12px;
+    color: var(--primary-color);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity var(--transition-fast);
+}
+
+.link:hover {
+    opacity: 0.7;
+}
+
+.bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.barRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.barLabel {
+    width: 100px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.barTrack {
+    flex: 1;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--border-color);
+    overflow: hidden;
+}
+
+.barFill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.4s ease;
+}
+
+.fillGreen {
+    background: #22c55e;
+}
+
+.fillYellow {
+    background: #eab308;
+}
+
+.fillOrange {
+    background: #f97316;
+}
+
+.fillRed {
+    background: #ef4444;
+}
+
+.barValue {
+    width: 60px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.empty {
+    padding: var(--space-md);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.error {
+    font-size: 12px;
+    color: #ef4444;
+}

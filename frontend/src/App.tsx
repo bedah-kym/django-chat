@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import { ensureAuth } from '@/stores/authStore'
 import { useChatStore } from '@/stores/chatStore'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { useQuotaStore } from '@/stores/quotaStore'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DomainLayout } from '@/components/layout/DomainLayout'
 import { CommandPalette } from '@/components/CommandPalette'
@@ -51,6 +52,7 @@ export function App() {
         if (cancelled) return
         useChatStore.getState().initialize()
         useNotificationStore.getState().initialize()
+        useQuotaStore.getState().fetchQuotas()
       })
       .catch(() => {})
 

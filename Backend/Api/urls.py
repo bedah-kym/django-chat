@@ -24,4 +24,8 @@ urlpatterns = [
     path('gmail/connect/', views.gmail_connect, name='gmail_connect'),
     path('gmail/callback/', views.gmail_callback, name='gmail_callback'),
 
+    # Quota endpoints
+    path('user/quotas/', views.get_user_quotas, name='user_quotas'),
+    path('user/quotas/reset/', views.reset_own_quotas, name='reset_quotas'),
+
 ]

@@ -1,0 +1,227 @@
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.headerRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.planBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.planFree {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+}
+
+.planTrial {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--primary-color);
+}
+
+.planPro {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+}
+
+.planAgency {
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+}
+
+.refreshBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: var(--font-weight-medium);
+    color: var(--text-color);
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.refreshBtn:hover {
+    background: var(--border-color);
+}
+
+.refreshBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.quotaGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-md);
+}
+
+.quotaCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    transition: border-color var(--transition-fast);
+}
+
+.quotaCard:hover {
+    border-color: var(--primary-color);
+}
+
+.quotaHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quotaName {
+    font-size: 14px;
+    font-weight: var(--font-weight-semibold);
+}
+
+.quotaUnit {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.quotaNumbers {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.quotaUsed {
+    font-weight: var(--font-weight-bold);
+    font-size: 20px;
+}
+
+.quotaSep {
+    color: var(--text-muted);
+}
+
+.quotaLimit {
+    color: var(--text-muted);
+}
+
+.track {
+    width: 100%;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--border-color);
+    overflow: hidden;
+}
+
+.fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.4s ease, background 0.3s ease;
+}
+
+.fillGood {
+    background: #22c55e;
+}
+
+.fillWarning {
+    background: #eab308;
+}
+
+.fillCritical {
+    background: #f97316;
+}
+
+.fillExhausted {
+    background: #ef4444;
+}
+
+.statusBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.statusGood {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
+.statusWarning {
+    background: rgba(234, 179, 8, 0.12);
+    color: #eab308;
+}
+
+.statusCritical {
+    background: rgba(249, 115, 22, 0.12);
+    color: #f97316;
+}
+
+.statusExhausted {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.resetInfo {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.errorBanner {
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    font-size: 13px;
+}
+
+.adminSection {
+    margin-top: var(--space-md);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: rgba(139, 92, 246, 0.06);
+    border: 1px dashed rgba(139, 92, 246, 0.25);
+}
+
+.adminTitle {
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    color: #8b5cf6;
+    margin-bottom: var(--space-sm);
+}
+
+.adminDesc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-sm);
+}

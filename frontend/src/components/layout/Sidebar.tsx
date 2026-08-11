@@ -1,10 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import * as Popover from '@radix-ui/react-popover'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Gauge } from 'lucide-react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { sidebarSections, personalNavItems } from '@/domains'
 import { useUiStore } from '@/stores/uiStore'
+import { useQuotaStore } from '@/stores/quotaStore'
 import styles from './Sidebar.module.css'
 
 interface Props {
@@ -20,6 +21,17 @@ export function Sidebar({ collapsible = true }: Props) {
 
   const userInitial = (currentUser?.displayName || 'U').trim().charAt(0).toUpperCase()
   const personalActive = personalNavItems.some((item) => location.pathname.startsWith(item.path))
+  const quotas = useQuotaStore((s) => s.quotas)
+
+  // Find the most critical quota category
+  const criticalQuota = quotas
+    ? (['messages', 'actions', 'search', 'uploads', 'tokens'] as const)
+        .map((k) => quotas[k])
+        .find((q) => q.status === 'exhausted' || q.status === 'critical')
+        || (['messages', 'actions', 'search', 'uploads', 'tokens'] as const)
+            .map((k) => quotas[k])
+            .find((q) => q.status === 'warning')
+    : null
 
   return (
     <Tooltip.Provider delayDuration={150}>
@@ -104,6 +116,17 @@ export function Sidebar({ collapsible = true }: Props) {
                 aria-label="Open user menu"
               >
                 <span className={styles.userAvatar}>{userInitial}</span>
+                {criticalQuota ? (
+                  <span
+                    className={styles.quotaDot}
+                    style={{
+                      background:
+                        criticalQuota.status === 'exhausted' ? '#ef4444' :
+                        criticalQuota.status === 'critical' ? '#f97316' :
+                        '#eab308',
+                    }}
+                  />
+                ) : null}
                 {!isCollapsed ? (
                   <span className={styles.userMeta}>
                     <span className={styles.userName}>{currentUser?.displayName || 'User'}</span>
@@ -148,6 +171,32 @@ export function Sidebar({ collapsible = true }: Props) {
                     )
                   })}
                 </div>
+                {quotas ? (
+                  <NavLink
+                    to="/app/settings?tab=quotas"
+                    className={styles.quotaMenuFooter}
+                  >
+                    <Gauge size={14} />
+                    <span className={styles.quotaMenuText}>
+                      {criticalQuota
+                        ? `${criticalQuota.name}: ${criticalQuota.used}/${criticalQuota.limit}`
+                        : 'Quotas OK'}
+                    </span>
+                    <span
+                      className={styles.quotaMenuBar}
+                      style={{
+                        background:
+                          criticalQuota?.status === 'exhausted' ? '#ef4444' :
+                          criticalQuota?.status === 'critical' ? '#f97316' :
+                          criticalQuota?.status === 'warning' ? '#eab308' :
+                          '#22c55e',
+                        width: criticalQuota
+                          ? `${Math.min(100, (criticalQuota.used / criticalQuota.limit) * 100)}%`
+                          : '100%',
+                      }}
+                    />
+                  </NavLink>
+                ) : null}
               </Popover.Content>
             </Popover.Portal>
           </Popover.Root>

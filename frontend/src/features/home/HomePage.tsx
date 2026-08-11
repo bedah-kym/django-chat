@@ -11,6 +11,7 @@ import { PageScaffold } from '@/components/ui/PageScaffold'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { MetricStrip } from '@/components/ui/MetricStrip'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { QuotaWidget } from './QuotaWidget'
 import styles from './HomePage.module.css'
 
 export function HomePage() {
@@ -106,6 +107,10 @@ export function HomePage() {
                 <span className={styles.summaryValue}>{formatCurrency(wallet?.balance ?? 0)}</span>
               </div>
             </div>
+          </section>
+
+          <section className={styles.panel}>
+            <QuotaWidget />
           </section>
         </div>
 

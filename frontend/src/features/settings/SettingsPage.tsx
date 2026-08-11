@@ -9,9 +9,10 @@ import { NotificationMatrixSection } from './sections/NotificationMatrixSection'
 import { IntegrationsSection } from './sections/IntegrationsSection'
 import { WorkspaceSection } from './sections/WorkspaceSection'
 import { InvitesSection } from './sections/InvitesSection'
+import { QuotaSection } from './sections/QuotaSection'
 import styles from './SettingsPage.module.css'
 
-type Tab = 'profile' | 'ai-controls' | 'preferences' | 'integrations' | 'workspace'
+type Tab = 'profile' | 'ai-controls' | 'preferences' | 'integrations' | 'workspace' | 'quotas'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
@@ -19,6 +20,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'preferences', label: 'Preferences' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'workspace', label: 'Workspace' },
+  { id: 'quotas', label: 'Quotas' },
 ]
 
 export function SettingsPage() {
@@ -36,6 +38,9 @@ export function SettingsPage() {
       // Refresh user profile to get updated integration status
       fetchUserProfile().catch(() => {})
       // Clean up URL params
+      window.history.replaceState({}, '', '/settings')
+    } else if (tab === 'quotas') {
+      setActiveTab('quotas')
       window.history.replaceState({}, '', '/settings')
     }
   }, [fetchUserProfile])
@@ -81,6 +86,7 @@ export function SettingsPage() {
             )}
           </>
         )}
+        {activeTab === 'quotas' && <QuotaSection />}
       </motion.div>
     </div>
   )

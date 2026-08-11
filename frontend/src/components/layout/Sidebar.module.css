@@ -181,6 +181,7 @@
   cursor: pointer;
   inline-size: 100%;
   text-align: start;
+  position: relative;
 }
 
 .userButton:hover {
@@ -376,6 +377,7 @@
 }
 
 @media (max-width: 768px) {
+
   .sidebar,
   .collapsed {
     inline-size: min(84vw, 300px);
@@ -387,4 +389,54 @@
     justify-content: flex-start;
     padding-inline: 10px;
   }
+}
+
+/* ─── Quota indicator (user button dot) ─────────────────────────────────────── */
+
+.quotaDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-muted);
+}
+
+/* ─── Quota footer in user menu ─────────────────────────────────────────────── */
+
+.quotaMenuFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-color);
+  border-radius: 0 0 10px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.quotaMenuFooter:hover {
+  color: var(--text-color);
+}
+
+.quotaMenuText {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quotaMenuBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 0 0 0 10px;
+  transition: width 0.3s ease, background 0.3s ease;
 }
