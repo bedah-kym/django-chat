@@ -467,6 +467,7 @@ def collection_status(request):
         },
         'session_stats': session_stats,
         'session_errors': session_errors,
+        'pipeline': (running.stats or {}).get('pipeline', []) if running else [],
     })
 
 

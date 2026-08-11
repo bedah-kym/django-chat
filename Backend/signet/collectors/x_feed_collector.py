@@ -44,35 +44,64 @@ class XFeedCollector(BaseCollector):
     Fetches both "For You" (algorithmic) and "Following" (chronological)
     timelines, deduplicates, and normalises into CollectionPayload.
 
-    Requires cookies from a pre-authenticated session. Use the ``x_login``
-    management command to generate them.
+    Emits pipeline steps to session.stats for real-time UI tracking.
     """
 
     platform = 'x'
+
+    # ── pipeline helpers ─────────────────────────────────────────────
+
+    def _pipeline(self, name: str, status: str, detail: str = ''):
+        """Record a pipeline step in session stats for the UI."""
+        steps = list(self.session.stats.get('pipeline', []) or [])
+        steps.append({
+            'name': name,
+            'status': status,
+            'detail': str(detail)[:200],
+            'ts': timezone.now().isoformat(),
+        })
+        self.session.stats = {**(self.session.stats or {}), 'pipeline': steps}
+        try:
+            self.session.save(update_fields=['stats'])
+        except Exception:
+            pass
+
+    # ── main ─────────────────────────────────────────────────────────
 
     def collect(self) -> int:
         if not self.platform_allowed():
             return 0
 
+        self._pipeline('start', 'running')
+
         config = self.session.config or {}
         limit = int(config.get('limit', 50))
         feed_types = config.get('feed_types', ['for_you', 'following'])
 
+        self._pipeline('cookies', 'running')
         cookies = self._load_cookies()
         if not cookies:
-            msg = ('XFeedCollector: no cookies found. '
-                   'Run `python x_login_standalone.py` or set SIGNET_X_COOKIES_JSON.')
-            logger.error(msg)
-            self.session.stats = {
-                **(self.session.stats or {}),
-                'last_error': 'No X cookies configured',
-            }
-            self.session.save(update_fields=['stats'])
+            self._pipeline('cookies', 'fail', 'No cookies configured')
+            return 0
+        self._pipeline('cookies', 'ok', f'{len(cookies)} cookies loaded')
+
+        self._pipeline('auth', 'running')
+        try:
+            client = self._build_client(cookies)
+            # Quick connectivity check
+            import asyncio
+            async def _ping():
+                return await client.get_latest_timeline(count=1)
+            test = asyncio.run(_ping())
+            self._pipeline('auth', 'ok', f'Auth OK, timeline reachable ({len(test)} test tweets)')
+        except Exception as e:
+            self._pipeline('auth', 'fail', str(e)[:200])
             return 0
 
-        client = self._build_client(cookies)
         tweets = self._fetch_timelines(client, feed_types, limit)
-        return self._store_tweets(tweets, feed_types)
+        collected = self._store_tweets(tweets, feed_types)
+        self._pipeline('done', 'ok', f'{collected} posts stored')
+        return collected
 
     # ── cookie management ────────────────────────────────────────────
 
@@ -136,8 +165,10 @@ class XFeedCollector(BaseCollector):
         all_tweets: list[dict] = []
 
         for feed_type in feed_types:
+            self._pipeline(feed_type, 'running')
             try:
                 tweets = self._fetch_one_timeline(client, feed_type, limit)
+                self._pipeline(feed_type, 'ok', f'{len(tweets)} tweets')
                 for t in tweets:
                     tid = str(getattr(t, 'id', ''))
                     if tid and tid not in seen:
@@ -147,11 +178,11 @@ class XFeedCollector(BaseCollector):
                             'feed_type': feed_type,
                         })
             except Exception as exc:
+                self._pipeline(feed_type, 'fail', str(exc)[:200])
                 logger.error(
                     f'XFeedCollector: failed to fetch "{feed_type}" '
                     f'timeline: {exc}'
                 )
-                # Don't fail the whole collection — return what we got
                 continue
 
         return all_tweets

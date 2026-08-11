@@ -92,6 +92,14 @@ export interface SignetCollectionStatus {
     platform: string
     error: string
   }>
+  pipeline?: PipelineStep[]
+}
+
+export interface PipelineStep {
+  name: string
+  status: 'running' | 'ok' | 'fail'
+  detail: string
+  ts: string
 }
 
 function nodeId(type: string, pk: number): string {

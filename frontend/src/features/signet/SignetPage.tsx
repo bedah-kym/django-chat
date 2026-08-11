@@ -8,6 +8,7 @@ import { GraphView } from './GraphView'
 import { FeedView } from './FeedView'
 import { ReviewView } from './ReviewView'
 import { ActivityFeed } from './ActivityFeed'
+import { XPipeline } from './XPipeline'
 import { useSignetData } from './useSignetData'
 import './signet.tokens.css'
 import s from './SignetPage.module.css'
@@ -41,6 +42,8 @@ export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActi
   const [search, setSearch] = useState('')
   const [collectionBusy, setCollectionBusy] = useState(false)
   const [collectionPlatform, setCollectionPlatform] = useState<SignetCollectionPlatform>('reddit')
+  const [pipelineVisible, setPipelineVisible] = useState(false)
+  const pipeline = collectionStatus?.pipeline ?? []
   const pendingReviewCount = reviews.filter(
     r => !('decision' in r) || (r as ReviewItem & { decision?: string }).decision === 'pending',
   ).length || 0
@@ -79,6 +82,11 @@ export function SignetPage({ nodes: extNodes, edges: extEdges, activity: extActi
     <div className={`console ${s.shell}`}>
       <div className="consoleTexture" />
       <div className="consoleScanlines" />
+      <XPipeline
+        steps={pipeline}
+        visible={pipelineVisible}
+        onToggle={() => setPipelineVisible(v => !v)}
+      />
       <SignetTopBar
         view={view}
         search={search}
