@@ -158,14 +158,15 @@ class XFeedCollector(BaseCollector):
 
     def _fetch_one_timeline(self, client, feed_type: str, limit: int) -> list:
         """Fetch one timeline with exponential backoff."""
+        import asyncio
         self._assert_passive_only('read')
 
         for attempt in range(_MAX_RETRIES):
             try:
                 if feed_type == 'for_you':
-                    return client.get_latest_timeline(count=limit)
+                    return asyncio.run(client.get_latest_timeline(count=limit))
                 elif feed_type == 'following':
-                    return client.get_timeline(count=limit)
+                    return asyncio.run(client.get_timeline(count=limit))
                 else:
                     logger.warning(f'XFeedCollector: unknown feed_type "{feed_type}"')
                     return []

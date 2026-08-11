@@ -540,7 +540,7 @@ def x_diag(request):
             else:
                 tuples = [(k, v) for k, v in cookies.items()]
             c.set_cookies(tuples)
-            tweets = c.get_latest_timeline(count=1)
+            tweets = await c.get_latest_timeline(count=1)
             return tweets
         tweets = asyncio.run(_test())
         result['auth'] = f'OK (timeline: {len(tweets)} tweets)'
