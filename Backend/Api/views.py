@@ -84,7 +84,7 @@ def calendly_callback(request):
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
 
     if not code or not state:
-        return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=error")
 
     # Resolve user from state param (not session — Calendly redirect strips cookies)
     User = get_user_model()
@@ -92,7 +92,7 @@ def calendly_callback(request):
         user = User.objects.get(pk=int(state))
     except (User.DoesNotExist, ValueError):
         logger.error('Calendly callback: invalid state=%s', state)
-        return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=error")
 
     token_url = 'https://auth.calendly.com/oauth/token'
     client_id = getattr(settings, 'CALENDLY_CLIENT_ID', None)
@@ -108,7 +108,7 @@ def calendly_callback(request):
     r = requests.post(token_url, data=payload)
     if r.status_code != 200:
         logger.error('Calendly token exchange failed: %s', r.text)
-        return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=error")
     data = r.json()
     access_token = data.get('access_token')
     refresh_token = data.get('refresh_token')
@@ -142,7 +142,7 @@ def calendly_callback(request):
 
     # Redirect back to frontend Settings → Integrations tab
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-    return redirect(f"{frontend_url}/settings?tab=integrations&calendly=connected")
+    return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=connected")
 
 
 @api_view(['GET'])
@@ -334,7 +334,7 @@ def gmail_callback(request):
     state = request.GET.get('state')
     if not code:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-        return redirect(f"{frontend_url}/settings?tab=integrations&gmail=error")
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&gmail=error")
 
     client_id = getattr(settings, 'GMAIL_OAUTH_CLIENT_ID', None)
     client_secret = getattr(settings, 'GMAIL_OAUTH_CLIENT_SECRET', None)
@@ -353,7 +353,7 @@ def gmail_callback(request):
 
     if token_resp.status_code != 200:
         logger.error('Gmail token exchange failed: %s', token_resp.text)
-        return redirect(f"{frontend_url}/settings?tab=integrations&gmail=error")
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&gmail=error")
 
     token_data = token_resp.json()
     access_token = token_data.get('access_token')
@@ -369,7 +369,7 @@ def gmail_callback(request):
         user = None
 
     if not user:
-        return redirect(f"{frontend_url}/settings?tab=integrations&gmail=error")
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&gmail=error")
 
     # Store in UserIntegration
     from users.models import UserIntegration
@@ -390,7 +390,7 @@ def gmail_callback(request):
         }
     )
 
-    return redirect(f"{frontend_url}/settings?tab=integrations&gmail=connected")
+    return redirect(f"{frontend_url}/app/settings?tab=integrations&gmail=connected")
 
 
 class CreateReply(generics.ListCreateAPIView):
