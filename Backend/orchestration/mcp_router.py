@@ -93,9 +93,10 @@ class MCPRouter:
     def _validate_action_connector_integrity(self) -> None:
         missing, extra = validate_router_mappings(self.connectors.keys())
         if missing:
-            raise ImproperlyConfigured(
-                "Orchestration action catalog mismatch. Missing router mappings for: "
-                + ", ".join(missing)
+            logger.warning(
+                "Action catalog has entries with no registered connector: %s. "
+                "These actions will not be available. Check env vars (e.g. TELEGRAM_BOT_TOKEN).",
+                ", ".join(missing),
             )
         if extra:
             logger.warning(
