@@ -1,4 +1,5 @@
 import { apiRequest } from './client'
+import type { Integration } from '@/types/user'
 
 export interface CurrentUserResponse {
   id: number
@@ -21,6 +22,7 @@ export interface CurrentUserResponse {
   avatar?: string | null
   theme_preference?: string
   timezone?: string
+  integrations?: Integration[]
 }
 
 export async function fetchCurrentUser(): Promise<CurrentUserResponse> {

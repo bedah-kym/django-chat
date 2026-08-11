@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useAuthStore } from '@/stores/authStore'
 import { ProfileSection } from './sections/ProfileSection'
 import { AssistantStyleSection } from './sections/AssistantStyleSection'
 import { CapabilityControlsSection } from './sections/CapabilityControlsSection'
@@ -23,7 +24,21 @@ const TABS: { id: Tab; label: string }[] = [
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const user = useCurrentUser()
+  const fetchUserProfile = useAuthStore((s) => s.fetchUserProfile)
   const showInvites = ((user as any).inviteDepth ?? 1) === 0
+
+  // When returning from an OAuth redirect, jump to Integrations tab and refresh profile
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tab = params.get('tab')
+    if (tab === 'integrations') {
+      setActiveTab('integrations')
+      // Refresh user profile to get updated integration status
+      fetchUserProfile().catch(() => {})
+      // Clean up URL params
+      window.history.replaceState({}, '', '/settings')
+    }
+  }, [fetchUserProfile])
 
   return (
     <div className={styles.settings}>
@@ -54,7 +69,7 @@ export function SettingsPage() {
         )}
         {activeTab === 'ai-controls' && <CapabilityControlsSection />}
         {activeTab === 'preferences' && <NotificationMatrixSection />}
-        {activeTab === 'integrations' && <IntegrationsSection integrations={(user as any).integrations ?? []} />}
+        {activeTab === 'integrations' && <IntegrationsSection integrations={user.integrations} />}
         {activeTab === 'workspace' && (
           <>
             <WorkspaceSection />

@@ -467,6 +467,37 @@ def get_current_user(request):
             'theme_preference': profile.theme_preference,
             'timezone': profile.timezone,
         })
+
+    # Integration status
+    from users.models import UserIntegration, CalendlyProfile
+    integrations = []
+    # Calendly
+    try:
+        cp = getattr(user, 'calendly', None)
+        integrations.append({
+            'type': 'calendly',
+            'connected': cp.is_connected if cp else False,
+            'accountName': cp.event_type_name if cp and cp.is_connected else None,
+        })
+    except Exception:
+        integrations.append({'type': 'calendly', 'connected': False})
+    # Gmail
+    gmail = UserIntegration.objects.filter(user=user, integration_type='gmail', is_connected=True).first()
+    integrations.append({
+        'type': 'gmail',
+        'connected': bool(gmail),
+        'accountName': (gmail.metadata or {}).get('gmail_address') if gmail else None,
+    })
+    # Other integrations from UserIntegration
+    for itype in ('whatsapp', 'intasend'):
+        ui = UserIntegration.objects.filter(user=user, integration_type=itype, is_connected=True).first()
+        integrations.append({
+            'type': itype,
+            'connected': bool(ui),
+            'accountName': (ui.metadata or {}).get('phone_number') if ui else None,
+        })
+    response_data['integrations'] = integrations
+
     return Response(response_data)
 
 

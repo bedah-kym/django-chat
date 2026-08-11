@@ -7,6 +7,7 @@ export function useCurrentUser() {
   const email = useAuthStore((s) => s.email)
   const displayName = useAuthStore((s) => s.displayName)
   const avatarUrl = useAuthStore((s) => s.avatarUrl)
+  const integrations = useAuthStore((s) => s.integrations)
   const isLoading = useAuthStore((s) => s.isLoading)
   const login = useAuthStore((s) => s.login)
   const fetchUserProfile = useAuthStore((s) => s.fetchUserProfile)
@@ -30,6 +31,7 @@ export function useCurrentUser() {
     email,
     displayName,
     avatarUrl,
+    integrations,
     isLoading,
   }
 }

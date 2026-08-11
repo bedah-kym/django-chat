@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { login, setAuthToken, getAuthToken } from '@/api/client'
 import { fetchCurrentUser } from '@/api/user'
+import type { Integration } from '@/types/user'
 
 interface AuthState {
   isAuthenticated: boolean
@@ -8,6 +9,7 @@ interface AuthState {
   email: string | null
   displayName: string | null
   avatarUrl: string | null
+  integrations: Integration[]
   isLoading: boolean
   error: string | null
   login: (username: string, password: string) => Promise<void>
@@ -22,6 +24,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   email: null,
   displayName: null,
   avatarUrl: null,
+  integrations: [],
   isLoading: false,
   error: null,
 
@@ -70,6 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         email: user.email,
         displayName: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username,
         avatarUrl: user.avatar ?? null,
+        integrations: (user as any).integrations ?? [],
         isLoading: false,
       })
     } catch (err) {
