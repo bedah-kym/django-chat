@@ -107,7 +107,7 @@ export function SignetTopBar({
           <span className={s.countNum}>{edges.length}</span> Edges
         </span>
         <div className={s.alert}>&#9888; {alertCount} Alerts</div>
-        {sessionErrors.length > 0 && (
+        {sessionErrors.length > 0 && sessionErrors[0] && (
           <span className={s.errorInline} title={sessionErrors.map(e => `${e.platform}: ${e.error}`).join(' | ')}>
             &#9888; {sessionErrors[0].platform}: {sessionErrors[0].error}
           </span>
