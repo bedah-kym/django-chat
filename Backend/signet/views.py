@@ -532,10 +532,10 @@ def x_diag(request):
     try:
         import asyncio, traceback
         from twikit import Client
-        from httpx import Cookies
         async def _test():
             c = Client('en-US')
-            c.http.cookies = Cookies(cookies)
+            # Work around twikit 2.3.3 httpx.Cookies dict bug
+            c.set_cookies([(k, v) for k, v in cookies.items()])
             tweets = c.get_latest_timeline(count=1)
             return tweets
         tweets = asyncio.run(_test())
