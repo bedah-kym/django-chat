@@ -48,8 +48,7 @@ def spa_index(_request):
 
 def landing_view(_request):
     """Redirect root URL to the SPA home."""
-    from django.http import HttpResponse
-    return HttpResponse('OK - landing works', content_type='text/plain')
+    return redirect('/app/home')
 
 
 urlpatterns = [
