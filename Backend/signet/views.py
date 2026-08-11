@@ -439,6 +439,22 @@ def collection_status(request):
     tagged = CollectedPost.objects.filter(user=request.user, tagging_status='tagged').count()
     accounts = SignetAccount.objects.filter(user=request.user).count()
 
+    # Per-session stats & errors
+    session_stats = {}
+    session_errors = []
+    for s in running_sessions:
+        s_stats = s.stats or {}
+        session_stats[s.platform] = {
+            'last_run': s_stats.get('last_run'),
+            'posts_collected': s_stats.get('posts_collected', 0),
+            'last_error': s_stats.get('last_error'),
+        }
+        if s_stats.get('last_error'):
+            session_errors.append({
+                'platform': s.platform,
+                'error': s_stats['last_error'],
+            })
+
     return Response({
         'is_collecting': bool(running),
         'session_id': running.id if running else None,
@@ -449,6 +465,8 @@ def collection_status(request):
             'posts_tagged': tagged,
             'accounts': accounts,
         },
+        'session_stats': session_stats,
+        'session_errors': session_errors,
     })
 
 

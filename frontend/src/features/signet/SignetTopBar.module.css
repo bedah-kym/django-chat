@@ -67,6 +67,7 @@
   border-radius: var(--sg-radius);
   transition: border-color var(--transition-fast, 150ms ease);
 }
+
 .search:focus-within {
   border-color: var(--sg-line-strong);
 }
@@ -88,6 +89,7 @@
   letter-spacing: var(--sg-track-tight);
   outline: none;
 }
+
 .searchInput::placeholder {
   color: var(--sg-text-faint);
 }
@@ -99,6 +101,7 @@
   cursor: pointer;
   transition: color var(--transition-fast, 150ms ease);
 }
+
 .searchClear:hover {
   color: var(--sg-text-hi);
 }
@@ -115,6 +118,7 @@
   align-items: center;
   gap: 7px;
 }
+
 .liveLabel {
   font-family: var(--sg-mono);
   font-size: var(--sg-fs-2xs);
@@ -219,9 +223,11 @@
   font-variant-numeric: tabular-nums;
   text-transform: uppercase;
 }
+
 .countNum {
   color: var(--sg-text-mid);
 }
+
 .countSep {
   color: var(--sg-text-faint);
   margin-inline: 6px;
@@ -240,4 +246,28 @@
   letter-spacing: var(--sg-track);
   padding: 3px 10px;
   text-transform: uppercase;
+}
+
+.errorBanner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 92, 73, 0.1);
+  border: 1px solid rgba(255, 92, 73, 0.35);
+  border-radius: var(--sg-radius);
+  padding: 3px 10px;
+}
+
+.errorText {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  color: var(--sg-high);
+  letter-spacing: var(--sg-track-tight);
+}
+
+.feedStat {
+  font-family: var(--sg-mono);
+  font-size: var(--sg-fs-2xs);
+  color: var(--sg-live);
+  letter-spacing: var(--sg-track-tight);
 }

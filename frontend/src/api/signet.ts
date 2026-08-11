@@ -83,6 +83,15 @@ export interface SignetCollectionStatus {
     posts_tagged: number
     accounts: number
   }
+  session_stats?: Record<string, {
+    last_run?: string
+    posts_collected: number
+    last_error?: string
+  }>
+  session_errors?: Array<{
+    platform: string
+    error: string
+  }>
 }
 
 function nodeId(type: string, pk: number): string {

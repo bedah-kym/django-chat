@@ -38,6 +38,8 @@ export function SignetTopBar({
   const activePlatform = collectionStatus?.platform ?? collectionPlatform
   const postsCollected = collectionStatus?.counts.posts_collected ?? 0
   const postsTagged = collectionStatus?.counts.posts_tagged ?? 0
+  const sessionErrors = collectionStatus?.session_errors ?? []
+  const xStats = collectionStatus?.session_stats?.['x']
 
   return (
     <div className={s.bar}>
@@ -105,6 +107,20 @@ export function SignetTopBar({
           <span className={s.countNum}>{edges.length}</span> Edges
         </span>
         <div className={s.alert}>&#9888; {alertCount} Alerts</div>
+        {sessionErrors.length > 0 && (
+          <div className={s.errorBanner}>
+            {sessionErrors.map((e, i) => (
+              <span key={i} className={s.errorText}>
+                {e.platform}: {e.error}
+              </span>
+            ))}
+          </div>
+        )}
+        {xStats && xStats.posts_collected > 0 && (
+          <span className={s.feedStat}>
+            X: {xStats.posts_collected} new
+          </span>
+        )}
       </div>
     </div>
   )
