@@ -58,7 +58,7 @@ class XFeedCollector(BaseCollector):
             'name': name,
             'status': status,
             'detail': str(detail)[:200],
-            'ts': timezone.now().isoformat(),
+            'ts': datetime.now(timezone.utc).isoformat(),
         })
         self.session.stats = {**(self.session.stats or {}), 'pipeline': steps}
         try:
