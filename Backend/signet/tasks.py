@@ -159,10 +159,11 @@ def collect_x_task(self, session_id: int):
     session.save(update_fields=['stats'])
 
     if count:
-        handle = session.config.get('handle', 'unknown')
+        feed_types = session.config.get('feed_types', ['for_you', 'following'])
+        feed_label = ' + '.join(f.replace('_', ' ').title() for f in feed_types)
         SignetActivity.objects.create(
             user=session.user,
-            text=f'Collected {count} X posts from @{handle}',
+            text=f'Collected {count} X timeline posts ({feed_label})',
             is_alert=False,
         )
 
