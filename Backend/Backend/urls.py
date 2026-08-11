@@ -20,7 +20,6 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import path, re_path, include
 from django.views.decorators.cache import never_cache
-from rest_framework.urlpatterns import format_suffix_patterns
 from rest_framework.authtoken.views import obtain_auth_token
 from django.conf import settings
 from django.conf.urls.static import static
@@ -70,7 +69,6 @@ urlpatterns = [
     # Must be last — only matches paths without a file extension
     re_path(r'^(?!api/|admin/|accounts/|chatbot/|travel/|payments/|notifications/|uploads/|auth/|api-auth/).*(?<!\.[a-zA-Z0-9]{2,5})$', spa_index, name='spa_catchall'),
 ]
-urlpatterns = format_suffix_patterns(urlpatterns)
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
