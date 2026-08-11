@@ -528,21 +528,29 @@ def x_diag(request):
         result['cookies'] = f'ERROR: {e}'
         return Response(result)
 
-    # 4) Auth test
+    # 4) Auth test - use subprocess to avoid asyncio conflicts with ASGI
     try:
-        import asyncio, traceback
-        from twikit import Client
-        async def _test():
-            c = Client('en-US')
-            # Handle both dict and list-of-dicts cookie formats
-            if isinstance(cookies, list):
-                tuples = [(x['name'], x['value']) for x in cookies]
-            else:
-                tuples = [(k, v) for k, v in cookies.items()]
-            c.set_cookies(tuples)
-            tweets = await c.get_latest_timeline(count=1)
-            return tweets
-        tweets = asyncio.run(_test())
-        result['auth'] = f'OK (timeline: {len(tweets)} tweets)'
+        import subprocess, sys
+        import json as _json
+        code = f'''
+import asyncio, json
+from twikit import Client
+cookies = {_json.dumps(cookies)}
+async def _t():
+    c = Client("en-US")
+    c.set_cookies([(x["name"], x["value"]) for x in cookies])
+    tweets = await c.get_latest_timeline(count=2)
+    print(json.dumps({{"ok": True, "count": len(tweets)}}))
+try:
+    asyncio.run(_t())
+except Exception as e:
+    print(json.dumps({{"ok": False, "error": str(e)[:200]}}))
+'''
+        r = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, timeout=30)
+        out = _json.loads(r.stdout.strip() or '{}')
+        if out.get('ok'):
+            result['auth'] = f'OK ({out["count"]} tweets)'
+        else:
+            result['auth'] = f'FAIL: {out.get("error", "unknown")}'
     except Exception as e:
-        result['auth'] = f'FAIL: {traceback.format_exc()[-300:]}'
+        result['auth'] = f'DIAG FAIL: {str(e)[:200]}'
