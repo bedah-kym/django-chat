@@ -1,7 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { Integration } from '@/types/user'
-import { connectCalendly, disconnectCalendly, disconnectIntegration } from '../settingsApi'
+import {
+  connectCalendly,
+  disconnectCalendly,
+  disconnectIntegration,
+  fetchCalendlyEvents,
+  fetchCalendlyEventTypes,
+  setCalendlyEventType,
+  type CalendlyEvent,
+  type CalendlyEventType,
+} from '../settingsApi'
 import { IntegrationModal } from '../components/IntegrationModal'
 import styles from '../SettingsPage.module.css'
 
@@ -22,6 +31,43 @@ export function IntegrationsSection({ integrations }: Props) {
   const [localIntegrations, setLocalIntegrations] = useState<Integration[]>(integrations)
   const [openModal, setOpenModal] = useState<ModalType>(null)
   const [loading, setLoading] = useState<string | null>(null)
+
+  // ── Calendly enriched state ──────────────────────────────────────────
+  const [calendlyEvents, setCalendlyEvents] = useState<CalendlyEvent[]>([])
+  const [calendlyEventTypes, setCalendlyEventTypes] = useState<CalendlyEventType[]>([])
+  const [selectedEventTypeUri, setSelectedEventTypeUri] = useState<string | null>(null)
+  const [calendlyExpanded, setCalendlyExpanded] = useState(false)
+
+  const calendlyConnected = localIntegrations.find(i => i.type === 'calendly')?.connected === true
+
+  const loadCalendlyDetails = useCallback(async () => {
+    if (!calendlyConnected) return
+    try {
+      const [eventsData, typesData] = await Promise.all([
+        fetchCalendlyEvents(),
+        fetchCalendlyEventTypes(),
+      ])
+      setCalendlyEvents(eventsData.events ?? [])
+      setCalendlyEventTypes(typesData.event_types ?? [])
+      setSelectedEventTypeUri(typesData.selected_uri ?? null)
+    } catch {
+      // Silently ignore — user might have expired token
+    }
+  }, [calendlyConnected])
+
+  useEffect(() => {
+    loadCalendlyDetails()
+  }, [loadCalendlyDetails])
+
+  async function handleSetEventType(et: CalendlyEventType) {
+    try {
+      await setCalendlyEventType(et.uri, et.name, et.scheduling_url)
+      setSelectedEventTypeUri(et.uri)
+      toast.success(`Event type set to "${et.name}"`)
+    } catch {
+      toast.error('Failed to set event type')
+    }
+  }
 
   function markConnected(type: Integration['type']) {
     setLocalIntegrations(prev =>
@@ -106,6 +152,70 @@ export function IntegrationsSection({ integrations }: Props) {
               >
                 {isLoading ? '…' : int.connected ? 'Disconnect' : 'Connect'}
               </button>
+
+              {/* ── Calendly: upcoming events + event type picker ────────── */}
+              {int.type === 'calendly' && int.connected && calendlyExpanded && (
+                <div className={styles.calendlyDetail}>
+                  {/* Event types selector */}
+                  {calendlyEventTypes.length > 0 && (
+                    <div className={styles.calendlySection}>
+                      <span className={styles.calendlySectionTitle}>Event Types</span>
+                      <div className={styles.eventTypeList}>
+                        {calendlyEventTypes.map(et => (
+                          <button
+                            key={et.uri}
+                            type="button"
+                            className={`${styles.eventTypeItem} ${et.uri === selectedEventTypeUri ? styles.eventTypeSelected : ''}`}
+                            onClick={() => handleSetEventType(et)}
+                          >
+                            <span className={styles.eventTypeName}>{et.name}</span>
+                            {et.duration != null && (
+                              <span className={styles.eventTypeDuration}>{et.duration}min</span>
+                            )}
+                            {et.uri === selectedEventTypeUri && (
+                              <span className={styles.eventTypeCheck}>✓</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upcoming events */}
+                  <div className={styles.calendlySection}>
+                    <span className={styles.calendlySectionTitle}>
+                      Upcoming Events ({calendlyEvents.length})
+                    </span>
+                    {calendlyEvents.length === 0 ? (
+                      <p className={styles.calendlyEmpty}>No upcoming events</p>
+                    ) : (
+                      <div className={styles.eventList}>
+                        {calendlyEvents.slice(0, 5).map((ev, i) => (
+                          <div key={ev.uri || i} className={styles.eventItem}>
+                            <span className={styles.eventTitle}>{ev.title}</span>
+                            <span className={styles.eventTime}>
+                              {ev.start ? new Date(ev.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                            {ev.invitee && (
+                              <span className={styles.eventInvitee}>{ev.invitee}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {int.type === 'calendly' && int.connected && (
+                <button
+                  type="button"
+                  className={styles.btnLink}
+                  onClick={() => { setCalendlyExpanded(!calendlyExpanded); if (!calendlyExpanded) loadCalendlyDetails() }}
+                >
+                  {calendlyExpanded ? '▲ Hide details' : '▼ Show events & types'}
+                </button>
+              )}
             </div>
           )
         })}

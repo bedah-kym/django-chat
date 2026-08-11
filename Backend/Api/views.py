@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
 from django.db.models import Max
 from django.urls import reverse
+from django.utils import timezone
 from users.models import CalendlyProfile
 from django.contrib.auth import get_user_model
 from urllib.parse import quote
@@ -23,6 +24,45 @@ import logging
 import time
 
 logger = logging.getLogger(__name__)
+
+
+def _calendly_refresh_token_if_needed(profile):
+    """Refresh Calendly access token if expired. Returns (access_token, ok)."""
+    access_token = profile.get_access_token()
+    if not access_token:
+        return None, False
+    # Quick check: try calling /users/me to validate token
+    try:
+        r = requests.get('https://api.calendly.com/users/me',
+                         headers={'Authorization': f'Bearer {access_token}'},
+                         timeout=10)
+        if r.status_code == 200:
+            return access_token, True
+    except Exception:
+        pass
+    # Token expired — try refresh
+    refresh_token = profile.get_refresh_token()
+    if not refresh_token:
+        return None, False
+    try:
+        r = requests.post('https://auth.calendly.com/oauth/token', data={
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token,
+            'client_id': settings.CALENDLY_CLIENT_ID,
+            'client_secret': settings.CALENDLY_CLIENT_SECRET,
+        }, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            from users.encryption import TokenEncryption
+            profile.encrypted_access_token = TokenEncryption.encrypt(data['access_token'])
+            if data.get('refresh_token'):
+                profile.encrypted_refresh_token = TokenEncryption.encrypt(data['refresh_token'])
+            profile.save(update_fields=['encrypted_access_token', 'encrypted_refresh_token'])
+            logger.info(f'Refreshed Calendly token for user {profile.user_id}')
+            return data['access_token'], True
+    except Exception as e:
+        logger.warning(f'Calendly token refresh failed: {e}')
+    return None, False
 
 
 def _room_display_name(room, members, current_user):
@@ -160,29 +200,38 @@ def calendly_events(request):
     profile = getattr(request.user, 'calendly', None)
     if not profile or not profile.is_connected:
         return Response({'events': []})
-    access_token = profile.get_access_token()
+    access_token, ok = _calendly_refresh_token_if_needed(profile)
+    if not ok:
+        return Response({'events': [], 'error': 'Token expired. Reconnect Calendly.'})
     headers = {'Authorization': f'Bearer {access_token}'}
-    r = requests.get('https://api.calendly.com/scheduled_events', headers=headers, params={'user': profile.calendly_user_uri})
+    r = requests.get('https://api.calendly.com/scheduled_events', headers=headers,
+                     params={'user': profile.calendly_user_uri, 'status': 'active',
+                             'sort': 'start_time:asc', 'min_start_time': timezone.now().isoformat()})
     if r.status_code != 200:
-        return Response({'events': []})
+        return Response({'events': [], 'error': f'Calendly API error: {r.status_code}'})
     data = r.json()
     items = data.get('collection') or data.get('data') or []
     events = []
     for item in items:
         start = item.get('start_time') or item.get('resource', {}).get('start_time')
         end = item.get('end_time') or item.get('resource', {}).get('end_time')
-        duration = item.get('duration') or item.get('resource', {}).get('duration')
-        name = item.get('name') or item.get('event_type') or 'Meeting'
+        name = item.get('name') or (item.get('event_type') or {}).get('name') if isinstance(item.get('event_type'), dict) else item.get('event_type') or 'Meeting'
+        uri = item.get('uri') or item.get('resource', {}).get('uri')
+        status = item.get('status') or 'active'
         invitee = None
         invitee_obj = item.get('invitees', [])
         if invitee_obj:
             inv = invitee_obj[0]
             invitee = inv.get('name') or inv.get('email')
-        events.append({'title': name, 'start': start, 'end': end, 'duration': duration, 'invitee': invitee, 'raw': item})
+        events.append({
+            'title': name, 'start': start, 'end': end, 'uri': uri,
+            'status': status, 'invitee': invitee,
+        })
     return Response({'events': events})
 
 
 @api_view(['POST'])
+@csrf_exempt
 def calendly_webhook(request):
     """
     Handle Calendly webhook events securely.
@@ -298,6 +347,70 @@ def calendly_disconnect(request):
         return Response({'ok': True})
     profile.disconnect()
     return Response({'ok': True})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def calendly_event_types(request):
+    """List the user's available Calendly event types for selection."""
+    profile = getattr(request.user, 'calendly', None)
+    if not profile or not profile.is_connected:
+        return Response({'event_types': []})
+    access_token, ok = _calendly_refresh_token_if_needed(profile)
+    if not ok:
+        return Response({'event_types': [], 'error': 'Token expired. Reconnect Calendly.'})
+    headers = {'Authorization': f'Bearer {access_token}'}
+    r = requests.get('https://api.calendly.com/event_types',
+                     headers=headers,
+                     params={'user': profile.calendly_user_uri, 'active': True},
+                     timeout=15)
+    if r.status_code != 200:
+        return Response({'event_types': [], 'error': f'Calendly API error: {r.status_code}'})
+    data = r.json()
+    items = data.get('collection') or data.get('data') or []
+    event_types = []
+    for item in items:
+        event_types.append({
+            'uri': item.get('uri'),
+            'name': item.get('name'),
+            'slug': item.get('slug'),
+            'scheduling_url': item.get('scheduling_url'),
+            'duration': item.get('duration'),
+            'kind': item.get('kind'),
+            'active': item.get('active', True),
+            'selected': item.get('uri') == profile.event_type_uri,
+        })
+    return Response({
+        'event_types': event_types,
+        'selected_uri': profile.event_type_uri,
+        'booking_link': profile.booking_link,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def calendly_set_event_type(request):
+    """Set the active Calendly event type for this user."""
+    profile = getattr(request.user, 'calendly', None)
+    if not profile or not profile.is_connected:
+        return Response({'error': 'Calendly not connected'}, status=400)
+    event_type_uri = request.data.get('event_type_uri')
+    event_type_name = request.data.get('event_type_name')
+    booking_link = request.data.get('booking_link')
+    if not event_type_uri:
+        return Response({'error': 'event_type_uri required'}, status=400)
+    profile.event_type_uri = event_type_uri
+    if event_type_name:
+        profile.event_type_name = event_type_name
+    if booking_link:
+        profile.booking_link = booking_link
+    profile.save(update_fields=['event_type_uri', 'event_type_name', 'booking_link'])
+    return Response({
+        'ok': True,
+        'event_type_uri': profile.event_type_uri,
+        'event_type_name': profile.event_type_name,
+        'booking_link': profile.booking_link,
+    })
 
 
 # ─── Gmail OAuth ──────────────────────────────────────────────────────────

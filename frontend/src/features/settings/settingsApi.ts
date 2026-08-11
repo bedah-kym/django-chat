@@ -65,6 +65,64 @@ export async function disconnectCalendly(): Promise<void> {
   if (!res.ok) throw new Error('Failed to disconnect Calendly')
 }
 
+export interface CalendlyEvent {
+  title: string
+  start: string
+  end: string
+  uri?: string
+  status?: string
+  invitee?: string | null
+}
+
+export async function fetchCalendlyEvents(): Promise<{ events: CalendlyEvent[]; error?: string }> {
+  const res = await fetch(`${BASE}/api/calendly/user/events/`, {
+    credentials: 'include',
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Calendly events')
+  return res.json()
+}
+
+export interface CalendlyEventType {
+  uri: string
+  name: string
+  slug?: string
+  scheduling_url: string
+  duration?: number
+  kind?: string
+  active?: boolean
+  selected?: boolean
+}
+
+export async function fetchCalendlyEventTypes(): Promise<{
+  event_types: CalendlyEventType[]
+  selected_uri?: string | null
+  booking_link?: string | null
+  error?: string
+}> {
+  const res = await fetch(`${BASE}/api/calendly/event-types/`, {
+    credentials: 'include',
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Calendly event types')
+  return res.json()
+}
+
+export async function setCalendlyEventType(
+  eventTypeUri: string,
+  eventTypeName?: string,
+  bookingLink?: string,
+): Promise<{ ok: boolean; event_type_uri: string; event_type_name?: string; booking_link?: string }> {
+  const res = await fetch(`${BASE}/api/calendly/set-event-type/`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { ...csrfHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type_uri: eventTypeUri, event_type_name: eventTypeName, booking_link: bookingLink }),
+  })
+  if (!res.ok) throw new Error('Failed to set Calendly event type')
+  return res.json()
+}
+
 // ─── REAL: Gmail ──────────────────────────────────────────────────────────────
 export async function connectGmail(): Promise<{ authorization_url: string }> {
   const res = await fetch(`${BASE}/api/gmail/connect/`, {

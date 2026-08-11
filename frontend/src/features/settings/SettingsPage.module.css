@@ -357,6 +357,143 @@
 .statusExpired { background: var(--bg-light); color: var(--text-muted); }
 
 /* ─── Mobile ────────────────────────────────────────────────────────────────── */
+/* ─── Calendly detail section ────────────────────────────────────────────────── */
+
+.calendlyDetail {
+  margin-top: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-color);
+}
+
+.calendlySection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calendlySectionTitle {
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.calendlyEmpty {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.btnLink {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: left;
+  transition: opacity var(--transition-fast);
+}
+
+.btnLink:hover { opacity: 0.7; }
+
+/* ─── Event type list ───────────────────────────────────────────────────────── */
+
+.eventTypeList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.eventTypeItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--surface);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  text-align: left;
+  color: var(--text-color);
+}
+
+.eventTypeItem:hover { border-color: var(--primary-color); }
+
+.eventTypeSelected {
+  border-color: var(--primary-color);
+  background: var(--primary-subtle);
+}
+
+.eventTypeName {
+  flex: 1;
+  font-weight: var(--font-weight-medium);
+}
+
+.eventTypeDuration {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.eventTypeCheck {
+  font-size: 12px;
+  color: var(--primary-color);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ─── Event list (upcoming) ─────────────────────────────────────────────────── */
+
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.eventItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.eventTitle {
+  flex: 1;
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventTime {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.eventInvitee {
+  font-size: 11px;
+  color: var(--text-subtle);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .settings { padding: var(--space-md); }
   .formGrid { grid-template-columns: 1fr; }

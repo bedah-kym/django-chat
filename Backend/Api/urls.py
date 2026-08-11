@@ -19,6 +19,8 @@ urlpatterns = [
     path('calendly/user/<int:user_id>/booking-link/', views.calendly_user_booking_link, name='calendly_user_booking_link'),
     path('calendly/user/username/<str:username>/booking-link/', views.calendly_user_booking_link_by_username, name='calendly_user_booking_link_by_username'),
     path('calendly/disconnect/', views.calendly_disconnect, name='calendly_disconnect'),
+    path('calendly/event-types/', views.calendly_event_types, name='calendly_event_types'),
+    path('calendly/set-event-type/', views.calendly_set_event_type, name='calendly_set_event_type'),
 
     # Gmail integration endpoints
     path('gmail/connect/', views.gmail_connect, name='gmail_connect'),
