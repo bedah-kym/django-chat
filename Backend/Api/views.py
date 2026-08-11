@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token
 from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
 from django.db.models import Max
 from django.urls import reverse
@@ -73,15 +74,30 @@ def calendly_connect(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@csrf_exempt
 def calendly_callback(request):
-    """Handle OAuth callback from Calendly and store tokens."""
+    """Handle OAuth callback from Calendly and store tokens.
+    Uses the state param (user ID) for auth since the Calendly redirect
+    doesn't carry a session cookie."""
     code = request.GET.get('code')
     state = request.GET.get('state')
     frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
 
-    if not code:
+    if not code or not state:
         return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
+
+    # Resolve user from state param (not session — Calendly redirect strips cookies)
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=int(state))
+    except (User.DoesNotExist, ValueError):
+        logger.error('Calendly callback: invalid state=%s', state)
+        return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
+
+    # Log them in so request.user works for the rest of this view
+    from django.contrib.auth import login
+    login(request, user)
+
     token_url = 'https://auth.calendly.com/oauth/token'
     client_id = getattr(settings, 'CALENDLY_CLIENT_ID', None)
     client_secret = getattr(settings, 'CALENDLY_CLIENT_SECRET', None)
