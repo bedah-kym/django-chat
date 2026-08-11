@@ -108,13 +108,9 @@ export function SignetTopBar({
         </span>
         <div className={s.alert}>&#9888; {alertCount} Alerts</div>
         {sessionErrors.length > 0 && (
-          <div className={s.errorBanner}>
-            {sessionErrors.map((e, i) => (
-              <span key={i} className={s.errorText}>
-                {e.platform}: {e.error}
-              </span>
-            ))}
-          </div>
+          <span className={s.errorInline} title={sessionErrors.map(e => `${e.platform}: ${e.error}`).join(' | ')}>
+            &#9888; {sessionErrors[0].platform}: {sessionErrors[0].error}
+          </span>
         )}
         {xStats && xStats.posts_collected > 0 && (
           <span className={s.feedStat}>

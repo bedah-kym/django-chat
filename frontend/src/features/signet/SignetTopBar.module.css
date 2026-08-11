@@ -248,21 +248,19 @@
   text-transform: uppercase;
 }
 
-.errorBanner {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 92, 73, 0.1);
-  border: 1px solid rgba(255, 92, 73, 0.35);
-  border-radius: var(--sg-radius);
-  padding: 3px 10px;
-}
-
-.errorText {
+.errorInline {
   font-family: var(--sg-mono);
   font-size: var(--sg-fs-2xs);
   color: var(--sg-high);
-  letter-spacing: var(--sg-track-tight);
+  background: rgba(255, 92, 73, 0.12);
+  border: 1px solid rgba(255, 92, 73, 0.3);
+  border-radius: 3px;
+  padding: 2px 8px;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: help;
 }
 
 .feedStat {
