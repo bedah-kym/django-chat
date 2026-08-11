@@ -46,8 +46,13 @@ def spa_index(_request):
     raise Http404("SPA index not built; run `cd frontend && npm run build` (or use the Vite dev server in development)")
 
 
+def landing_view(_request):
+    """Redirect root URL to the SPA home."""
+    return redirect('/app/home')
+
+
 urlpatterns = [
-    path('', lambda _request: redirect('/app/home'), name='landing'),
+    path('', landing_view, name='landing'),
     path('admin/', admin.site.urls),
     path('chatbot/', include('chatbot.urls')),
     path('accounts/', include('users.urls')),
