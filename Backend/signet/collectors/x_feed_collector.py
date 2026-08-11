@@ -115,8 +115,11 @@ class XFeedCollector(BaseCollector):
     def _build_client(self, cookies: dict):
         """Build a twikit Client with pre-loaded cookies."""
         from twikit import Client
+        from httpx import Cookies
         client = Client('en-US')
-        client.set_cookies(cookies)
+        # twikit 2.3.3: set_cookies passes to httpx.Cookies.update() which
+        # expects (name, value) tuples, not a raw dict.
+        client.http.cookies = Cookies(cookies)
         return client
 
     # ── timeline fetching ────────────────────────────────────────────
