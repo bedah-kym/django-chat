@@ -88,14 +88,13 @@ class XFeedCollector(BaseCollector):
         self._pipeline('auth', 'running')
         try:
             client = self._build_client(cookies)
-            # Quick connectivity check
-            import asyncio
+            import asyncio, traceback
             async def _ping():
                 return await client.get_latest_timeline(count=1)
             test = asyncio.run(_ping())
-            self._pipeline('auth', 'ok', f'Auth OK, timeline reachable ({len(test)} test tweets)')
-        except Exception as e:
-            self._pipeline('auth', 'fail', str(e)[:200])
+            self._pipeline('auth', 'ok', f'Auth OK ({len(test)} test tweets)')
+        except Exception:
+            self._pipeline('auth', 'fail', traceback.format_exc().split('\n')[-2:][0].strip()[-120:])
             return 0
 
         tweets = self._fetch_timelines(client, feed_types, limit)
