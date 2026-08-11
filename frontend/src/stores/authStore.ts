@@ -88,7 +88,7 @@ let authReadyPromise: Promise<void> | null = null
 
 export function ensureAuth(): Promise<void> {
   if (getAuthToken()) {
-    return useAuthStore.getState().fetchUserProfile().catch(() => {})
+    return useAuthStore.getState().fetchUserProfile().catch(() => { })
   }
 
   if (!import.meta.env.DEV) {
@@ -100,7 +100,7 @@ export function ensureAuth(): Promise<void> {
   }
 
   if (!authReadyPromise) {
-    authReadyPromise = useAuthStore.getState().login('alex', 'mathia123').catch(() => {})
+    authReadyPromise = useAuthStore.getState().login('alex', 'mathia123').catch(() => { })
   }
   return authReadyPromise
 }
