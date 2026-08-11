@@ -528,30 +528,20 @@ def x_diag(request):
         result['cookies'] = f'ERROR: {e}'
         return Response(result)
 
-    # 4) Auth test
+    # 4) Auth test - try timeline directly (user() has a twikit bug)
     try:
         import asyncio
         from twikit import Client
         async def _test():
             c = Client('en-US')
             c.set_cookies(cookies)
-            u = c.user()
-            return u
-        user = asyncio.run(_test())
-        result['auth'] = f'OK (@{user.screen_name})'
+            # Skip user() - has "too many values to unpack" bug in current twikit
+            # Instead test by fetching timeline directly
+            tweets = c.get_latest_timeline(count=1)
+            return tweets
+        tweets = asyncio.run(_test())
+        result['auth'] = f'OK (timeline: {len(tweets)} tweets)'
     except Exception as e:
         result['auth'] = f'FAIL: {str(e)[:200]}'
-
-    # 5) Timeline test
-    if result.get('auth', '').startswith('OK'):
-        try:
-            async def _tl():
-                c = Client('en-US')
-                c.set_cookies(cookies)
-                return c.get_latest_timeline(count=2)
-            tweets = asyncio.run(_tl())
-            result['timeline'] = f'OK ({len(tweets)} tweets)'
-        except Exception as e:
-            result['timeline'] = f'FAIL: {str(e)[:200]}'
 
     return Response(result)

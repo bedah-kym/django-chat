@@ -60,10 +60,14 @@ class XFeedCollector(BaseCollector):
 
         cookies = self._load_cookies()
         if not cookies:
-            logger.error(
-                'XFeedCollector: no cookies found. Run `python manage.py x_login` '
-                'or set SIGNET_X_COOKIES_JSON in .env.'
-            )
+            msg = ('XFeedCollector: no cookies found. '
+                   'Run `python x_login_standalone.py` or set SIGNET_X_COOKIES_JSON.')
+            logger.error(msg)
+            self.session.stats = {
+                **(self.session.stats or {}),
+                'last_error': 'No X cookies configured',
+            }
+            self.session.save(update_fields=['stats'])
             return 0
 
         client = self._build_client(cookies)
