@@ -481,3 +481,77 @@ def collection_config(request):
         session.save()
         return Response({'status': 'updated', 'config': session.config})
     return Response({'error': 'session_id required'}, status=400)
+
+
+# ── X Feed diagnostic (no auth — debug only) ──
+
+@api_view(['GET'])
+def x_diag(request):
+    """Diagnostic: test XFeedCollector imports, cookies, and auth."""
+    result = {}
+
+    # 1) twikit import
+    try:
+        import twikit
+        result['twikit'] = 'OK'
+    except ImportError as e:
+        result['twikit'] = f'MISSING: {e}'
+        return Response(result)
+
+    # 2) XFeedCollector import
+    try:
+        from signet.collectors.x_feed_collector import XFeedCollector
+        result['collector'] = 'OK'
+    except Exception as e:
+        result['collector'] = f'FAIL: {e}'
+        return Response(result)
+
+    # 3) Cookies
+    try:
+        from django.conf import settings
+        import os, json, base64
+        cookies = None
+        path = getattr(settings, 'SIGNET_X_COOKIES_PATH', 'x_cookies.json')
+        if os.path.exists(path):
+            with open(path) as f:
+                cookies = json.load(f)
+            result['cookies'] = f'file OK ({len(cookies)} cookies)'
+        else:
+            b64 = getattr(settings, 'SIGNET_X_COOKIES_JSON', '')
+            if b64:
+                cookies = json.loads(base64.b64decode(b64))
+                result['cookies'] = f'env OK ({len(cookies)} cookies)'
+            else:
+                result['cookies'] = 'MISSING (no file, no SIGNET_X_COOKIES_JSON)'
+                return Response(result)
+    except Exception as e:
+        result['cookies'] = f'ERROR: {e}'
+        return Response(result)
+
+    # 4) Auth test
+    try:
+        import asyncio
+        from twikit import Client
+        async def _test():
+            c = Client('en-US')
+            c.set_cookies(cookies)
+            u = c.user()
+            return u
+        user = asyncio.run(_test())
+        result['auth'] = f'OK (@{user.screen_name})'
+    except Exception as e:
+        result['auth'] = f'FAIL: {str(e)[:200]}'
+
+    # 5) Timeline test
+    if result.get('auth', '').startswith('OK'):
+        try:
+            async def _tl():
+                c = Client('en-US')
+                c.set_cookies(cookies)
+                return c.get_latest_timeline(count=2)
+            tweets = asyncio.run(_tl())
+            result['timeline'] = f'OK ({len(tweets)} tweets)'
+        except Exception as e:
+            result['timeline'] = f'FAIL: {str(e)[:200]}'
+
+    return Response(result)

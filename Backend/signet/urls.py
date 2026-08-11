@@ -22,4 +22,7 @@ urlpatterns = [
     path('collection/stop/', views.collection_stop, name='collection_stop'),
     path('collection/status/', views.collection_status, name='collection_status'),
     path('collection/config/', views.collection_config, name='collection_config'),
+
+    # Debug
+    path('x-diag/', views.x_diag, name='x_diag'),
 ]
