@@ -71,9 +71,6 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('uploads/', upload_file, name='upload_file'),
     re_path(r'^app(?:/.*)?$', spa_index, name='spa_index'),
-    # Catch-all for SPA client-side routes (settings, dashboard, etc.)
-    # Must be last — only matches paths without a file extension
-    re_path(r'^(?!api/|admin/|accounts/|chatbot/|travel/|payments/|notifications/|uploads/|auth/|api-auth/).*(?<!\.[a-zA-Z0-9]{2,5})$', spa_index, name='spa_catchall'),
 ]
 
 if settings.DEBUG:
