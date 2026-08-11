@@ -94,10 +94,6 @@ def calendly_callback(request):
         logger.error('Calendly callback: invalid state=%s', state)
         return redirect(f"{frontend_url}/settings?tab=integrations&calendly=error")
 
-    # Log them in so request.user works for the rest of this view
-    from django.contrib.auth import login
-    login(request, user)
-
     token_url = 'https://auth.calendly.com/oauth/token'
     client_id = getattr(settings, 'CALENDLY_CLIENT_ID', None)
     client_secret = getattr(settings, 'CALENDLY_CLIENT_SECRET', None)
@@ -122,7 +118,7 @@ def calendly_callback(request):
     userinfo = requests.get('https://api.calendly.com/users/me', headers=headers).json()
     calendly_user_uri = userinfo.get('resource', {}).get('uri') or userinfo.get('uri') or userinfo.get('data', {}).get('uri')
 
-    profile, _ = CalendlyProfile.objects.get_or_create(user=request.user)
+    profile, _ = CalendlyProfile.objects.get_or_create(user=user)
     # For free tier assume single event type - try to fetch event_types
     et_resp = requests.get('https://api.calendly.com/event_types', headers=headers, params={'user': calendly_user_uri})
     event_type_uri = None
