@@ -112,16 +112,19 @@ class XFeedCollector(BaseCollector):
 
     # ── client ───────────────────────────────────────────────────────
 
-    def _build_client(self, cookies: dict):
+    def _build_client(self, cookies):
         """Build a twikit Client with pre-loaded cookies.
 
-        twikit 2.3.3 has a bug where client.set_cookies(dict) fails
-        because httpx.Cookies.update() expects (name,value) tuples.
-        We work around it by passing cookies as a list of tuples.
+        Cookies come as a list of {name, value, ...} dicts from the
+        browser export. twikit 2.3.3 needs (name, value) tuples.
         """
         from twikit import Client
         client = Client('en-US')
-        cookie_tuples = [(k, v) for k, v in cookies.items()]
+        # Handle both dict and list-of-dicts formats
+        if isinstance(cookies, list):
+            cookie_tuples = [(c['name'], c['value']) for c in cookies]
+        else:
+            cookie_tuples = [(k, v) for k, v in cookies.items()]
         client.set_cookies(cookie_tuples)
         return client
 

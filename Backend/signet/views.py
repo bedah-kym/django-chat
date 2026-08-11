@@ -534,8 +534,12 @@ def x_diag(request):
         from twikit import Client
         async def _test():
             c = Client('en-US')
-            # Work around twikit 2.3.3 httpx.Cookies dict bug
-            c.set_cookies([(k, v) for k, v in cookies.items()])
+            # Handle both dict and list-of-dicts cookie formats
+            if isinstance(cookies, list):
+                tuples = [(x['name'], x['value']) for x in cookies]
+            else:
+                tuples = [(k, v) for k, v in cookies.items()]
+            c.set_cookies(tuples)
             tweets = c.get_latest_timeline(count=1)
             return tweets
         tweets = asyncio.run(_test())
