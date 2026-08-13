@@ -74,20 +74,15 @@ def _calendly_fetch_user_uri(access_token: str) -> str:
 
 
 def _calendly_refresh_token_if_needed(profile):
-    """Refresh Calendly access token if expired. Returns (access_token, ok)."""
+    """Return a usable Calendly access token, refreshing it if the current one
+    is absent. We no longer pre-validate via /users/me because this app lacks
+    the users:read scope (403) — callers refresh on a real 401 instead.
+    Returns (access_token, ok)."""
     access_token = profile.get_access_token()
-    if not access_token:
-        return None, False
-    # Quick check: try calling /users/me to validate token
-    try:
-        r = requests.get('https://api.calendly.com/users/me',
-                         headers={'Authorization': f'Bearer {access_token}'},
-                         timeout=10)
-        if r.status_code == 200:
-            return access_token, True
-    except Exception:
-        pass
-    # Token expired — try refresh
+    if access_token:
+        return access_token, True
+
+    # No access token — try refresh before giving up
     refresh_token = profile.get_refresh_token()
     if not refresh_token:
         return None, False
@@ -110,6 +105,32 @@ def _calendly_refresh_token_if_needed(profile):
     except Exception as e:
         logger.warning(f'Calendly token refresh failed: {e}')
     return None, False
+
+
+def _calendly_refresh(profile):
+    """Force-refresh the access token. Returns new token or None."""
+    refresh_token = profile.get_refresh_token()
+    if not refresh_token:
+        return None
+    try:
+        r = requests.post('https://auth.calendly.com/oauth/token', data={
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token,
+            'client_id': settings.CALENDLY_CLIENT_ID,
+            'client_secret': settings.CALENDLY_CLIENT_SECRET,
+        }, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            from users.encryption import TokenEncryption
+            profile.encrypted_access_token = TokenEncryption.encrypt(data['access_token'])
+            if data.get('refresh_token'):
+                profile.encrypted_refresh_token = TokenEncryption.encrypt(data['refresh_token'])
+            profile.save(update_fields=['encrypted_access_token', 'encrypted_refresh_token'])
+            logger.info(f'Force-refreshed Calendly token for user {profile.user_id}')
+            return data['access_token']
+    except Exception as e:
+        logger.warning(f'Calendly force-refresh failed: {e}')
+    return None
 
 
 def _room_display_name(room, members, current_user):
@@ -146,9 +167,10 @@ def calendly_connect(request):
     # URL encode the redirect_uri properly
     encoded_redirect_uri = quote(redirect_uri, safe='')
 
-    # Scopes required by the integration: read user profile, event types,
-    # and scheduled events. (Colons stay literal, spaces are URL-encoded.)
-    scope = quote('users:read event_types:read scheduled_events:read', safe=':')
+    # Scopes available in this Calendly app. NOTE: users:read is not in the
+    # app's scope list, so we do NOT request it — the user URI comes from the
+    # token response's `owner` field instead. (Colons literal, spaces encoded.)
+    scope = quote('event_types:read scheduled_events:read', safe=':')
 
     # Build authorization URL
     auth_url = (
@@ -209,8 +231,15 @@ def calendly_callback(request):
         logger.error('Calendly token exchange succeeded but no access_token in response: %s', r.text[:300])
         return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=error")
 
-    # fetch user info (with robust extraction + logging)
-    calendly_user_uri = _calendly_fetch_user_uri(access_token)
+    # The OAuth token response includes the user's URI in `owner` (and the
+    # org in `organization`). Prefer that — /users/me requires the users:read
+    # scope which this app doesn't have.
+    calendly_user_uri = data.get('owner') or data.get('resource', {}).get('uri')
+    if not calendly_user_uri:
+        # Fallback: /users/me (may 403 without users:read — that's fine, we
+        # already logged the reason via the helper)
+        calendly_user_uri = _calendly_fetch_user_uri(access_token)
+
     if not calendly_user_uri:
         logger.error('Calendly callback: could not resolve user URI for user_id=%s', user.id)
         return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=error")
@@ -278,10 +307,19 @@ def calendly_events(request):
     access_token, ok = _calendly_refresh_token_if_needed(profile)
     if not ok:
         return Response({'events': [], 'error': 'Token expired. Reconnect Calendly.'})
-    headers = {'Authorization': f'Bearer {access_token}'}
-    r = requests.get('https://api.calendly.com/scheduled_events', headers=headers,
-                     params={'user': profile.calendly_user_uri, 'status': 'active',
-                             'sort': 'start_time:asc', 'min_start_time': timezone.now().isoformat()})
+
+    def fetch(token):
+        return requests.get('https://api.calendly.com/scheduled_events',
+                            headers={'Authorization': f'Bearer {token}'},
+                            params={'user': profile.calendly_user_uri, 'status': 'active',
+                                    'sort': 'start_time:asc', 'min_start_time': timezone.now().isoformat()},
+                            timeout=15)
+
+    r = fetch(access_token)
+    if r.status_code == 401:
+        access_token = _calendly_refresh(profile)
+        if access_token:
+            r = fetch(access_token)
     if r.status_code != 200:
         return Response({'events': [], 'error': f'Calendly API error: {r.status_code}'})
     data = r.json()
@@ -434,11 +472,18 @@ def calendly_event_types(request):
     access_token, ok = _calendly_refresh_token_if_needed(profile)
     if not ok:
         return Response({'event_types': [], 'error': 'Token expired. Reconnect Calendly.'})
-    headers = {'Authorization': f'Bearer {access_token}'}
-    r = requests.get('https://api.calendly.com/event_types',
-                     headers=headers,
-                     params={'user': profile.calendly_user_uri, 'active': True},
-                     timeout=15)
+
+    def fetch(token):
+        return requests.get('https://api.calendly.com/event_types',
+                            headers={'Authorization': f'Bearer {token}'},
+                            params={'user': profile.calendly_user_uri, 'active': True},
+                            timeout=15)
+
+    r = fetch(access_token)
+    if r.status_code == 401:
+        access_token = _calendly_refresh(profile)
+        if access_token:
+            r = fetch(access_token)
     if r.status_code != 200:
         return Response({'event_types': [], 'error': f'Calendly API error: {r.status_code}'})
     data = r.json()
