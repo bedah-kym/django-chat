@@ -19,7 +19,9 @@
   scrollbar-width: none;
 }
 
-.tabs::-webkit-scrollbar { display: none; }
+.tabs::-webkit-scrollbar {
+  display: none;
+}
 
 .tab {
   padding: var(--space-sm) var(--space-md);
@@ -32,7 +34,9 @@
   flex-shrink: 0;
 }
 
-.tab:hover { color: var(--text-color); }
+.tab:hover {
+  color: var(--text-color);
+}
 
 .activeTab {
   color: var(--primary-color);
@@ -57,9 +61,15 @@
   gap: var(--space-md);
 }
 
-.fieldFull { grid-column: 1 / -1; }
+.fieldFull {
+  grid-column: 1 / -1;
+}
 
-.field { display: flex; flex-direction: column; gap: var(--space-xs); }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
 
 .fieldLabel {
   font-size: 12px;
@@ -118,7 +128,11 @@
   transform: translateY(-1px);
 }
 
-.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
 
 .btnOutline {
   padding: var(--space-xs) var(--space-md);
@@ -130,7 +144,10 @@
   transition: all var(--transition-fast);
 }
 
-.btnOutline:hover { border-color: var(--primary-color); color: var(--primary-color); }
+.btnOutline:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
 
 .btnDanger {
   padding: var(--space-xs) var(--space-md);
@@ -142,8 +159,15 @@
   transition: all var(--transition-fast);
 }
 
-.btnDanger:hover:not(:disabled) { background: var(--danger-color); color: #fff; }
-.btnDanger:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnDanger:hover:not(:disabled) {
+  background: var(--danger-color);
+  color: #fff;
+}
+
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ─── Integrations ──────────────────────────────────────────────────────────── */
 .integrationGrid {
@@ -180,8 +204,15 @@
   border-radius: var(--radius-full);
 }
 
-.connected { background: rgba(5, 150, 105, 0.12); color: var(--success-color); }
-.disconnected { background: var(--bg-light); color: var(--text-muted); }
+.connected {
+  background: rgba(5, 150, 105, 0.12);
+  color: var(--success-color);
+}
+
+.disconnected {
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
 
 .integrationAccount {
   font-size: 12px;
@@ -282,10 +313,25 @@
   letter-spacing: 0.04em;
 }
 
-.planFree { background: var(--bg-light); color: var(--text-muted); }
-.planTrial { background: rgba(217, 119, 6, 0.12); color: var(--warning-color); }
-.planPro { background: var(--primary-subtle); color: var(--primary-color); }
-.planAgency { background: rgba(5, 150, 105, 0.12); color: var(--success-color); }
+.planFree {
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
+
+.planTrial {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--warning-color);
+}
+
+.planPro {
+  background: var(--primary-subtle);
+  color: var(--primary-color);
+}
+
+.planAgency {
+  background: rgba(5, 150, 105, 0.12);
+  color: var(--success-color);
+}
 
 /* ─── Invites ───────────────────────────────────────────────────────────────── */
 .inviteNote {
@@ -299,7 +345,9 @@
   gap: var(--space-sm);
 }
 
-.inviteForm .input { flex: 1; }
+.inviteForm .input {
+  flex: 1;
+}
 
 .inviteTable {
   border: 1px solid var(--border-color);
@@ -352,9 +400,20 @@
   white-space: nowrap;
 }
 
-.statusActivated { background: rgba(5, 150, 105, 0.12); color: var(--success-color); }
-.statusPending { background: rgba(217, 119, 6, 0.12); color: var(--warning-color); }
-.statusExpired { background: var(--bg-light); color: var(--text-muted); }
+.statusActivated {
+  background: rgba(5, 150, 105, 0.12);
+  color: var(--success-color);
+}
+
+.statusPending {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--warning-color);
+}
+
+.statusExpired {
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
 
 /* ─── Mobile ────────────────────────────────────────────────────────────────── */
 /* ─── Calendly detail section ────────────────────────────────────────────────── */
@@ -401,7 +460,9 @@
   transition: opacity var(--transition-fast);
 }
 
-.btnLink:hover { opacity: 0.7; }
+.btnLink:hover {
+  opacity: 0.7;
+}
 
 /* ─── Event type list ───────────────────────────────────────────────────────── */
 
@@ -428,7 +489,9 @@
   color: var(--text-color);
 }
 
-.eventTypeItem:hover { border-color: var(--primary-color); }
+.eventTypeItem:hover {
+  border-color: var(--primary-color);
+}
 
 .eventTypeSelected {
   border-color: var(--primary-color);
@@ -495,10 +558,27 @@
 }
 
 @media (max-width: 768px) {
-  .settings { padding: var(--space-md); }
-  .formGrid { grid-template-columns: 1fr; }
-  .integrationGrid { grid-template-columns: 1fr; }
-  .modeGrid { grid-template-columns: repeat(2, 1fr); }
-  .selectRow { grid-template-columns: 1fr; }
-  .inviteForm { flex-direction: column; }
+  .settings {
+    padding: var(--space-md);
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .integrationGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modeGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .selectRow {
+    grid-template-columns: 1fr;
+  }
+
+  .inviteForm {
+    flex-direction: column;
+  }
 }
