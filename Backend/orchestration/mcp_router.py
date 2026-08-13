@@ -460,6 +460,28 @@ class CalendarConnector(BaseConnector):
                         user_uri = (me_data.get('resource') or {}).get('uri') or me_data.get('uri')
                         if user_uri:
                             await sync_to_async(lambda: setattr(profile, 'calendly_user_uri', user_uri) or profile.save())()
+                    else:
+                        logger.error(
+                            "Calendly self-heal /users/me failed: %s %s",
+                            me_resp.status_code, me_resp.text[:300],
+                        )
+                    # Fallback via organization memberships
+                    if not user_uri and me_resp.status_code == 200:
+                        me_data = me_resp.json()
+                        org_uri = (me_data.get('resource') or {}).get('current_organization')
+                        if org_uri:
+                            org_resp = await client.get(
+                                'https://api.calendly.com/organization_memberships',
+                                headers={'Authorization': f'Bearer {access_token}'},
+                                params={'organization': org_uri},
+                            )
+                            if org_resp.status_code == 200:
+                                members = org_resp.json().get('collection') or []
+                                if members:
+                                    user_obj = members[0].get('user') or (members[0].get('resource') or {}).get('user') or {}
+                                    user_uri = user_obj.get('uri')
+                                    if user_uri:
+                                        await sync_to_async(lambda: setattr(profile, 'calendly_user_uri', user_uri) or profile.save())()
 
             if not user_uri:
                 return {"status": "error", "message": "Your Calendly account URI is missing. Please reconnect Calendly.", "action_required": "connect_calendly"}

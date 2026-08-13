@@ -26,6 +26,53 @@ import time
 logger = logging.getLogger(__name__)
 
 
+def _calendly_fetch_user_uri(access_token: str) -> str:
+    """Fetch the Calendly user URI for a token. Returns None on failure."""
+    headers = {'Authorization': f'Bearer {access_token}'}
+    try:
+        r = requests.get('https://api.calendly.com/users/me', headers=headers, timeout=15)
+        if r.status_code != 200:
+            logger.error(f'Calendly /users/me returned {r.status_code}: {r.text[:300]}')
+            return None
+        data = r.json()
+    except Exception as e:
+        logger.error(f'Calendly /users/me request failed: {e}')
+        return None
+
+    # Robust extraction: resource.uri is the canonical v2 shape
+    uri = (
+        (data.get('resource') or {}).get('uri')
+        or data.get('uri')
+        or (data.get('data') or {}).get('uri')
+    )
+    if uri:
+        return uri
+
+    # Fallback: find membership via current_organization
+    org_uri = (data.get('resource') or {}).get('current_organization')
+    if org_uri:
+        try:
+            r2 = requests.get(
+                'https://api.calendly.com/organization_memberships',
+                headers=headers,
+                params={'organization': org_uri},
+                timeout=15,
+            )
+            if r2.status_code == 200:
+                members = (r2.json().get('collection') or [])
+                if members:
+                    m = members[0]
+                    uri = (m.get('user') or (m.get('resource') or {}).get('user') or {}).get('uri') \
+                        or ((m.get('resource') or {}).get('user') or {}).get('uri')
+                    if uri:
+                        return uri
+        except Exception as e:
+            logger.warning(f'Calendly organization_memberships fallback failed: {e}')
+
+    logger.error(f'Calendly user URI not found in response: {json.dumps(data)[:500]}')
+    return None
+
+
 def _calendly_refresh_token_if_needed(profile):
     """Refresh Calendly access token if expired. Returns (access_token, ok)."""
     access_token = profile.get_access_token()
@@ -153,10 +200,17 @@ def calendly_callback(request):
     access_token = data.get('access_token')
     refresh_token = data.get('refresh_token')
 
-    # fetch user info
+    if not access_token:
+        logger.error('Calendly token exchange succeeded but no access_token in response: %s', r.text[:300])
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=error")
+
+    # fetch user info (with robust extraction + logging)
+    calendly_user_uri = _calendly_fetch_user_uri(access_token)
+    if not calendly_user_uri:
+        logger.error('Calendly callback: could not resolve user URI for user_id=%s', user.id)
+        return redirect(f"{frontend_url}/app/settings?tab=integrations&calendly=error")
+
     headers = {'Authorization': f'Bearer {access_token}'}
-    userinfo = requests.get('https://api.calendly.com/users/me', headers=headers).json()
-    calendly_user_uri = userinfo.get('resource', {}).get('uri') or userinfo.get('uri') or userinfo.get('data', {}).get('uri')
 
     profile, _ = CalendlyProfile.objects.get_or_create(user=user)
     # For free tier assume single event type - try to fetch event_types
