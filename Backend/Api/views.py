@@ -146,12 +146,17 @@ def calendly_connect(request):
     # URL encode the redirect_uri properly
     encoded_redirect_uri = quote(redirect_uri, safe='')
 
+    # Scopes required by the integration: read user profile, event types,
+    # scheduled events, and organization memberships.
+    scope = quote('users:read event_types:read scheduled_events:read organizations:read', safe='')
+
     # Build authorization URL
     auth_url = (
         f"https://auth.calendly.com/oauth/authorize"
         f"?response_type=code"
         f"&client_id={client_id}"
         f"&redirect_uri={encoded_redirect_uri}"
+        f"&scope={scope}"
         f"&state={state}"
     )
 
