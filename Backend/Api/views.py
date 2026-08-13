@@ -167,10 +167,10 @@ def calendly_connect(request):
     # URL encode the redirect_uri properly
     encoded_redirect_uri = quote(redirect_uri, safe='')
 
-    # Scopes available in this Calendly app. NOTE: users:read is not in the
-    # app's scope list, so we do NOT request it — the user URI comes from the
-    # token response's `owner` field instead. (Colons literal, spaces encoded.)
-    scope = quote('event_types:read scheduled_events:read', safe=':')
+    # Scopes for this integration. users:read is now available in the Calendly
+    # app, so request it too (enables /users/me as a fallback). The primary
+    # user URI source remains the token response `owner` field.
+    scope = quote('users:read event_types:read scheduled_events:read', safe=':')
 
     # Build authorization URL
     auth_url = (
