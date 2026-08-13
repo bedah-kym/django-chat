@@ -90,6 +90,19 @@ CALENDLY_WEBHOOK_SIGNING_KEY = (
 # IntaSend webhook secret for signature verification
 INTASEND_WEBHOOK_SECRET = os.environ.get('INTASEND_WEBHOOK_SECRET')
 
+# HackerOne API integration (customer / program-owner API)
+# Docs: https://api.hackerone.com/getting-started
+HACKERONE_ENABLED = os.environ.get('HACKERONE_ENABLED', 'False').lower() in ('1', 'true', 'yes')
+HACKERONE_API_TOKEN_ID = os.environ.get('HACKERONE_API_TOKEN_ID', '')
+HACKERONE_API_TOKEN_VALUE = os.environ.get('HACKERONE_API_TOKEN_VALUE', '')
+# Optional HMAC secret for webhook signature verification. If empty, HackerOne
+# signs payloads with an empty-string key (we still verify, but recommend a secret).
+HACKERONE_WEBHOOK_SECRET = os.environ.get('HACKERONE_WEBHOOK_SECRET', '')
+# Username of the Mathia user that owns synced HackerOne data. Falls back to
+# the first superuser when unset.
+HACKERONE_OWNER_USERNAME = os.environ.get('HACKERONE_OWNER_USERNAME', '')
+HACKERONE_API_BASE_URL = os.environ.get('HACKERONE_API_BASE_URL', 'https://api.hackerone.com/v1')
+
 # Application definition
 
 INSTALLED_APPS = [

@@ -4,9 +4,13 @@ import {
   fetchPrograms,
   fetchReports,
   fetchDrafts,
+  fetchHackerOneStatus,
+  syncHackerOne,
   type ProgramResponse,
   type ReportResponse,
   type DraftResponse,
+  type HackerOneStatus,
+  type HackerOneSyncResult,
 } from '@/api/bugbounty'
 
 function mapProgram(p: ProgramResponse): BugBountyProgram {
@@ -21,6 +25,8 @@ function mapProgram(p: ProgramResponse): BugBountyProgram {
     outOfScope: p.out_of_scope,
     rewardNotes: p.reward_notes,
     scanStatus: p.scan_status as BugBountyProgram['scanStatus'],
+    externalId: p.external_id,
+    sourceHandle: p.source_handle,
   }
 }
 
@@ -35,6 +41,7 @@ function mapReport(r: ReportResponse): BugBountyReport {
     status: r.status as BugBountyReport['status'],
     submittedAt: r.submitted_at,
     severity: r.severity as BugBountyReport['severity'],
+    sourceUrl: r.source_url,
   }
 }
 
@@ -57,7 +64,14 @@ interface BugBountyState {
   isLoading: boolean
   initialized: boolean
   lastFetched: number
+  hackeroneStatus: HackerOneStatus | null
+  isSyncing: boolean
+  lastSyncResult: HackerOneSyncResult | null
+  syncError: string | null
   initialize: () => Promise<void>
+  refresh: () => Promise<void>
+  loadHackerOneStatus: () => Promise<void>
+  syncHackerOne: () => Promise<void>
 }
 
 const BB_STALE_MS = 30_000
@@ -69,10 +83,18 @@ export const useBugBountyStore = create<BugBountyState>((set, get) => ({
   isLoading: false,
   initialized: false,
   lastFetched: 0,
+  hackeroneStatus: null,
+  isSyncing: false,
+  lastSyncResult: null,
+  syncError: null,
 
   initialize: async () => {
     const { initialized, lastFetched } = get()
     if (initialized && Date.now() - lastFetched < BB_STALE_MS) return
+    await get().refresh()
+  },
+
+  refresh: async () => {
     set({ isLoading: true })
     try {
       const [programs, reports, drafts] = await Promise.all([
@@ -90,6 +112,32 @@ export const useBugBountyStore = create<BugBountyState>((set, get) => ({
       })
     } catch {
       set({ isLoading: false, initialized: true, lastFetched: Date.now() })
+    }
+  },
+
+  loadHackerOneStatus: async () => {
+    try {
+      const status = await fetchHackerOneStatus()
+      set({ hackeroneStatus: status })
+    } catch {
+      set({ hackeroneStatus: null })
+    }
+  },
+
+  syncHackerOne: async () => {
+    if (get().isSyncing) return
+    set({ isSyncing: true, syncError: null, lastSyncResult: null })
+    try {
+      const result = await syncHackerOne()
+      set({ isSyncing: false, lastSyncResult: result })
+      // Force-refresh local rows so the UI reflects freshly synced data.
+      await get().refresh()
+      await get().loadHackerOneStatus()
+    } catch (err) {
+      set({
+        isSyncing: false,
+        syncError: err instanceof Error ? err.message : 'Sync failed',
+      })
     }
   },
 }))

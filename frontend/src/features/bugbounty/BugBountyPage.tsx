@@ -21,9 +21,18 @@ export function BugBountyPage() {
   const drafts = useBugBountyStore((s) => s.drafts)
   const isLoading = useBugBountyStore((s) => s.isLoading)
   const initialize = useBugBountyStore((s) => s.initialize)
+  const hackeroneStatus = useBugBountyStore((s) => s.hackeroneStatus)
+  const isSyncing = useBugBountyStore((s) => s.isSyncing)
+  const lastSyncResult = useBugBountyStore((s) => s.lastSyncResult)
+  const syncError = useBugBountyStore((s) => s.syncError)
+  const syncHackerOne = useBugBountyStore((s) => s.syncHackerOne)
+  const loadHackerOneStatus = useBugBountyStore((s) => s.loadHackerOneStatus)
   const showSkeleton = useDelayedFlag(isLoading && programs.length === 0)
 
   useEffect(() => { initialize() }, [initialize])
+  useEffect(() => { loadHackerOneStatus() }, [loadHackerOneStatus])
+
+  const canSync = Boolean(hackeroneStatus?.isOwnerOrStaff && hackeroneStatus?.configured)
 
   if (showSkeleton) return <RouteSkeleton />
 
@@ -65,11 +74,26 @@ export function BugBountyPage() {
 
       <div className={styles.sectionHeader}>
         <h2>Programs</h2>
-        <button type="button" className={styles.syncBtn}>
-          <RefreshCcw size={15} />
-          Sync from H1
+        <button
+          type="button"
+          className={styles.syncBtn}
+          onClick={() => syncHackerOne()}
+          disabled={!canSync || isSyncing}
+          title={!canSync ? 'HackerOne integration is not configured for your account' : undefined}
+        >
+          <RefreshCcw size={15} className={isSyncing ? styles.spinning : undefined} />
+          {isSyncing ? 'Syncing…' : 'Sync from H1'}
         </button>
       </div>
+
+      {lastSyncResult && (
+        <div className={styles.syncNotice}>
+          Synced {lastSyncResult.programs_created + lastSyncResult.programs_updated} programs,{' '}
+          {lastSyncResult.reports_created + lastSyncResult.reports_updated} reports
+          {lastSyncResult.reports_skipped ? ` (${lastSyncResult.reports_skipped} skipped)` : ''}.
+        </div>
+      )}
+      {syncError && <div className={styles.syncError}>{syncError}</div>}
 
       <div className={styles.filters}>
         {FILTERS.map(item => (

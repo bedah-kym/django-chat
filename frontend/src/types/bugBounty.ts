@@ -11,6 +11,8 @@ export interface BugBountyProgram {
   outOfScope: string[]
   rewardNotes: string
   scanStatus: 'ready' | 'queued' | 'running'
+  externalId?: string
+  sourceHandle?: string
 }
 
 export interface BugBountyReport {
@@ -23,6 +25,7 @@ export interface BugBountyReport {
   status: 'draft' | 'triaged' | 'duplicate' | 'resolved' | 'paid'
   submittedAt: string
   severity: 'critical' | 'high' | 'medium' | 'low'
+  sourceUrl?: string
 }
 
 export interface ReportDraft {

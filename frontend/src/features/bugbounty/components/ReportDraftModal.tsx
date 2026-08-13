@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReportDraft } from '@/types/bugBounty'
+import { useBugBountyStore } from '@/stores/bugbountyStore'
+import { importFindingToHackerone } from '@/api/bugbounty'
 import styles from './ReportDraftModal.module.css'
 
 interface Props {
@@ -9,10 +11,47 @@ interface Props {
 
 export function ReportDraftModal({ draft, onClose }: Props) {
   const [form, setForm] = useState(draft)
+  const programs = useBugBountyStore((s) => s.programs)
+  const refresh = useBugBountyStore((s) => s.refresh)
+  const [programHandle, setProgramHandle] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitResult, setSubmitResult] = useState<{ report_id: string; url: string | null } | null>(null)
+
+  const hackerOnePrograms = programs.filter(p => p.platform === 'HackerOne' && p.sourceHandle)
 
   useEffect(() => {
     setForm(draft)
-  }, [draft])
+    const h1 = programs.filter(p => p.platform === 'HackerOne' && p.sourceHandle)
+    const match = h1.find(p => p.name === draft.platformProgram) || h1[0]
+    setProgramHandle(match?.sourceHandle || '')
+  }, [draft, programs])
+
+  const handleSubmit = async () => {
+    if (!programHandle) {
+      setSubmitError('Select a HackerOne program to import into.')
+      return
+    }
+    setIsSubmitting(true)
+    setSubmitError(null)
+    setSubmitResult(null)
+    try {
+      const result = await importFindingToHackerone({
+        program_handle: programHandle,
+        title: form.title,
+        vulnerability_information: form.steps,
+        impact: form.impact,
+        severity: form.severity,
+      })
+      setSubmitResult(result)
+      // Refresh the reports list so the imported report appears immediately.
+      await refresh()
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -39,8 +78,22 @@ export function ReportDraftModal({ draft, onClose }: Props) {
               </select>
             </label>
             <label className={styles.field}>
-              <span>Platform</span>
-              <input className={styles.input} value={form.platformProgram} onChange={e => setForm({ ...form, platformProgram: e.target.value })} />
+              <span>HackerOne Program</span>
+              {hackerOnePrograms.length > 0 ? (
+                <select className={styles.input} value={programHandle} onChange={e => setProgramHandle(e.target.value)}>
+                  <option value="">Select program…</option>
+                  {hackerOnePrograms.map(p => (
+                    <option key={p.id} value={p.sourceHandle}>{p.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className={styles.input}
+                  placeholder="Program handle (e.g. security)"
+                  value={programHandle}
+                  onChange={e => setProgramHandle(e.target.value)}
+                />
+              )}
             </label>
           </div>
 
@@ -61,11 +114,28 @@ export function ReportDraftModal({ draft, onClose }: Props) {
           </div>
 
           <div className={styles.estimate}>Estimated bounty: {form.estimatedBounty}</div>
+
+          {submitResult && (
+            <div className={styles.importSuccess}>
+              Imported as report{' '}
+              <a href={submitResult.url || undefined} target="_blank" rel="noreferrer">
+                {submitResult.report_id}
+              </a>
+            </div>
+          )}
+          {submitError && <div className={styles.importError}>{submitError}</div>}
         </div>
 
         <div className={styles.footer}>
           <button type="button" className={styles.btnOutline} onClick={onClose}>Cancel</button>
-          <button type="button" className={styles.btnPrimary}>Submit to H1</button>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            onClick={handleSubmit}
+            disabled={isSubmitting || !programHandle}
+          >
+            {isSubmitting ? 'Submitting…' : 'Submit to H1'}
+          </button>
         </div>
       </div>
     </div>

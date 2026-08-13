@@ -172,6 +172,40 @@ def verify_generic_hmac_sha256(signature: str, secret: str, body: bytes) -> bool
         return False
 
 
+def verify_hackerone_signature(signature: str, secret: str, body: bytes) -> bool:
+    """
+    Verify a HackerOne webhook signature.
+
+    HackerOne sends ``X-H1-Signature`` in the form ``sha256=<hexdigest>`` where
+    the digest is HMAC-SHA256 of the raw request body, keyed with the webhook
+    secret. If no secret was configured on the HackerOne side, the payload is
+    signed with an empty-string key (``''``), so an empty secret is allowed here
+    (unlike the generic verifier above).
+
+    Returns:
+        bool: True if the signature is valid.
+    """
+    if not signature or '=' not in signature:
+        logger.warning("Missing or malformed HackerOne signature")
+        return False
+
+    try:
+        algo, provided_digest = signature.split('=', 1)
+        if algo.strip().lower() != 'sha256':
+            logger.warning("Unsupported HackerOne signature algorithm: %s", algo)
+            return False
+
+        key = (secret or '').encode()
+        expected_digest = hmac.new(key, body, hashlib.sha256).hexdigest()
+        is_valid = hmac.compare_digest(provided_digest.strip(), expected_digest)
+        if not is_valid:
+            logger.warning("Invalid HackerOne webhook signature")
+        return is_valid
+    except Exception as e:
+        logger.error(f"Error verifying HackerOne signature: {e}")
+        return False
+
+
 def log_webhook_verification(
     service: str,
     is_valid: bool,

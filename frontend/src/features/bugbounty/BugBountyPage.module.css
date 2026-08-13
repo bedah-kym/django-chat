@@ -73,6 +73,33 @@
   color: var(--surface-elevated);
 }
 
+.syncBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.syncNotice {
+  margin-top: var(--space-sm);
+  font-size: 12px;
+  color: var(--color-success, #16a34a);
+}
+
+.syncError {
+  margin-top: var(--space-sm);
+  font-size: 12px;
+  color: var(--color-danger, #dc2626);
+}
+
 .linkBtn {
   border: 1px solid var(--border-color);
   color: var(--text-color);
@@ -163,15 +190,45 @@
   letter-spacing: 0.05em;
 }
 
-.HackerOne { background: color-mix(in srgb, var(--brand-hackerone) 14%, transparent); color: var(--brand-hackerone); }
-.Bugcrowd { background: color-mix(in srgb, var(--brand-bugcrowd) 14%, transparent); color: var(--brand-bugcrowd); }
-.Intigriti { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+.HackerOne {
+  background: color-mix(in srgb, var(--brand-hackerone) 14%, transparent);
+  color: var(--brand-hackerone);
+}
 
-.draft { background: var(--bg-light); color: var(--text-muted); }
-.triaged { background: color-mix(in srgb, var(--severity-medium) 14%, transparent); color: var(--severity-medium); }
-.duplicate { background: rgba(217, 119, 6, 0.14); color: var(--warning-color); }
-.resolved { background: var(--primary-subtle); color: var(--primary-color); }
-.paid { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+.Bugcrowd {
+  background: color-mix(in srgb, var(--brand-bugcrowd) 14%, transparent);
+  color: var(--brand-bugcrowd);
+}
+
+.Intigriti {
+  background: rgba(5, 150, 105, 0.14);
+  color: var(--success-color);
+}
+
+.draft {
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
+
+.triaged {
+  background: color-mix(in srgb, var(--severity-medium) 14%, transparent);
+  color: var(--severity-medium);
+}
+
+.duplicate {
+  background: rgba(217, 119, 6, 0.14);
+  color: var(--warning-color);
+}
+
+.resolved {
+  background: var(--primary-subtle);
+  color: var(--primary-color);
+}
+
+.paid {
+  background: rgba(5, 150, 105, 0.14);
+  color: var(--success-color);
+}
 
 @media (max-width: 1024px) {
   .page {

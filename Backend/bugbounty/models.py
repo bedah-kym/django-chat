@@ -28,6 +28,10 @@ class BugBountyProgram(models.Model):
     reward_notes = models.TextField(default='')
     scan_status = models.CharField(max_length=20, choices=SCAN_STATUS_CHOICES, default='ready')
     created_at = models.DateTimeField(auto_now_add=True)
+    # HackerOne sync metadata
+    external_id = models.CharField(max_length=100, blank=True, default='')
+    source_handle = models.CharField(max_length=200, blank=True, default='')
+    synced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -67,6 +71,11 @@ class BugBountyReport(models.Model):
     submitted_at = models.DateTimeField()
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='medium')
     created_at = models.DateTimeField(auto_now_add=True)
+    # HackerOne sync metadata
+    external_id = models.CharField(max_length=100, blank=True, default='')
+    source_url = models.CharField(max_length=500, blank=True, default='')
+    raw_payload = models.JSONField(default=dict, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-submitted_at']
@@ -99,3 +108,21 @@ class BugBountyReportDraft(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class BugBountyWebhookEvent(models.Model):
+    """Received HackerOne webhook delivery (idempotency + audit)."""
+
+    delivery_id = models.CharField(max_length=64, unique=True)
+    event_type = models.CharField(max_length=100)
+    signature_valid = models.BooleanField(default=False)
+    payload = models.JSONField(default=dict)
+    processed = models.BooleanField(default=False)
+    error = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.event_type} ({self.delivery_id})"

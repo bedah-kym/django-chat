@@ -126,7 +126,22 @@
   color: #fff;
 }
 
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btnOutline {
   border: 1px solid var(--border-color);
   color: var(--text-color);
+}
+
+.importSuccess {
+  font-size: 13px;
+  color: var(--color-success, #16a34a);
+}
+
+.importError {
+  font-size: 13px;
+  color: var(--color-danger, #dc2626);
 }
