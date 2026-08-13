@@ -205,6 +205,31 @@ class ImportEndpointTests(TestCase):
         self.assertEqual(resp.data['report_id'], '789')
 
 
+@override_settings(HACKERONE_ENABLED=True, HACKERONE_API_TOKEN_ID='id',
+                   HACKERONE_API_TOKEN_VALUE='v', HACKERONE_OWNER_USERNAME='owneruser')
+class OwnerAccessTests(TestCase):
+    """The configured owner (not just staff) may trigger sync/import."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user('owneruser', password='pass')
+        self.other = User.objects.create_user('otheruser', password='pass')
+        self.client = APIClient()
+
+    def test_owner_can_sync(self):
+        self.client.force_authenticate(self.owner)
+        with patch('bugbounty.views.sync_programs_and_reports',
+                   return_value={'programs_created': 1, 'programs_updated': 0,
+                                 'reports_created': 0, 'reports_updated': 0,
+                                 'reports_skipped': 0}):
+            resp = self.client.post(reverse('bugbounty:hackerone_sync'))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_non_owner_gets_forbidden(self):
+        self.client.force_authenticate(self.other)
+        resp = self.client.post(reverse('bugbounty:hackerone_sync'))
+        self.assertEqual(resp.status_code, 403)
+
+
 class StatusEndpointTests(TestCase):
     def setUp(self):
         self.owner = User.objects.create_superuser('admin', 'admin@example.com', 'pass')

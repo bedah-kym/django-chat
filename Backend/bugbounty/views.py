@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -21,6 +21,23 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class IsHackerOneOwnerOrStaff(BasePermission):
+    """Allow staff users and the configured HackerOne integration owner.
+
+    The shared org API token model means one Mathia user (``HACKERONE_OWNER_USERNAME``)
+    owns all synced HackerOne data. Both that owner and any staff user may trigger
+    syncs/imports; regular users may not.
+    """
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.user.is_staff:
+            return True
+        owner = resolve_owner()
+        return bool(owner and owner.id == request.user.id)
 
 
 class NoPagination:
@@ -76,7 +93,7 @@ class HackerOneStatusView(APIView):
 class HackerOneSyncView(APIView):
     """Pull HackerOne programs + reports into the integration owner's account."""
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsHackerOneOwnerOrStaff]
 
     def post(self, request):
         if not is_configured():
@@ -97,7 +114,7 @@ class HackerOneSyncView(APIView):
 class HackerOneImportView(APIView):
     """Create/import a report into a HackerOne program and persist a local row."""
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsHackerOneOwnerOrStaff]
 
     def post(self, request):
         if not is_configured():
