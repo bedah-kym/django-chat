@@ -313,8 +313,11 @@ class MCPRouter:
         cache_key = f"mcp_rate:{user_id}"
 
         try:
-            current = cache.incr(cache_key)
-        except ValueError:
+            # get-then-set with fresh TTL (cache.incr on a fresh key creates
+            # it without a TTL, so the counter would never expire)
+            current = int(cache.get(cache_key) or 0) + 1
+            cache.set(cache_key, current, 3600)
+        except Exception:
             cache.set(cache_key, 1, 3600)
             current = 1
 
@@ -573,8 +576,11 @@ class SearchConnector(BaseConnector):
             today = datetime.now().strftime("%Y-%m-%d")
             limit_key = f"search_limit:{user_id}:{today}"
             try:
-                current_count = cache.incr(limit_key)
-            except ValueError:
+                # get-then-set with fresh TTL (cache.incr on a fresh key creates
+                # it without a TTL, so the counter would never expire)
+                current_count = int(cache.get(limit_key) or 0) + 1
+                cache.set(limit_key, current_count, 86400)
+            except Exception:
                 cache.set(limit_key, 1, 86400)
                 current_count = 1
 

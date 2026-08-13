@@ -184,8 +184,11 @@ def _record_search_usage(user_id: Optional[int], count: int) -> None:
         return
     key = _search_limit_key(user_id)
     try:
-        cache.incr(key, count)
-    except ValueError:
+        # get-then-set with fresh TTL (cache.incr on a fresh Redis key
+        # creates it without a TTL, so it would never expire)
+        current = int(cache.get(key) or 0)
+        cache.set(key, current + count, 86400)
+    except Exception:
         cache.set(key, count, 86400)
 
 

@@ -76,10 +76,24 @@ class QuotaService:
             uploaded_at__gte=ten_hours_ago
         ).count()
 
-        # 5. LLM Token Quota (hourly)
+        # 5. LLM Token Quota (hourly, plan-aware, staff exempt)
         token_key = f"llm_tokens:{user_id}"
         token_used = int(cache.get(token_key) or 0)
-        token_limit = getattr(settings, 'LLM_TOKEN_LIMIT_PER_USER_PER_HOUR', 50000)
+        token_limit = int(getattr(settings, 'LLM_TOKEN_LIMIT_PER_USER_PER_HOUR', 50000))
+
+        # Staff / superusers are exempt (mirrors llm_client._get_user_token_budget)
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.filter(pk=user_id).only('is_staff', 'is_superuser').first()
+            if user and (user.is_staff or user.is_superuser):
+                token_limit = 10_000_000
+        except Exception:
+            pass
+
+        # Plan-aware multiplier
+        if token_limit < 1_000_000:
+            token_limit = int(token_limit * self.PLAN_MULTIPLIERS.get(plan, 1.0))
 
         # Calculate Percentages & Status
         def get_status(used, limit):

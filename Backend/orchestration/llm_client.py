@@ -338,15 +338,36 @@ class LLMClient:
     def _get_user_token_budget(self, user_id: Optional[int]) -> Dict[str, int]:
         """
         Get token budget and current usage for a user.
-        Uses atomic integer counter in cache for thread-safe tracking.
+        Limit is plan-aware; staff/superuser accounts are exempt.
         Returns {"limit": N, "used": M}
         """
         if not user_id:
             return {"limit": 999999, "used": 0}
 
+        limit = int(getattr(settings, "LLM_TOKEN_LIMIT_PER_USER_PER_HOUR", 50000))
+
+        # Staff / superusers are exempt from the token quota (owner debugging, support)
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.filter(pk=user_id).only('is_staff', 'is_superuser').first()
+            if user and (user.is_staff or user.is_superuser):
+                return {"limit": 10_000_000, "used": 0}
+        except Exception:
+            pass
+
+        # Plan-aware multiplier: free 1x, trial 2x, pro 5x, agency 50x
+        try:
+            from users.models import Workspace
+            ws = Workspace.objects.filter(user_id=user_id).only('plan').first()
+            if ws:
+                multiplier = {'free': 1.0, 'trial': 2.0, 'pro': 5.0, 'agency': 50.0}.get(ws.plan, 1.0)
+                limit = int(limit * multiplier)
+        except Exception:
+            pass
+
         cache_key = f"llm_tokens:{user_id}"
         used = cache.get(cache_key, 0)
-        limit = int(getattr(settings, "LLM_TOKEN_LIMIT_PER_USER_PER_HOUR", 50000))
         return {
             "limit": limit,
             "used": int(used),
@@ -373,16 +394,23 @@ class LLMClient:
         return True
 
     def _record_token_usage(self, tokens: int, user_id: Optional[int]) -> None:
-        """Record token usage for rate limiting — atomic increment."""
+        """
+        Record token usage for rate limiting.
+
+        IMPORTANT: we never use cache.incr() here — django-redis INCRBY on a
+        non-existent key creates it WITHOUT a TTL, so the counter would never
+        expire ("quota never refreshes" bug). Instead we get-then-set with a
+        fresh TTL on every write, giving a proper sliding 1-hour window.
+        """
         if not user_id or tokens <= 0:
             return
 
         cache_key = f"llm_tokens:{user_id}"
-        ttl = 3600  # 1 hour
+        ttl = 3600  # 1 hour sliding window
         try:
-            cache.incr(cache_key, tokens)
-        except ValueError:
-            # Key doesn't exist yet — create with initial value
+            current = int(cache.get(cache_key) or 0)
+            cache.set(cache_key, current + tokens, ttl)
+        except Exception:
             cache.set(cache_key, tokens, ttl)
 
     async def generate_text(
