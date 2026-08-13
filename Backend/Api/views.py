@@ -191,7 +191,23 @@ def calendly_status(request):
     profile = getattr(request.user, 'calendly', None)
     if not profile or not profile.is_connected:
         return Response({'isConnected': False})
-    return Response({'isConnected': True, 'eventTypeName': profile.event_type_name, 'bookingLink': profile.booking_link, 'calendlyUserUri': profile.calendly_user_uri})
+    access_token = profile.get_access_token()
+    token_valid = False
+    if access_token:
+        try:
+            r = requests.get('https://api.calendly.com/users/me',
+                             headers={'Authorization': f'Bearer {access_token}'},
+                             timeout=10)
+            token_valid = r.status_code == 200
+        except Exception:
+            token_valid = False
+    return Response({
+        'isConnected': True,
+        'eventTypeName': profile.event_type_name,
+        'bookingLink': profile.booking_link,
+        'calendlyUserUri': profile.calendly_user_uri,
+        'tokenValid': token_valid,
+    })
 
 
 @api_view(['GET'])

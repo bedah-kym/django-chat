@@ -445,6 +445,22 @@ class CalendarConnector(BaseConnector):
 
             user_uri = await sync_to_async(lambda: profile.calendly_user_uri)()
 
+            # Self-heal: if the stored user URI is missing, fetch it from /users/me
+            if not user_uri:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    me_resp = await client.get(
+                        'https://api.calendly.com/users/me',
+                        headers={'Authorization': f'Bearer {access_token}'},
+                    )
+                    if me_resp.status_code == 200:
+                        me_data = me_resp.json()
+                        user_uri = (me_data.get('resource') or {}).get('uri') or me_data.get('uri')
+                        if user_uri:
+                            await sync_to_async(lambda: setattr(profile, 'calendly_user_uri', user_uri) or profile.save())()
+
+            if not user_uri:
+                return {"status": "error", "message": "Your Calendly account URI is missing. Please reconnect Calendly.", "action_required": "connect_calendly"}
+
             # Fully async HTTP — no thread pool blocking
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.get(
@@ -463,11 +479,15 @@ class CalendarConnector(BaseConnector):
                             params={'user': user_uri, 'status': 'active', 'sort': 'start_time:asc'},
                         )
                     else:
-                        return {"status": "error", "message": "Calendly authorization failed. Please reconnect.", "action_required": "connect_calendly"}
+                        return {"status": "error", "message": "Your Calendly authorization has expired and could not be refreshed automatically. Please reconnect Calendly in Settings → Integrations.", "action_required": "connect_calendly"}
+
+                if response.status_code == 403:
+                    logger.error("Calendly API 403: %s", response.text)
+                    return {"status": "error", "message": "Your Calendly access has been revoked. Please reconnect Calendly in Settings → Integrations.", "action_required": "connect_calendly"}
 
                 if response.status_code != 200:
-                    logger.error("Calendly API error: %s", response.text)
-                    return {"status": "error", "message": "Failed to fetch Calendly events."}
+                    logger.error("Calendly API error %s: %s", response.status_code, response.text[:500])
+                    return {"status": "error", "message": f"Calendly returned an error ({response.status_code}). Please reconnect Calendly in Settings → Integrations if this persists.", "action_required": "connect_calendly"}
 
             data = response.json()
             events = data.get('collection', [])
