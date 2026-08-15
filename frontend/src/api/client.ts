@@ -65,7 +65,10 @@ export async function apiRequest<T = unknown>(
     credentials: 'include',
   })
 
-  if (res.status === 401 || res.status === 403) {
+  // Only an explicit 401 means the token is invalid/expired — clear it.
+  // A 403 means the user is authenticated but not allowed; keep the token
+  // so a permission denial doesn't silently log the user out.
+  if (res.status === 401) {
     setAuthToken(null)
     const text = await res.text()
     throw new Error(text || 'Unauthorized')
