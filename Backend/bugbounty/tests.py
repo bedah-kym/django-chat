@@ -12,7 +12,10 @@ from orchestration.webhook_validator import verify_hackerone_signature
 
 from .hackerone_client import HackerOneClient
 from .hackerone_sync import map_h1_severity, map_h1_state, sync_programs_and_reports
-from .models import BugBountyProgram, BugBountyReport, BugBountyWebhookEvent
+from .models import (
+    BugBountyProgram, BugBountyReport, BugBountyWebhookEvent,
+    BugBountyCampaign, BugBountyAsset, BugBountyOrg,
+)
 
 User = get_user_model()
 
@@ -88,7 +91,12 @@ class SyncTests(TestCase):
 
     def test_sync_creates_programs_and_reports(self):
         with patch.object(HackerOneClient, 'get_programs', return_value=[self._program_res()]), \
-                patch.object(HackerOneClient, 'get_reports', return_value=[self._report_res()]):
+                patch.object(HackerOneClient, 'get_reports', return_value=[self._report_res()]), \
+                patch.object(HackerOneClient, 'get_campaigns', return_value=[]), \
+                patch.object(HackerOneClient, 'get_structured_scopes', return_value=[]), \
+                patch.object(HackerOneClient, 'get_organizations', return_value=[]), \
+                patch.object(HackerOneClient, 'get_org_members', return_value=[]), \
+                patch.object(HackerOneClient, 'get_assets', return_value=[]):
             result = sync_programs_and_reports(owner=self.owner)
 
         self.assertEqual(result['programs_created'], 1)
@@ -108,7 +116,12 @@ class SyncTests(TestCase):
 
     def test_sync_is_idempotent(self):
         with patch.object(HackerOneClient, 'get_programs', return_value=[self._program_res()]), \
-                patch.object(HackerOneClient, 'get_reports', return_value=[self._report_res()]):
+                patch.object(HackerOneClient, 'get_reports', return_value=[self._report_res()]), \
+                patch.object(HackerOneClient, 'get_campaigns', return_value=[]), \
+                patch.object(HackerOneClient, 'get_structured_scopes', return_value=[]), \
+                patch.object(HackerOneClient, 'get_organizations', return_value=[]), \
+                patch.object(HackerOneClient, 'get_org_members', return_value=[]), \
+                patch.object(HackerOneClient, 'get_assets', return_value=[]):
             sync_programs_and_reports(owner=self.owner)
             result = sync_programs_and_reports(owner=self.owner)
 
@@ -116,6 +129,39 @@ class SyncTests(TestCase):
         self.assertEqual(result['reports_updated'], 1)
         self.assertEqual(BugBountyProgram.objects.count(), 1)
         self.assertEqual(BugBountyReport.objects.count(), 1)
+
+
+    def test_sync_creates_campaigns_assets_and_orgs(self):
+        campaign_res = {
+            'id': '999', 'type': 'campaign',
+            'attributes': {'name': 'May 2x Campaign', 'multiplier': '2x',
+                           'starts_at': '2026-08-01T00:00:00Z',
+                           'ends_at': '2026-08-31T00:00:00Z', 'status': 'active'},
+        }
+        asset_res = {
+            'id': '777', 'type': 'asset',
+            'attributes': {'asset_type': 'URL', 'identifier': 'https://app.example.com', 'state': 'in_scope'},
+        }
+        org_res = {'id': '77579', 'type': 'organization', 'attributes': {'handle': 'mathia-demo'}}
+        scope_res = {'id': '1', 'type': 'structured_scope', 'attributes': {'asset_identifier': 'api.example.com'}}
+
+        with patch.object(HackerOneClient, 'get_programs', return_value=[self._program_res()]), \
+                patch.object(HackerOneClient, 'get_reports', return_value=[]), \
+                patch.object(HackerOneClient, 'get_campaigns', return_value=[campaign_res]), \
+                patch.object(HackerOneClient, 'get_structured_scopes', return_value=[scope_res]), \
+                patch.object(HackerOneClient, 'get_organizations', return_value=[org_res]), \
+                patch.object(HackerOneClient, 'get_org_members', return_value=[{}]), \
+                patch.object(HackerOneClient, 'get_assets', return_value=[asset_res]):
+            result = sync_programs_and_reports(owner=self.owner)
+
+        self.assertEqual(result['campaigns_created'], 1)
+        self.assertEqual(result['assets_created'], 1)
+        self.assertEqual(result['organizations_created'], 1)
+        self.assertTrue(BugBountyCampaign.objects.filter(campaign_id='999').exists())
+        self.assertTrue(BugBountyAsset.objects.filter(asset_id='777').exists())
+        self.assertTrue(BugBountyOrg.objects.filter(org_id='77579').exists())
+        program = BugBountyProgram.objects.get(program_id='h1-security')
+        self.assertIn('api.example.com', program.in_scope)
 
 
 @override_settings(HACKERONE_ENABLED=True, HACKERONE_WEBHOOK_SECRET='test-secret')

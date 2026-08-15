@@ -33,13 +33,35 @@
   font-weight: var(--font-weight-bold);
 }
 
-.HackerOne { background: color-mix(in srgb, var(--brand-hackerone) 14%, transparent); color: var(--brand-hackerone); }
-.Bugcrowd { background: color-mix(in srgb, var(--brand-bugcrowd) 14%, transparent); color: var(--brand-bugcrowd); }
-.Intigriti { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+.HackerOne {
+  background: color-mix(in srgb, var(--brand-hackerone) 14%, transparent);
+  color: var(--brand-hackerone);
+}
 
-.ready { background: var(--bg-light); color: var(--text-muted); }
-.queued { background: var(--primary-subtle); color: var(--primary-color); }
-.running { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+.Bugcrowd {
+  background: color-mix(in srgb, var(--brand-bugcrowd) 14%, transparent);
+  color: var(--brand-bugcrowd);
+}
+
+.Intigriti {
+  background: rgba(5, 150, 105, 0.14);
+  color: var(--success-color);
+}
+
+.ready {
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
+
+.queued {
+  background: var(--primary-subtle);
+  color: var(--primary-color);
+}
+
+.running {
+  background: rgba(5, 150, 105, 0.14);
+  color: var(--success-color);
+}
 
 .synced {
   font-size: 10px;

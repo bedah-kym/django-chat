@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { BanknoteArrowDown, Cloud, CloudOff, FileText, Inbox, RefreshCcw, ShieldCheck } from 'lucide-react'
+import { BanknoteArrowDown, Boxes, Building2, Cloud, CloudOff, FileText, Inbox, Megaphone, RefreshCcw, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { ProgramCard } from './components/ProgramCard'
 import { BountyTracker } from './components/BountyTracker'
 import { ReportDraftModal } from './components/ReportDraftModal'
 import { ReportRow } from './components/ReportRow'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency, formatDateTime } from '@/utils/format'
 import { RouteSkeleton } from '@/components/ui/RouteSkeleton'
 import { useDelayedFlag } from '@/hooks/useDelayedFlag'
 import styles from './BugBountyPage.module.css'
@@ -21,6 +21,9 @@ export function BugBountyPage() {
   const programs = useBugBountyStore((s) => s.programs)
   const reports = useBugBountyStore((s) => s.reports)
   const drafts = useBugBountyStore((s) => s.drafts)
+  const campaigns = useBugBountyStore((s) => s.campaigns)
+  const assets = useBugBountyStore((s) => s.assets)
+  const orgs = useBugBountyStore((s) => s.orgs)
   const isLoading = useBugBountyStore((s) => s.isLoading)
   const initialize = useBugBountyStore((s) => s.initialize)
   const hackeroneStatus = useBugBountyStore((s) => s.hackeroneStatus)
@@ -66,6 +69,8 @@ export function BugBountyPage() {
     { label: 'Total Earned', value: formatCurrency(totalEarned), icon: BanknoteArrowDown },
     { label: 'Open Reports', value: openReports, icon: FileText },
     { label: 'Programs', value: programs.length, icon: ShieldCheck },
+    { label: 'Campaigns', value: campaigns.length, icon: Megaphone },
+    { label: 'Assets', value: assets.length, icon: Boxes },
   ]
 
   return (
@@ -76,6 +81,12 @@ export function BugBountyPage() {
           <p className={styles.subtitle}>Programs and reports across HackerOne, Bugcrowd and Intigriti.</p>
         </div>
         <div className={styles.headerActions}>
+          {orgs.length > 0 && (
+            <span className={styles.statusPill}>
+              <Building2 size={14} />
+              {orgs[0]?.handle} · {orgs[0]?.memberCount} members
+            </span>
+          )}
           <span className={`${styles.statusPill} ${h1Configured ? styles.ok : h1Enabled ? styles.warn : styles.off}`}>
             {h1Configured ? <Cloud size={14} /> : <CloudOff size={14} />}
             {h1Label}
@@ -149,6 +160,59 @@ export function BugBountyPage() {
         ) : (
           <div className={styles.programGrid}>
             {filteredPrograms.map(program => <ProgramCard key={program.id} program={program} />)}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2>Campaigns</h2>
+        </div>
+
+        {campaigns.length === 0 ? (
+          <div className={styles.emptyState}>
+            <Megaphone size={22} />
+            <p>No campaigns yet. Launch one in HackerOne to boost bounties.</p>
+          </div>
+        ) : (
+          <div className={styles.campaignGrid}>
+            {campaigns.map(campaign => (
+              <div key={campaign.id} className={styles.campaignCard}>
+                <div className={styles.campaignTop}>
+                  <span className={styles.campaignName}>{campaign.name}</span>
+                  {campaign.multiplier && <span className={styles.multiplierBadge}>{campaign.multiplier}</span>}
+                </div>
+                {campaign.status && <span className={styles.campaignStatus}>{campaign.status}</span>}
+                {(campaign.startsAt || campaign.endsAt) && (
+                  <div className={styles.campaignDates}>
+                    {campaign.startsAt ? formatDateTime(campaign.startsAt) : '—'} →{' '}
+                    {campaign.endsAt ? formatDateTime(campaign.endsAt) : 'open-ended'}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2>Assets</h2>
+        </div>
+
+        {assets.length === 0 ? (
+          <div className={styles.emptyState}>
+            <Boxes size={22} />
+            <p>No assets yet. Add assets in HackerOne to define your scope.</p>
+          </div>
+        ) : (
+          <div className={styles.assetList}>
+            {assets.map(asset => (
+              <div key={asset.id} className={styles.assetChip}>
+                <span className={styles.assetType}>{asset.assetType || 'asset'}</span>
+                <span className={styles.assetIdentifier}>{asset.identifier}</span>
+              </div>
+            ))}
           </div>
         )}
       </section>

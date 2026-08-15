@@ -14,12 +14,15 @@ from django.utils import timezone as dj_timezone
 
 from .hackerone_client import (
     HackerOneClient,
+    HackerOneClientError,
     _get_attr,
     _get_relationship_attr,
     _get_relationship_id,
     is_configured,
 )
-from .models import BugBountyProgram, BugBountyReport
+from .models import (
+    BugBountyProgram, BugBountyReport, BugBountyCampaign, BugBountyAsset, BugBountyOrg,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +136,54 @@ def _map_report(resource, program, user):
     }
 
 
+def _map_campaign(resource, program, user):
+    attrs = resource.get('attributes') or {}
+    campaign_id = str(resource.get('id', ''))
+    multiplier = attrs.get('multiplier') or attrs.get('bounty_multiplier') or ''
+    if isinstance(multiplier, (int, float)):
+        multiplier = f"{multiplier}x"
+    return {
+        'user': user,
+        'program': program,
+        'campaign_id': campaign_id,
+        'name': (attrs.get('name') or attrs.get('title') or 'Campaign')[:300],
+        'multiplier': str(multiplier)[:50],
+        'starts_at': _parse_dt(attrs.get('starts_at') or attrs.get('started_at')),
+        'ends_at': _parse_dt(attrs.get('ends_at') or attrs.get('ended_at')),
+        'status': str(attrs.get('status') or attrs.get('state') or '')[:30],
+        'raw_payload': resource,
+        'synced_at': dj_timezone.now(),
+    }
+
+
+def _map_asset(resource, user):
+    attrs = resource.get('attributes') or {}
+    asset_id = str(resource.get('id', ''))
+    return {
+        'user': user,
+        'asset_id': asset_id,
+        'asset_type': str(attrs.get('asset_type') or attrs.get('type') or '')[:50],
+        'identifier': str(attrs.get('identifier') or attrs.get('asset_identifier') or '')[:500],
+        'state': str(attrs.get('state') or '')[:30],
+        'raw_payload': resource,
+        'synced_at': dj_timezone.now(),
+    }
+
+
+def _map_org(resource, user, member_count):
+    attrs = resource.get('attributes') or {}
+    org_id = str(resource.get('id', ''))
+    return {
+        'user': user,
+        'org_id': org_id,
+        'handle': str(attrs.get('handle') or '')[:200],
+        'name': str(attrs.get('name') or attrs.get('handle') or '')[:200],
+        'member_count': member_count,
+        'raw_payload': resource,
+        'synced_at': dj_timezone.now(),
+    }
+
+
 def _resolve_program_for_report(resource, programs_by_id, programs_by_handle):
     """Find the local BugBountyProgram a report belongs to, or None."""
     handle = _get_relationship_attr(resource, 'program', 'handle')
@@ -219,10 +270,86 @@ def sync_programs_and_reports(owner=None):
             else:
                 reports_updated += 1
 
+    # 3) Campaigns + structured scopes (program-scoped, numeric id).
+    campaigns_created = campaigns_updated = 0
+    scopes_updated = 0
+    for program in programs_by_handle.values():
+        if not program.external_id:
+            continue
+        for resource in client.get_campaigns(program.external_id):
+            data = _map_campaign(resource, program, owner)
+            _, created = BugBountyCampaign.objects.update_or_create(
+                campaign_id=data['campaign_id'],
+                defaults=data,
+            )
+            if created:
+                campaigns_created += 1
+            else:
+                campaigns_updated += 1
+
+        identifiers = []
+        for scope in client.get_structured_scopes(program.external_id):
+            ident = _get_attr(scope, 'asset_identifier') or _get_attr(scope, 'identifier') or ''
+            if ident:
+                identifiers.append(str(ident)[:300])
+        if identifiers:
+            merged = list(dict.fromkeys([*(program.in_scope or []), *identifiers]))
+            if merged != (program.in_scope or []):
+                program.in_scope = merged
+                program.save(update_fields=['in_scope'])
+                scopes_updated += 1
+
+    # 4) Organizations, members, and assets (organization-scoped).
+    organizations_created = organizations_updated = 0
+    assets_created = assets_updated = 0
+    organizations = []
+    try:
+        organizations = client.get_organizations()
+    except HackerOneClientError as exc:
+        logger.warning("HackerOne organization fetch failed: %s", exc)
+
+    for org in organizations:
+        org_id = str(org.get('id', ''))
+        if not org_id:
+            continue
+        member_count = 0
+        try:
+            member_count = len(client.get_org_members(org_id))
+        except HackerOneClientError as exc:
+            logger.warning("HackerOne member fetch failed for org %s: %s", org_id, exc)
+
+        data = _map_org(org, owner, member_count)
+        _, created = BugBountyOrg.objects.update_or_create(
+            org_id=data['org_id'],
+            defaults=data,
+        )
+        if created:
+            organizations_created += 1
+        else:
+            organizations_updated += 1
+
+        for resource in client.get_assets(org_id):
+            asset_data = _map_asset(resource, owner)
+            _, asset_created = BugBountyAsset.objects.update_or_create(
+                asset_id=asset_data['asset_id'],
+                defaults=asset_data,
+            )
+            if asset_created:
+                assets_created += 1
+            else:
+                assets_updated += 1
+
     return {
         'programs_created': programs_created,
         'programs_updated': programs_updated,
         'reports_created': reports_created,
         'reports_updated': reports_updated,
         'reports_skipped': reports_skipped,
+        'campaigns_created': campaigns_created,
+        'campaigns_updated': campaigns_updated,
+        'scopes_updated': scopes_updated,
+        'organizations_created': organizations_created,
+        'organizations_updated': organizations_updated,
+        'assets_created': assets_created,
+        'assets_updated': assets_updated,
     }

@@ -7,6 +7,9 @@ urlpatterns = [
     path('programs/', views.ProgramList.as_view(), name='program_list'),
     path('reports/', views.ReportList.as_view(), name='report_list'),
     path('drafts/', views.DraftList.as_view(), name='draft_list'),
+    path('campaigns/', views.CampaignList.as_view(), name='campaign_list'),
+    path('assets/', views.AssetList.as_view(), name='asset_list'),
+    path('orgs/', views.OrgList.as_view(), name='org_list'),
 
     # HackerOne integration
     path('hackerone/status/', views.HackerOneStatusView.as_view(), name='hackerone_status'),

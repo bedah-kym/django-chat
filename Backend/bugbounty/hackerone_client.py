@@ -153,6 +153,39 @@ class HackerOneClient:
         )
         return items
 
+    def get_campaigns(self, program_id):
+        """Return all bounty campaigns for a program (numeric id)."""
+        if not program_id:
+            return []
+        items, _ = self._paginate('GET', f'/programs/{program_id}/campaigns')
+        return items
+
+    def get_structured_scopes(self, program_id):
+        """Return structured scopes for a program (numeric id)."""
+        if not program_id:
+            return []
+        items, _ = self._paginate('GET', f'/programs/{program_id}/structured_scopes')
+        return items
+
+    def get_organizations(self):
+        """Return the organizations the token can access."""
+        items, _ = self._paginate('GET', '/me/organizations')
+        return items
+
+    def get_org_members(self, organization_id):
+        """Return members of an organization (numeric id)."""
+        if not organization_id:
+            return []
+        items, _ = self._paginate('GET', f'/organizations/{organization_id}/members')
+        return items
+
+    def get_assets(self, organization_id):
+        """Return assets of an organization (numeric id)."""
+        if not organization_id:
+            return []
+        items, _ = self._paginate('GET', f'/organizations/{organization_id}/assets')
+        return items
+
     def get_report(self, report_id):
         """Fetch a single report by id, returning the resource dict or None."""
         resp = self._request('GET', f"/reports/{report_id}")

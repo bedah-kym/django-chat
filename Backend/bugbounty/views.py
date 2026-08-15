@@ -15,9 +15,13 @@ from orchestration.webhook_validator import verify_hackerone_signature
 
 from .hackerone_client import HackerOneClient, HackerOneClientError, is_configured
 from .hackerone_sync import resolve_owner, sync_programs_and_reports, upsert_report_from_resource
-from .models import BugBountyProgram, BugBountyReport, BugBountyReportDraft, BugBountyWebhookEvent
+from .models import (
+    BugBountyProgram, BugBountyReport, BugBountyReportDraft, BugBountyWebhookEvent,
+    BugBountyCampaign, BugBountyAsset, BugBountyOrg,
+)
 from .serializers import (
     BugBountyProgramSerializer, BugBountyReportSerializer, BugBountyReportDraftSerializer,
+    BugBountyCampaignSerializer, BugBountyAssetSerializer, BugBountyOrgSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,6 +77,33 @@ class DraftList(generics.ListAPIView):
 
     def get_queryset(self):
         return BugBountyReportDraft.objects.filter(user=self.request.user)
+
+
+class CampaignList(generics.ListAPIView):
+    serializer_class = BugBountyCampaignSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = NoPagination
+
+    def get_queryset(self):
+        return BugBountyCampaign.objects.filter(user=self.request.user)
+
+
+class AssetList(generics.ListAPIView):
+    serializer_class = BugBountyAssetSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = NoPagination
+
+    def get_queryset(self):
+        return BugBountyAsset.objects.filter(user=self.request.user)
+
+
+class OrgList(generics.ListAPIView):
+    serializer_class = BugBountyOrgSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = NoPagination
+
+    def get_queryset(self):
+        return BugBountyOrg.objects.filter(user=self.request.user)
 
 
 class HackerOneStatusView(APIView):

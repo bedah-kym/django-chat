@@ -126,3 +126,63 @@ class BugBountyWebhookEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type} ({self.delivery_id})"
+
+
+class BugBountyCampaign(models.Model):
+    """A HackerOne bounty campaign (bounty multiplier incentive on scoped assets)."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bugbounty_campaigns')
+    program = models.ForeignKey(BugBountyProgram, on_delete=models.CASCADE, related_name='campaigns')
+    campaign_id = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=300, blank=True, default='')
+    multiplier = models.CharField(max_length=50, blank=True, default='')
+    starts_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=30, blank=True, default='')
+    raw_payload = models.JSONField(default=dict, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-starts_at']
+
+    def __str__(self):
+        return self.name or self.campaign_id
+
+
+class BugBountyAsset(models.Model):
+    """A HackerOne asset (organization-level scope item)."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bugbounty_assets')
+    asset_id = models.CharField(max_length=100, unique=True)
+    asset_type = models.CharField(max_length=50, blank=True, default='')
+    identifier = models.CharField(max_length=500, blank=True, default='')
+    state = models.CharField(max_length=30, blank=True, default='')
+    raw_payload = models.JSONField(default=dict, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['asset_type', 'identifier']
+
+    def __str__(self):
+        return self.identifier or self.asset_id
+
+
+class BugBountyOrg(models.Model):
+    """A HackerOne organization the integration token belongs to."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bugbounty_orgs')
+    org_id = models.CharField(max_length=100, unique=True)
+    handle = models.CharField(max_length=200, blank=True, default='')
+    name = models.CharField(max_length=200, blank=True, default='')
+    member_count = models.IntegerField(default=0)
+    raw_payload = models.JSONField(default=dict, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['handle']
+
+    def __str__(self):
+        return self.handle or self.org_id

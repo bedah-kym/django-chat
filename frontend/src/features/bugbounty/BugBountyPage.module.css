@@ -11,7 +11,7 @@
 
 .statsRow {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--space-md);
 }
 
@@ -366,4 +366,92 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+.campaignGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
+}
+
+.campaignCard {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.campaignTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.campaignName {
+  font-weight: var(--font-weight-semibold);
+  font-size: 14px;
+}
+
+.multiplierBadge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  color: var(--primary-color);
+  background: var(--primary-subtle);
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+}
+
+.campaignStatus {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-light);
+  color: var(--text-muted);
+}
+
+.campaignDates {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.assetList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: var(--space-md);
+}
+
+.assetChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  background: var(--bg-light);
+  font-size: 12px;
+}
+
+.assetType {
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.assetIdentifier {
+  font-family: var(--font-mono);
 }

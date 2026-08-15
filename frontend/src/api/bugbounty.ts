@@ -38,6 +38,33 @@ export interface DraftResponse {
   estimated_bounty: string
 }
 
+export interface CampaignResponse {
+  id: number
+  program: number
+  campaign_id: string
+  name: string
+  multiplier: string
+  starts_at: string | null
+  ends_at: string | null
+  status: string
+}
+
+export interface AssetResponse {
+  id: number
+  asset_id: string
+  asset_type: string
+  identifier: string
+  state: string
+}
+
+export interface OrgResponse {
+  id: number
+  org_id: string
+  handle: string
+  name: string
+  member_count: number
+}
+
 export function fetchPrograms(): Promise<ProgramResponse[]> {
   return apiRequest('/bugbounty/programs/')
 }
@@ -48,6 +75,18 @@ export function fetchReports(): Promise<ReportResponse[]> {
 
 export function fetchDrafts(): Promise<DraftResponse[]> {
   return apiRequest('/bugbounty/drafts/')
+}
+
+export function fetchCampaigns(): Promise<CampaignResponse[]> {
+  return apiRequest('/bugbounty/campaigns/')
+}
+
+export function fetchAssets(): Promise<AssetResponse[]> {
+  return apiRequest('/bugbounty/assets/')
+}
+
+export function fetchOrgs(): Promise<OrgResponse[]> {
+  return apiRequest('/bugbounty/orgs/')
 }
 
 export interface HackerOneStatus {

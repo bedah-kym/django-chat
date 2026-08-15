@@ -37,3 +37,27 @@ export interface ReportDraft {
   evidenceName: string
   estimatedBounty: string
 }
+
+export interface BugBountyCampaign {
+  id: string
+  programId: number
+  name: string
+  multiplier: string
+  startsAt: string | null
+  endsAt: string | null
+  status: string
+}
+
+export interface BugBountyAsset {
+  id: string
+  assetType: string
+  identifier: string
+  state: string
+}
+
+export interface BugBountyOrg {
+  id: string
+  handle: string
+  name: string
+  memberCount: number
+}
