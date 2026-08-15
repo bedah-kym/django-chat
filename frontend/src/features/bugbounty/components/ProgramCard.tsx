@@ -13,7 +13,11 @@ export function ProgramCard({ program }: Props) {
     <Link to={`/app/security/bugbounty/${program.id}`} className={styles.card}>
       <div className={styles.header}>
         <span className={`${styles.platform} ${styles[program.platform]}`}>{program.platform}</span>
-        <span className={`${styles.status} ${styles[program.scanStatus]}`}>{program.scanStatus}</span>
+        {program.sourceHandle ? (
+          <span className={styles.synced}>Synced</span>
+        ) : (
+          <span className={`${styles.status} ${styles[program.scanStatus]}`}>{program.scanStatus}</span>
+        )}
       </div>
       <div className={styles.name}>{program.name}</div>
       <div className={styles.range}>{program.bountyRange}</div>
@@ -22,7 +26,7 @@ export function ProgramCard({ program }: Props) {
         <span>{formatDateTime(program.lastScannedAt)}</span>
       </div>
       <div className={styles.footer}>
-        <span className={styles.inline}><Radar size={14} />Last sweep ready</span>
+        <span className={styles.inline}><Radar size={14} />{program.inScope.length} in scope</span>
         <span className={styles.scanBtn}>
           <TimerReset size={14} />
           Run Scan

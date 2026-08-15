@@ -1,0 +1,96 @@
+.row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) 84px 96px 108px minmax(90px, 0.6fr);
+  gap: var(--space-md);
+  padding: 14px var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+  font-size: 13px;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.target {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  justify-self: start;
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.amount {
+  font-family: var(--font-mono);
+}
+
+.link {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.link:hover {
+  color: var(--primary-color);
+}
+
+.linkSlot {
+  inline-size: 14px;
+  flex-shrink: 0;
+}
+
+.s_critical { background: rgba(220, 38, 38, 0.12); color: #dc2626; }
+.s_high { background: rgba(217, 119, 6, 0.14); color: #d97706; }
+.s_medium { background: rgba(202, 138, 4, 0.14); color: #ca8a04; }
+.s_low { background: rgba(37, 99, 235, 0.12); color: #2563eb; }
+
+.st_draft { background: var(--bg-light); color: var(--text-muted); }
+.st_triaged { background: rgba(37, 99, 235, 0.12); color: #2563eb; }
+.st_duplicate { background: rgba(217, 119, 6, 0.14); color: #d97706; }
+.st_resolved { background: rgba(22, 163, 74, 0.12); color: #16a34a; }
+.st_paid { background: rgba(22, 163, 74, 0.12); color: #16a34a; }
+
+.p_HackerOne { background: color-mix(in srgb, var(--brand-hackerone) 14%, transparent); color: var(--brand-hackerone); }
+.p_Bugcrowd { background: color-mix(in srgb, var(--brand-bugcrowd) 14%, transparent); color: var(--brand-bugcrowd); }
+.p_Intigriti { background: rgba(5, 150, 105, 0.14); color: var(--success-color); }
+
+@media (max-width: 768px) {
+  .row {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .right {
+    justify-content: flex-start;
+  }
+}

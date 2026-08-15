@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { BanknoteArrowDown, FileText, ShieldCheck, RefreshCcw } from 'lucide-react'
+import { BanknoteArrowDown, Cloud, CloudOff, FileText, Inbox, RefreshCcw, ShieldCheck } from 'lucide-react'
+import { toast } from 'sonner'
 import { useBugBountyStore } from '@/stores/bugbountyStore'
 import { ProgramCard } from './components/ProgramCard'
 import { BountyTracker } from './components/BountyTracker'
 import { ReportDraftModal } from './components/ReportDraftModal'
-import { formatCurrency, formatNumber } from '@/utils/format'
+import { ReportRow } from './components/ReportRow'
+import { formatCurrency } from '@/utils/format'
 import { RouteSkeleton } from '@/components/ui/RouteSkeleton'
 import { useDelayedFlag } from '@/hooks/useDelayedFlag'
 import styles from './BugBountyPage.module.css'
@@ -34,6 +36,23 @@ export function BugBountyPage() {
 
   const canSync = Boolean(hackeroneStatus?.isOwnerOrStaff && hackeroneStatus?.configured)
 
+  const handleSync = async () => {
+    try {
+      await syncHackerOne()
+      toast.success('HackerOne synced')
+    } catch {
+      // Error is surfaced via syncError in the store.
+    }
+  }
+
+  const h1Configured = Boolean(hackeroneStatus?.configured)
+  const h1Enabled = Boolean(hackeroneStatus?.enabled)
+  const h1Label = h1Configured
+    ? `HackerOne · ${hackeroneStatus?.ownerUsername ?? 'connected'}`
+    : h1Enabled
+      ? 'HackerOne · keys missing'
+      : 'HackerOne · disabled'
+
   if (showSkeleton) return <RouteSkeleton />
 
   const filteredPrograms = filter === 'All'
@@ -46,11 +65,39 @@ export function BugBountyPage() {
   const stats = [
     { label: 'Total Earned', value: formatCurrency(totalEarned), icon: BanknoteArrowDown },
     { label: 'Open Reports', value: openReports, icon: FileText },
-    { label: 'Programs Enrolled', value: programs.length, icon: ShieldCheck },
+    { label: 'Programs', value: programs.length, icon: ShieldCheck },
   ]
 
   return (
     <div className={styles.page}>
+      <header className={styles.pageHeader}>
+        <div className={styles.heading}>
+          <h1 className={styles.title}>Bug Bounty</h1>
+          <p className={styles.subtitle}>Programs and reports across HackerOne, Bugcrowd and Intigriti.</p>
+        </div>
+        <div className={styles.headerActions}>
+          <span className={`${styles.statusPill} ${h1Configured ? styles.ok : h1Enabled ? styles.warn : styles.off}`}>
+            {h1Configured ? <Cloud size={14} /> : <CloudOff size={14} />}
+            {h1Label}
+          </span>
+          {canSync && (
+            <button type="button" className={styles.syncBtn} onClick={handleSync} disabled={isSyncing}>
+              <RefreshCcw size={15} className={isSyncing ? styles.spinning : undefined} />
+              {isSyncing ? 'Syncing…' : 'Sync HackerOne'}
+            </button>
+          )}
+        </div>
+      </header>
+
+      {syncError && <div className={styles.bannerError}>{syncError}</div>}
+      {lastSyncResult && (
+        <div className={styles.bannerSuccess}>
+          Synced {lastSyncResult.programs_created + lastSyncResult.programs_updated} programs,{' '}
+          {lastSyncResult.reports_created + lastSyncResult.reports_updated} reports
+          {lastSyncResult.reports_skipped ? ` (${lastSyncResult.reports_skipped} skipped)` : ''}.
+        </div>
+      )}
+
       <div className={styles.statsRow}>
         {stats.map((stat, index) => {
           const Icon = stat.icon
@@ -72,67 +119,62 @@ export function BugBountyPage() {
 
       <BountyTracker />
 
-      <div className={styles.sectionHeader}>
-        <h2>Programs</h2>
-        <button
-          type="button"
-          className={styles.syncBtn}
-          onClick={() => syncHackerOne()}
-          disabled={!canSync || isSyncing}
-          title={!canSync ? 'HackerOne integration is not configured for your account' : undefined}
-        >
-          <RefreshCcw size={15} className={isSyncing ? styles.spinning : undefined} />
-          {isSyncing ? 'Syncing…' : 'Sync from H1'}
-        </button>
-      </div>
-
-      {lastSyncResult && (
-        <div className={styles.syncNotice}>
-          Synced {lastSyncResult.programs_created + lastSyncResult.programs_updated} programs,{' '}
-          {lastSyncResult.reports_created + lastSyncResult.reports_updated} reports
-          {lastSyncResult.reports_skipped ? ` (${lastSyncResult.reports_skipped} skipped)` : ''}.
-        </div>
-      )}
-      {syncError && <div className={styles.syncError}>{syncError}</div>}
-
-      <div className={styles.filters}>
-        {FILTERS.map(item => (
-          <button
-            key={item}
-            type="button"
-            className={`${styles.filterPill} ${filter === item ? styles.filterActive : ''}`}
-            onClick={() => setFilter(item)}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-
-      <div className={styles.programGrid}>
-        {filteredPrograms.map(program => <ProgramCard key={program.id} program={program} />)}
-      </div>
-
-      <div className={styles.reportShell}>
+      <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2>My Reports</h2>
-          <div className={styles.reportActions}>
-            <Link to="/app/security/bugbounty/reports" className={styles.linkBtn}>All Reports</Link>
-            <button type="button" className={styles.syncBtn} onClick={() => setShowDraft(true)}>Review Draft</button>
+          <h2>Programs</h2>
+          <div className={styles.filters}>
+            {FILTERS.map(item => (
+              <button
+                key={item}
+                type="button"
+                className={`${styles.filterPill} ${filter === item ? styles.filterActive : ''}`}
+                onClick={() => setFilter(item)}
+              >
+                {item}
+              </button>
+            ))}
           </div>
         </div>
 
-          <div className={styles.reportList}>
-          {reports.map(report => (
-            <div key={report.id} className={styles.reportRow}>
-              <span className={styles.reportTitle}>{report.title}</span>
-              <span className={styles.reportTarget}>{report.target}</span>
-              <span className={styles.reportAmount}>{report.bountyKes > 0 ? formatCurrency(report.bountyKes) : formatNumber(report.bountyKes)}</span>
-              <span className={`${styles.platformBadge} ${styles[report.platform]}`}>{report.platform}</span>
-              <span className={`${styles.statusBadge} ${styles[report.status]}`}>{report.status}</span>
-            </div>
-          ))}
+        {filteredPrograms.length === 0 ? (
+          <div className={styles.emptyState}>
+            <Inbox size={22} />
+            <p>No {filter === 'All' ? '' : `${filter} `}programs yet.</p>
+            {canSync && (
+              <button type="button" className={styles.linkBtn} onClick={handleSync} disabled={isSyncing}>
+                Sync HackerOne
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className={styles.programGrid}>
+            {filteredPrograms.map(program => <ProgramCard key={program.id} program={program} />)}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2>Reports</h2>
+          <div className={styles.reportActions}>
+            <Link to="/app/security/bugbounty/reports" className={styles.linkBtn}>All Reports</Link>
+            {drafts.length > 0 && (
+              <button type="button" className={styles.secondaryBtn} onClick={() => setShowDraft(true)}>Review Draft</button>
+            )}
+          </div>
         </div>
-      </div>
+
+        {reports.length === 0 ? (
+          <div className={styles.emptyState}>
+            <FileText size={22} />
+            <p>No reports yet. Sync HackerOne to pull them in.</p>
+          </div>
+        ) : (
+          <div className={styles.list}>
+            {reports.slice(0, 8).map(report => <ReportRow key={report.id} report={report} />)}
+          </div>
+        )}
+      </section>
 
       {showDraft && drafts[0] && <ReportDraftModal draft={drafts[0]} onClose={() => setShowDraft(false)} />}
     </div>
