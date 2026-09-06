@@ -818,6 +818,7 @@ class ReminderConnector(BaseConnector):
         from chatbot.models import Reminder, Chatroom
         from django.contrib.auth import get_user_model
         from asgiref.sync import sync_to_async
+        from chatbot.reminder_service import parse_reminder_time, LLMTimeParser
 
         User = get_user_model()
         user_id = context.get("user_id")
@@ -831,21 +832,33 @@ class ReminderConnector(BaseConnector):
             return {"status": "error", "message": "When should I remind you?"}
 
         try:
-            from chatbot.reminder_service import parse_reminder_time
-
             user = await sync_to_async(User.objects.get)(pk=user_id)
             user_tz = user.profile.timezone if hasattr(user, 'profile') else 'UTC'
             
-            scheduled_time = parse_reminder_time(time_str, user_timezone=user_tz)
-            if scheduled_time is None:
+            # Use LLM-based parser with clarification support
+            parser = LLMTimeParser()
+            parse_result = await LLMTimeParser().parse(time_str, user_tz)
+
+            if parse_result.get("needs_clarification"):
+                # Return clarification needed response
                 return {
-                    "status": "error",
-                    "message": (
-                        f"I couldn't understand the time '{time_str}'. "
-                        "Please use a format like 'in 10 minutes', '5pm', or 'tomorrow at 9am'."
-                    ),
+                    "status": "needs_clarification",
+                    "clarification_question": parse_result.get("clarification_question", "Could you clarify the time?"),
+                    "partial_interpretation": parse_result.get("interpretation", ""),
+                    "partial_datetime": parse_result.get("datetime"),
                 }
 
+            scheduled_time_str = parse_result.get("datetime")
+            if not scheduled_time_str:
+                return {
+                    "status": "error",
+                    "message": "Could not parse time expression"
+                }
+
+            # Parse the datetime string
+            from dateutil import parser as dateutil_parser
+            scheduled_time = datetime.fromisoformat(scheduled_time_str.replace("Z", "+00:00"))
+            
             # Create Reminder
             room = await sync_to_async(Chatroom.objects.get)(pk=room_id) if room_id else None
             reminder = await sync_to_async(Reminder.objects.create)(
